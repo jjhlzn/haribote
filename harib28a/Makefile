@@ -1,5 +1,5 @@
-TOOLPATH = ../z_tools/
-INCPATH  = ../z_tools/haribote/
+TOOLPATH = ../../tolset/z_tools/
+INCPATH  = ../../tolset/z_tools/haribote/
 
 MAKE     = $(TOOLPATH)make.exe -r
 EDIMG    = $(TOOLPATH)edimg.exe
@@ -23,8 +23,8 @@ haribote.img : haribote/ipl09.bin haribote/haribote.sys Makefile \
 		sosu/sosu.hrb sosu2/sosu2.hrb sosu3/sosu3.hrb \
 		type/type.hrb iroha/iroha.hrb chklang/chklang.hrb \
 		notrec/notrec.hrb bball/bball.hrb invader/invader.hrb \
-		calc/calc.hrb tview/tview.hrb mmlplay/mmlplay.hrb gview/gview.hrb
-	$(EDIMG)   imgin:../z_tools/fdimg0at.tek \
+		calc/calc.hrb tview/tview.hrb mmlplay/mmlplay.hrb gview/gview.hrb minesweeper/minesweeper.hrb
+	$(EDIMG)   imgin:../../tolset/z_tools/fdimg0at.tek \
 		wbinimg src:haribote/ipl09.bin len:512 from:0 to:0 \
 		copy from:haribote/haribote.sys to:@: \
 		copy from:ipl09.nas to:@: \
@@ -58,6 +58,7 @@ haribote.img : haribote/ipl09.bin haribote/haribote.sys Makefile \
 		copy from:calc/calc.hrb to:@: \
 		copy from:tview/tview.hrb to:@: \
 		copy from:mmlplay/mmlplay.hrb to:@: \
+		copy from:minesweeper/minesweeper.hrb to:@: \
 		copy from:mmldata/kirakira.mml to:@: \
 		copy from:mmldata/fujisan.mml to:@: \
 		copy from:mmldata/daigo.mml to:@: \
@@ -72,8 +73,8 @@ haribote.img : haribote/ipl09.bin haribote/haribote.sys Makefile \
 
 run :
 	$(MAKE) haribote.img
-	$(COPY) haribote.img ..\z_tools\qemu\fdimage0.bin
-	$(MAKE) -C ../z_tools/qemu
+	$(COPY) haribote.img ..\..\tolset\z_tools\qemu\fdimage0.bin
+	$(MAKE) -C ../../tolset/z_tools/qemu
 
 install :
 	$(MAKE) haribote.img
@@ -115,8 +116,8 @@ full :
 
 run_full :
 	$(MAKE) full
-	$(COPY) haribote.img ..\z_tools\qemu\fdimage0.bin
-	$(MAKE) -C ../z_tools/qemu
+	$(COPY) haribote.img ..\..\tolset\z_tools\qemu\fdimage0.bin
+	$(MAKE) -C ../../tolset/z_tools/qemu
 
 install_full :
 	$(MAKE) full

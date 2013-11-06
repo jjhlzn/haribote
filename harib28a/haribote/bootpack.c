@@ -45,12 +45,14 @@ void HariMain(void)
 		0,   0,   0,   '_', 0,   0,   0,   0,   0,   0,   0,   0,   0,   '|', 0,   0
 	};
 	int key_shift = 0, key_leds = (binfo->leds >> 4) & 7, keycmd_wait = -1;
-	int j, x, y, mmx = -1, mmy = -1, mmx2 = 0;
-	struct SHEET *sht = 0, *key_win, *sht2;
+	int j, x, y, mmx = -1, mmy = -1, mmx2 = 0;  //mmx为负数的时候，窗口不处于窗口移动模式
+	struct SHEET *sht = 0, *key_win, *temp_sheet;
 	int *fat;
 	unsigned char *nihongo;
 	struct FILEINFO *finfo;
 	extern char hankaku[4096];
+	
+	char strbuf[50];
 
 	init_gdtidt();
 	init_pic();
@@ -225,7 +227,7 @@ void HariMain(void)
 					}
 				}
 				if (i == 256 + 0x3c && key_shift != 0) {	/* Shift+F2 */
-					/* 怴偟偔嶌偭偨僐儞僜乕儖傪擖椡慖戰忬懺偵偡傞乮偦偺傎偆偑恊愗偩傛偹丠乯 */
+					/* */
 					if (key_win != 0) {
 						keywin_off(key_win);
 					}
@@ -244,9 +246,9 @@ void HariMain(void)
 					wait_KBC_sendready();
 					io_out8(PORT_KEYDAT, keycmd_wait);
 				}
-			} else if (512 <= i && i <= 767) { /* 鼠标 */
+			} else if (512 <= i && i <= 767) { /* 鼠标数据 */
 				if (mouse_decode(&mdec, i - 512) != 0) {
-					/* 儅僂僗僇乕僜儖偺堏摦 */
+					/* 鼠标指针移动 */
 					mx += mdec.x;
 					my += mdec.y;
 					if (mx < 0) {
@@ -263,7 +265,11 @@ void HariMain(void)
 					}
 					new_mx = mx;
 					new_my = my;
+					
+					
+						
 					if ((mdec.btn & 0x01) != 0) {
+					
 						/* 嵍儃僞儞傪墴偟偰偄傞 */
 						if (mmx < 0) {
 							/* 捠忢儌乕僪偺応崌 */
@@ -327,15 +333,34 @@ void HariMain(void)
 							new_wx = 0x7fffffff;
 						}
 					}
+					
+					//发送鼠标移动数据给对应的任务
+					for (j = shtctl->top - 1; j > 0; j--) {
+						struct SHEET *temp_sheet;
+						temp_sheet = shtctl->sheets[j];
+						x = mx - temp_sheet->vx0;
+						y = my - temp_sheet->vy0;
+						if (0 <= x && x < temp_sheet->bxsize && 0 <= y && y < temp_sheet->bysize) {
+						
+							if(temp_sheet->task !=0 && temp_sheet->task != task_a){
+								
+								sprintf(strbuf,"send mouse info to task [%d], top = %d",j,shtctl->top);
+								boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 200,200, 200+8*36, 200+16);
+								putfonts8_asc(binfo->vram,binfo->scrnx,200,200,COL8_000000,strbuf);
+								
+								fifo32_put(&temp_sheet->task->fifo,i);
+							}
+						}
+					}
 				}
 			} else if (768 <= i && i <= 1023) {	/* 僐儞僜乕儖廔椆張棟 */
 				close_console(shtctl->sheets0 + (i - 768));
 			} else if (1024 <= i && i <= 2023) {
 				close_constask(taskctl->tasks0 + (i - 1024));
 			} else if (2024 <= i && i <= 2279) {	/* 僐儞僜乕儖偩偗傪暵偠傞 */
-				sht2 = shtctl->sheets0 + (i - 2024);
-				memman_free_4k(memman, (int) sht2->buf, 256 * 165);
-				sheet_free(sht2);
+				temp_sheet = shtctl->sheets0 + (i - 2024);
+				memman_free_4k(memman, (int) temp_sheet->buf, 256 * 165);
+				sheet_free(temp_sheet);
 			}
 		}
 	}

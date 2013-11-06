@@ -1,11 +1,11 @@
-TOOLPATH = ../../z_tools/
-INCPATH  = ../../z_tools/haribote/
+TOOLPATH = ../../../tolset/z_tools/
+INCPATH  = ../../../tolset/z_tools/haribote/
 APILIBPATH   = ../apilib/
 HARIBOTEPATH = ../haribote/
 
 MAKE     = $(TOOLPATH)make.exe -r
 NASK     = $(TOOLPATH)nask.exe
-CC1      = $(TOOLPATH)cc1.exe -I$(INCPATH) -I../ -Os -Wall -quiet
+CC1      = $(TOOLPATH)cc1.exe -I$(INCPATH) -I$(HARIBOTEPATH) -I../ -Os -Wall -quiet
 GAS2NASK = $(TOOLPATH)gas2nask.exe -a
 OBJ2BIM  = $(TOOLPATH)obj2bim.exe
 MAKEFONT = $(TOOLPATH)makefont.exe
@@ -32,7 +32,7 @@ $(APP).bim : $(APP).obj $(APILIBPATH)apilib.lib Makefile ../app_make.txt
 
 haribote.img : ../haribote/ipl09.bin ../haribote/haribote.sys $(APP).hrb \
 		Makefile ../app_make.txt
-	$(EDIMG)   imgin:../../z_tools/fdimg0at.tek \
+	$(EDIMG)   imgin:../../../tolset/z_tools/fdimg0at.tek \
 		wbinimg src:../haribote/ipl09.bin len:512 from:0 to:0 \
 		copy from:../haribote/haribote.sys to:@: \
 		copy from:$(APP).hrb to:@: \
@@ -60,8 +60,8 @@ haribote.img : ../haribote/ipl09.bin ../haribote/haribote.sys $(APP).hrb \
 
 run :
 	$(MAKE) haribote.img
-	$(COPY) haribote.img ..\..\z_tools\qemu\fdimage0.bin
-	$(MAKE) -C ../../z_tools/qemu
+	$(COPY) haribote.img ..\..\..\tolset\z_tools\qemu\fdimage0.bin
+	$(MAKE) -C ..\..\..\tolset/z_tools/qemu
 
 full :
 	$(MAKE) -C $(APILIBPATH)
