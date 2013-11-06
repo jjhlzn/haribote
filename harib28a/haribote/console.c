@@ -643,62 +643,64 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		struct MOUSE_DEC mdec;
 		mdec.phase = 0; 
 		int mx, my;
+		mx =0; my = 0;
 		struct MOUSE_INFO *minfo = (struct MOUSE_INFO*)(ebx+ds_base);
 		sht = (struct SHEET *) (ebp & 0xfffffffe);
 		char strbuf[50];
 		
 		sprintf(strbuf,"invoke 28");
-		putfonts8_asc(sht->buf, sht->bxsize, 60, 60, COL8_000000, strbuf);
-		 
-		for (;;) {
-			io_cli();
-			if (fifo32_status(&task->fifo) == 0) {
-				if (eax != 0) {
-					task_sleep(task);	/* FIFO偑嬻側偺偱怮偰懸偮 */
-				} else {
-					io_sti();
-					minfo -> flag = -1;
-					break;
-				}
-			}
-			i = fifo32_get(&task->fifo);
+		putfonts8_asc_sht(sht, 60, 70, 0, 15, strbuf,20);
+		
+		
+		// for (;;) {
+			// io_cli();
+			// if (fifo32_status(&task->fifo) == 0) {
+				// if (eax != 0) {
+					// task_sleep(task);	
+				// } else {
+					// io_sti();
+					// minfo -> flag = -1;
+					// break;
+				// }
+			// }
+			// i = fifo32_get(&task->fifo);
 			
-			sprintf(strbuf,"%d",i);
-			putfonts8_asc(sht->buf, sht->bxsize, 40, 40, COL8_000000, strbuf);
+			// sprintf(strbuf,"%d",i);
+			// putfonts8_asc(sht->buf, sht->bxsize, 60, 80, 0, strbuf);
 			
-			io_sti();
-			if (i <= 1 && cons->sht != 0) { /* 定时器用时定时器 */
-				/*  */
-				timer_init(cons->timer, &task->fifo, 1); /* 0.01ms光标闪烁 */
-				timer_settime(cons->timer, 50);
-			}
-			if (i == 2) {	/* 光标ON */
-				cons->cur_c = COL8_FFFFFF;
-			}
-			if (i == 3) {	/* 光标OFF */
-				cons->cur_c = -1;
-			}
-			if (i == 4) {	/* 关闭应用 */
-				timer_cancel(cons->timer);
-				io_cli();
-				fifo32_put(sys_fifo, cons->sht - shtctl->sheets0 + 2024);	/* 2024乣2279 */
-				cons->sht = 0;
-				io_sti();
-			}
-			if (512 <= i && i <= 767) { /* 鼠标数据 */
-				if (mouse_decode(&mdec, i - 512) != 0) {
-					/* 鼠标指针移动 */
-					mx += mdec.x;
-					my += mdec.y;
+			// io_sti();
+			// if (i <= 1 && cons->sht != 0) { /* 定时器用时定时器 */
+				// /*  */
+				// timer_init(cons->timer, &task->fifo, 1); /* 0.01ms光标闪烁 */
+				// timer_settime(cons->timer, 50);
+			// }
+			// if (i == 2) {	/* 光标ON */
+				// cons->cur_c = COL8_FFFFFF;
+			// }
+			// if (i == 3) {	/* 光标OFF */
+				// cons->cur_c = -1;
+			// }
+			// if (i == 4) {	/* 关闭应用 */
+				// timer_cancel(cons->timer);
+				// io_cli();
+				// fifo32_put(sys_fifo, cons->sht - shtctl->sheets0 + 2024);	/* 2024乣2279 */
+				// cons->sht = 0;
+				// io_sti();
+			// }
+			// if (512 <= i && i <= 767) { /* 鼠标数据 */
+				// if (mouse_decode(&mdec, i - 512) != 0) {
+					// /* 鼠标指针移动 */
+					// mx += mdec.x;
+					// my += mdec.y;
 					
-					minfo->x = mx;
-					minfo->y = my;
-					minfo->btn = mdec.btn;
-					minfo->flag = 0;
-					break; 
-				}
-			}
-		}
+					// minfo->x = mx;
+					// minfo->y = my;
+					// minfo->btn = mdec.btn;
+					// minfo->flag = 0;
+					// break; 
+				// }
+			// }
+		// }
 	}
 	return 0;
 }
