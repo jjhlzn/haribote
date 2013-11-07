@@ -7,12 +7,12 @@
 
 [SECTION .text]
 
-_api_getmouse:		; int api_getmouse(int mode,struct MOUSE_INFO *minfo);
+_api_getmouse:		; int api_getmouse(int mode, struct MOUSE_INFO *minfo£¬struct SHEET * shet);
 		PUSH EBX
 		PUSH EBP
-		MOV 	EAX, [ESP+4]
-		MOV		EBX, [ESP+8]
-		MOV     EBP, [ESP+12]
+		MOV 	EAX, [ESP+12]
+		MOV     EBP, [ESP+16]
+		MOV     EBX, [ESP+20]
 		MOV		EDX, 28
 		INT		0x40
 		POP EBP

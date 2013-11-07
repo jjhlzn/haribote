@@ -361,19 +361,19 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	struct SHTCTL *shtctl;
 	struct SHEET *sht;
 
-	/* 僐儅儞僪儔僀儞偐傜僼傽僀儖柤傪惗惉 */
+	/* 获取程序文件名 */
 	for (i = 0; i < 13; i++) {
 		if (cmdline[i] <= ' ') {
 			break;
 		}
 		name[i] = cmdline[i];
 	}
-	name[i] = 0; /* 偲傝偁偊偢僼傽僀儖柤偺屻傠傪0偵偡傞 */
+	name[i] = 0; 
 
-	/* 僼傽僀儖傪扵偡 */
+	/* 查找文件在磁盘中的信息 */
 	finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo == 0 && name[i - 1] != '.') {
-		/* 尒偮偐傜側偐偭偨偺偱屻傠偵".HRB"傪偮偗偰傕偆堦搙扵偟偰傒傞 */
+		/* 加入.hrb后缀再试试 */
 		name[i    ] = '.';
 		name[i + 1] = 'H';
 		name[i + 2] = 'R';
@@ -383,16 +383,17 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	}
 
 	if (finfo != 0) {
-		/* 僼傽僀儖偑尒偮偐偭偨応崌 */
+		/* 加载文件信息 */
 		appsiz = finfo->size;
-		p = file_loadfile2(finfo->clustno, &appsiz, fat);
+		p = file_loadfile2(finfo->clustno, &appsiz, fat); //代码段
 		if (appsiz >= 36 && strncmp(p + 4, "Hari", 4) == 0 && *p == 0x00) {
 			segsiz = *((int *) (p + 0x0000));
 			esp    = *((int *) (p + 0x000c));
 			datsiz = *((int *) (p + 0x0010));
 			dathrb = *((int *) (p + 0x0014));
-			q = (char *) memman_alloc_4k(memman, segsiz);
+			q = (char *) memman_alloc_4k(memman, segsiz); //分配数据段
 			task->ds_base = (int) q;
+			task->cs_base = (int) p;
 			set_segmdesc(task->ldt + 0, appsiz - 1, (int) p, AR_CODE32_ER + 0x60);
 			set_segmdesc(task->ldt + 1, segsiz - 1, (int) q, AR_DATA32_RW + 0x60);
 			for (i = 0; i < datsiz; i++) {
@@ -431,6 +432,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 {
 	struct TASK *task = task_now();
 	int ds_base = task->ds_base;
+	int cs_base = task->cs_base;
 	struct CONSOLE *cons = task->cons;
 	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 	struct SHEET *sht;
@@ -478,7 +480,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		ecx &= 0xfffffff0;	/* 16僶僀僩扨埵偵 */
 		memman_free((struct MEMMAN *) (ebx + ds_base), eax, ecx);
 	} else if (edx == 9) {
-		ecx = (ecx + 0x0f) & 0xfffffff0; /* 16僶僀僩扨埵偵愗傝忋偘 */
+		ecx = (ecx + 0x0f) & 0xfffffff0; /* 分配16的倍数的空间 */
 		reg[7] = memman_alloc((struct MEMMAN *) (ebx + ds_base), ecx);
 	} else if (edx == 10) {
 		ecx = (ecx + 0x0f) & 0xfffffff0; /* 16僶僀僩扨埵偵愗傝忋偘 */
@@ -644,63 +646,45 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		mdec.phase = 0; 
 		int mx, my;
 		mx =0; my = 0;
-		struct MOUSE_INFO *minfo = (struct MOUSE_INFO*)(ebx+ds_base);
-		sht = (struct SHEET *) (ebp & 0xfffffffe);
+		struct MOUSE_INFO * minfo = (struct MOUSE_INFO*)(ebp + ds_base);
+		sht = (struct SHEET *) (ebx & 0xfffffffe);
+		
 		char strbuf[50];
+		sprintf(strbuf,"invoke 28 minfo->flag = %d", minfo->flag);
+		putfonts8_asc_sht(sht, 60, 70, 0, 15, strbuf,40);
 		
-		sprintf(strbuf,"invoke 28");
-		putfonts8_asc_sht(sht, 60, 70, 0, 15, strbuf,20);
+	    //int size = (sizeof(struct MOUSE_INFO) + 0x0f) & 0xfffffff0;
+		//minfo = memman_alloc((struct MEMMAN *) (ebx + ds_base), size);
+		//minfo->flag = -1;
 		
-		
-		// for (;;) {
-			// io_cli();
-			// if (fifo32_status(&task->fifo) == 0) {
-				// if (eax != 0) {
-					// task_sleep(task);	
-				// } else {
-					// io_sti();
-					// minfo -> flag = -1;
-					// break;
-				// }
-			// }
-			// i = fifo32_get(&task->fifo);
+		for (;;) {
+			io_cli();
+			if (fifo32_status(&task->fifo) == 0) {
+				if (eax != 0) {
+					task_sleep(task);	
+				} else {
+					io_sti();
+					break;
+				}
+			}
+			i = fifo32_get(&task->fifo);
 			
-			// sprintf(strbuf,"%d",i);
-			// putfonts8_asc(sht->buf, sht->bxsize, 60, 80, 0, strbuf);
-			
-			// io_sti();
-			// if (i <= 1 && cons->sht != 0) { /* 定时器用时定时器 */
-				// /*  */
-				// timer_init(cons->timer, &task->fifo, 1); /* 0.01ms光标闪烁 */
-				// timer_settime(cons->timer, 50);
-			// }
-			// if (i == 2) {	/* 光标ON */
-				// cons->cur_c = COL8_FFFFFF;
-			// }
-			// if (i == 3) {	/* 光标OFF */
-				// cons->cur_c = -1;
-			// }
-			// if (i == 4) {	/* 关闭应用 */
-				// timer_cancel(cons->timer);
-				// io_cli();
-				// fifo32_put(sys_fifo, cons->sht - shtctl->sheets0 + 2024);	/* 2024乣2279 */
-				// cons->sht = 0;
-				// io_sti();
-			// }
-			// if (512 <= i && i <= 767) { /* 鼠标数据 */
-				// if (mouse_decode(&mdec, i - 512) != 0) {
-					// /* 鼠标指针移动 */
-					// mx += mdec.x;
-					// my += mdec.y;
+			io_sti();
+
+			if (512 <= i && i <= 767) { /* 鼠标数据 */
+				if (mouse_decode(&mdec, i - 512) != 0) {
+					/* 鼠标指针移动 */
+					mx += mdec.x;
+					my += mdec.y;
 					
-					// minfo->x = mx;
-					// minfo->y = my;
-					// minfo->btn = mdec.btn;
-					// minfo->flag = 0;
-					// break; 
-				// }
-			// }
-		// }
+					minfo->x = mx;
+					minfo->y = my;
+					minfo->btn = mdec.btn;
+					minfo->flag = 1;
+					break; 
+				}
+			}
+		}
 	}
 	return 0;
 }

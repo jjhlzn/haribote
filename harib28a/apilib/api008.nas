@@ -10,10 +10,10 @@
 _api_initmalloc:	; void api_initmalloc(void);
 		PUSH	EBX
 		MOV		EDX,8
-		MOV		EBX,[CS:0x0020]		; malloc椞堟偺斣抧
+		MOV		EBX,[CS:0x0020]		; malloc内存空间的地址
 		MOV		EAX,EBX
-		ADD		EAX,32*1024			; 32KB傪懌偡
-		MOV		ECX,[CS:0x0000]		; 僨乕僞僙僌儊儞僩偺戝偒偝
+		ADD		EAX,32*1024			; 加上32KB的memory manager数据结构的空间
+		MOV		ECX,[CS:0x0000]		; 数据段的大小
 		SUB		ECX,EAX
 		INT		0x40
 		POP		EBX

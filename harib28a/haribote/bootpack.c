@@ -336,19 +336,19 @@ void HariMain(void)
 					
 					//发送鼠标移动数据给对应的任务
 					for (j = shtctl->top - 1; j > 0; j--) {
-						struct SHEET *temp_sheet;
-						temp_sheet = shtctl->sheets[j];
-						x = mx - temp_sheet->vx0;
-						y = my - temp_sheet->vy0;
-						if (0 <= x && x < temp_sheet->bxsize && 0 <= y && y < temp_sheet->bysize) {
+						struct SHEET *temp_sheet2;
+						temp_sheet2 = shtctl->sheets[j];
+						x = mx - temp_sheet2->vx0;
+						y = my - temp_sheet2->vy0;
+						if (0 <= x && x < temp_sheet2->bxsize && 0 <= y && y < temp_sheet2->bysize) {
 						
-							if(temp_sheet->task !=0 && temp_sheet->task != task_a){
+							if(temp_sheet2->task !=0 && temp_sheet2->task != task_a){
 								
 								sprintf(strbuf,"send mouse info to task [%d], top = %d",j,shtctl->top);
 								boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 200,200, 200+8*36, 200+16);
-								putfonts8_asc(binfo->vram,binfo->scrnx,200,200,COL8_000000,strbuf);
+								putfonts8_asc(binfo->vram, binfo->scrnx, 200, 200, COL8_000000, strbuf);
 								
-								fifo32_put(&temp_sheet->task->fifo,i);
+								fifo32_put( &(temp_sheet2->task->fifo), i);
 							}
 						}
 					}

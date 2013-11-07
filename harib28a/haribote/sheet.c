@@ -261,7 +261,8 @@ void sheet_updown(struct SHEET *sht, int height)
 void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bx1, int by1)
 {
 	if (sht->height >= 0) { /* ‚à‚µ‚à•\¦’†‚È‚çAV‚µ‚¢‰º‚¶‚«‚Ìî•ñ‚É‰ˆ‚Á‚Ä‰æ–Ê‚ğ•`‚«’¼‚· */
-		sheet_refreshsub(sht->ctl, sht->vx0 + bx0, sht->vy0 + by0, sht->vx0 + bx1, sht->vy0 + by1, sht->height, sht->height);
+		sheet_refreshsub(sht->ctl, sht->vx0 + bx0, sht->vy0 + by0, sht->vx0 + bx1, 
+			             sht->vy0 + by1, sht->height, sht->height);
 	}
 	return;
 }
