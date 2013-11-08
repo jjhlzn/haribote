@@ -160,8 +160,8 @@ void HariMain(void)
 					keywin_on(key_win);
 				}
 			}
-			if (256 <= i && i <= 511) { /* 僉乕儃乕僪僨乕僞 */
-				if (i < 0x80 + 256) { /* 僉乕僐乕僪傪暥帤僐乕僪偵曄姺 */
+			if (256 <= i && i <= 511) { /* 键盘数据 */
+				if (i < 0x80 + 256) { /* 常规字符 */
 					if (key_shift == 0) {
 						s[0] = keytable0[i - 256];
 					} else {
@@ -176,7 +176,7 @@ void HariMain(void)
 						s[0] += 0x20;	/* 戝暥帤傪彫暥帤偵曄姺 */
 					}
 				}
-				if (s[0] != 0 && key_win != 0) { /* 捠忢暥帤丄僶僢僋僗儁乕僗丄Enter */
+				if (s[0] != 0 && key_win != 0) { /* 把字符发送给相应的任务 */
 					fifo32_put(&key_win->task->fifo, s[0] + 256);
 				}
 				if (i == 256 + 0x0f && key_win != 0) {	/* Tab */
@@ -219,7 +219,7 @@ void HariMain(void)
 					task = key_win->task;
 					if (task != 0 && task->tss.ss0 != 0) {
 						cons_putstr0(task->cons, "\nBreak(key) :\n");
-						io_cli();	/* 嫮惂廔椆張棟拞偵僞僗僋偑曄傢傞偲崲傞偐傜 */
+						io_cli();	/* 结束任务 */
 						task->tss.eax = (int) &(task->tss.esp0);
 						task->tss.eip = (int) asm_end_app;
 						io_sti();
@@ -227,7 +227,7 @@ void HariMain(void)
 					}
 				}
 				if (i == 256 + 0x3c && key_shift != 0) {	/* Shift+F2 */
-					/* */
+					/* 打开一个新控制台 */
 					if (key_win != 0) {
 						keywin_off(key_win);
 					}
@@ -265,8 +265,6 @@ void HariMain(void)
 					}
 					new_mx = mx;
 					new_my = my;
-					
-					
 						
 					if ((mdec.btn & 0x01) != 0) {
 					
@@ -341,14 +339,18 @@ void HariMain(void)
 						x = mx - temp_sheet2->vx0;
 						y = my - temp_sheet2->vy0;
 						if (0 <= x && x < temp_sheet2->bxsize && 0 <= y && y < temp_sheet2->bysize) {
-						
-							if(temp_sheet2->task !=0 && temp_sheet2->task != task_a){
+							if(temp_sheet2->task !=0 && temp_sheet2->task != task_a && temp_sheet2->task->sendMouse){
+								//打印出当前
+								//sprintf(strbuf,"send mouse info to task [%d], top = %d", j, shtctl->top);
+								//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 200,200, 200+8*36, 200+16);
+								//putfonts8_asc(binfo->vram, binfo->scrnx, 200, 200, COL8_000000, strbuf);
 								
-								sprintf(strbuf,"send mouse info to task [%d], top = %d",j,shtctl->top);
-								boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 200,200, 200+8*36, 200+16);
-								putfonts8_asc(binfo->vram, binfo->scrnx, 200, 200, COL8_000000, strbuf);
-								
-								fifo32_put( &(temp_sheet2->task->fifo), i);
+								/*将鼠标的信息(x,y,btn)编码到32位的int中，其中，btn需要3位(其实只要3位），
+								  x为14位，y为14位, 最高位是鼠标信息的标志位 */
+								int x1 = x << 17;
+								int y1 = y << 3;
+								unsigned int code = 0x80000000 + x1 + y1 + mdec.btn;
+								fifo32_put( &(temp_sheet2->task->fifo), code);
 							}
 						}
 					}

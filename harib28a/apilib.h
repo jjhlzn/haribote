@@ -30,6 +30,6 @@ int api_fsize(int fhandle, int mode);
 int api_fread(char *buf, int maxsize, int fhandle);
 int api_cmdline(char *buf, int maxsize);
 int api_getlang(void);
-struct MOUSE_INFO* api_getmouse(int mode,char *minfo,int win);
+void api_getmouse(int mode,char *minfo);
 
 #endif

@@ -9,7 +9,8 @@ void console_task(struct SHEET *sheet, int memtotal)
 {
 	struct TASK *task = task_now();
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-	int i, *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+	unsigned int i;
+	int *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 	struct CONSOLE cons;
 	struct FILEHANDLE fhandle[8];
 	char cmdline[30];
@@ -107,10 +108,10 @@ void console_task(struct SHEET *sheet, int memtotal)
 					}
 				}
 			}
-			if (512 <= i && i <= 767){
-				char strbuf[100];
-				sprintf(strbuf,"get a mouse message [%d]",i);
-				putfonts8_asc_sht(sheet,20,100,COL8_FFFFFF,COL8_000000,strbuf,35);
+			if ( i >= 0x80000000 ){
+				char s[40];
+				sprintf(s,"i = %x", i);
+				putfonts8_asc_sht(cons.sht, 5, 50, COL8_FFFFFF, COL8_000000, s, 14);
 			}
 			
 			/* 僇乕僜儖嵞昞帵 */
@@ -121,8 +122,6 @@ void console_task(struct SHEET *sheet, int memtotal)
 				}
 				sheet_refresh(cons.sht, cons.cur_x, cons.cur_y, cons.cur_x + 8, cons.cur_y + 16);
 			}
-			
-			
 		}
 	}
 }
@@ -544,7 +543,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 				cons->sht = 0;
 				io_sti();
 			}
-			if (i >= 256) { /* 僉乕儃乕僪僨乕僞乮僞僗僋A宱桼乯側偳 */
+			if (i >= 256 && i<512) { /* 僉乕儃乕僪僨乕僞乮僞僗僋A宱桼乯側偳 */
 				reg[7] = i - 256;
 				return 0;
 			}
@@ -644,8 +643,9 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	} else if (edx == 28) {
 		struct MOUSE_DEC mdec;
 		mdec.phase = 0; 
-		int mx, my;
-		mx =0; my = 0;
+		int mx, my, btn;
+		mx =0; my = 0, btn =0;
+		task->sendMouse = 1;
 		struct MOUSE_INFO * minfo = (struct MOUSE_INFO*)(ebp + ds_base);
 		sht = (struct SHEET *) (ebx & 0xfffffffe);
 		
@@ -664,25 +664,28 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 					task_sleep(task);	
 				} else {
 					io_sti();
+					task->sendMouse = 0;
 					break;
 				}
 			}
 			i = fifo32_get(&task->fifo);
-			
+			sprintf(strbuf,"i = %x", i);
+			putfonts8_asc_sht(sht, 60, 95, 0, 15, strbuf,40);
 			io_sti();
-
-			if (512 <= i && i <= 767) { /* 鼠标数据 */
-				if (mouse_decode(&mdec, i - 512) != 0) {
-					/* 鼠标指针移动 */
-					mx += mdec.x;
-					my += mdec.y;
+	
+			if (i >= 0x80000000) { /* 鼠标数据 */
+				
+				mx = ((unsigned int)i << 1) >> 18;
+				my = ((unsigned int)i << 15) >> 18;
+				btn = i & 0x00000007;
 					
-					minfo->x = mx;
-					minfo->y = my;
-					minfo->btn = mdec.btn;
-					minfo->flag = 1;
-					break; 
-				}
+				minfo->x = mx;
+				minfo->y = my;
+				minfo->btn = btn;
+				minfo->flag = 1;
+				task->sendMouse = 0;
+				break;
+					
 			}
 		}
 	}
