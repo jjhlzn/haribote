@@ -5,6 +5,10 @@
 
 void HariMain()
 {
+	test1();
+}
+
+void test1(){
 	int win, xsize = 400, ysize = 200;
 	char *win_buf;
 	api_initmalloc();
