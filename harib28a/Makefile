@@ -112,6 +112,7 @@ full :
 	$(MAKE) -C tview
 	$(MAKE) -C mmlplay
 	$(MAKE) -C gview
+	$(MAKE) -C minesweeper
 	$(MAKE) haribote.img
 
 run_full :

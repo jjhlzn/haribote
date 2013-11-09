@@ -25,7 +25,7 @@ VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
 
 		ORG		0xc200			; このプログラムがどこに読み込まれるのか
 
-; VBE存在確認
+; ﾈｷﾈﾏVBEﾊﾇｷ贇ﾚ
 
 		MOV		AX,0x9000
 		MOV		ES,AX
@@ -35,13 +35,13 @@ VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
 		CMP		AX,0x004f
 		JNE		scrn320
 
-; VBEのバージョンチェック
+; ｼ�ｲ餬BEｵﾄｰ豎ｾ
 
 		MOV		AX,[ES:DI+4]
 		CMP		AX,0x0200
 		JB		scrn320			; if (AX < 0x0200) goto scrn320
 
-; 画面モード情報を得る
+; ﾈ｡ｵﾃｻｭﾃ貽｣ﾊｽﾐﾅﾏ｢
 
 		MOV		CX,VBEMODE
 		MOV		AX,0x4f01
@@ -49,7 +49,7 @@ VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
 		CMP		AX,0x004f
 		JNE		scrn320
 
-; 画面モード情報の確認
+; ｻｭﾃ貽｣ﾊｽﾐﾅﾏ｢ｵﾄﾈｷﾈﾏ
 
 		CMP		BYTE [ES:DI+0x19],8
 		JNE		scrn320
@@ -59,12 +59,12 @@ VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
 		AND		AX,0x0080
 		JZ		scrn320			; モード属性のbit7が0だったのであきらめる
 
-; 画面モードの切り替え
+; ｻｭﾃ貽｣ﾊｽｵﾄﾇﾐｻｻ
 
 		MOV		BX,VBEMODE+0x4000
 		MOV		AX,0x4f02
 		INT		0x10
-		MOV		BYTE [VMODE],8	; 画面モードをメモする（C言語が参照する）
+		MOV		BYTE [VMODE],8	; ｼﾇﾏﾂｻｭﾃ貽｣ﾊｽ
 		MOV		AX,[ES:DI+0x12]
 		MOV		[SCRNX],AX
 		MOV		AX,[ES:DI+0x14]
@@ -74,10 +74,10 @@ VRAM	EQU		0x0ff8			; グラフィックバッファの開始番地
 		JMP		keystatus
 
 scrn320:
-		MOV		AL,0x13			; VGAグラフィックス、320x200x8bitカラー
+		MOV		AL,0x13			; VGAﾍｼ｣ｬ320x200x8bitｲﾊﾉｫ
 		MOV		AH,0x00
 		INT		0x10
-		MOV		BYTE [VMODE],8	; 画面モードをメモする（C言語が参照する）
+		MOV		BYTE [VMODE],8	; ｼﾇﾏﾂｻｭﾃ貽｣ﾊｽ
 		MOV		WORD [SCRNX],320
 		MOV		WORD [SCRNY],200
 		MOV		DWORD [VRAM],0x000a0000
