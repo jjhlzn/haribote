@@ -1,7 +1,7 @@
 ; haribote-ipl
 ; TAB=4
 
-CYLS	EQU		9				; 偳偙傑偱撉傒崬傓偐
+CYLS	EQU		20				; 要读取多少内容
 
 		ORG		0x7c00			; 偙偺僾儘僌儔儉偑偳偙偵撉傒崬傑傟傞偺偐
 
@@ -36,13 +36,13 @@ entry:
 		MOV		SP,0x7c00
 		MOV		DS,AX
 
-; 僨傿僗僋傪撉傓
+;   读磁盘
 
 		MOV		AX,0x0820
 		MOV		ES,AX
-		MOV		CH,0			; 僔儕儞僟0
-		MOV		DH,0			; 僿僢僪0
-		MOV		CL,2			; 僙僋僞2
+		MOV		CH,0			; 柱面0
+		MOV		DH,0			; 磁头0
+		MOV		CL,2			; 扇区2
 		MOV		BX,18*2*CYLS-1	; 撉傒崬傒偨偄崌寁僙僋僞悢
 		CALL	readfast		; 崅懍撉傒崬傒
 

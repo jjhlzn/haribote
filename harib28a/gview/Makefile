@@ -41,6 +41,9 @@ haribote.img : ../haribote/ipl09.bin ../haribote/haribote.sys $(APP).hrb \
 		copy from:../haribote/haribote.sys to:@: \
 		copy from:$(APP).hrb to:@: \
 		copy from:../nihongo/nihongo.fnt to:@: \
+		copy from:../pictdata/night.bmp to:@: \
+		copy from:../pictdata/fujisan.jpg to:@: \
+		copy from:../pictdata/boy.jpg to:@: \
 		imgout:haribote.img
 
 # ˆê”Ê‹K‘¥
@@ -63,6 +66,7 @@ haribote.img : ../haribote/ipl09.bin ../haribote/haribote.sys $(APP).hrb \
 # ƒRƒ}ƒ“ƒh
 
 run :
+	$(MAKE) -C ../haribote
 	$(MAKE) haribote.img
 	$(COPY) haribote.img ..\..\..\tolset\z_tools\qemu\fdimage0.bin
 	$(MAKE) -C ../../../tolset/z_tools/qemu

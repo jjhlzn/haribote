@@ -10,6 +10,25 @@ void keywin_on(struct SHEET *key_win);
 void close_console(struct SHEET *sht);
 void close_constask(struct TASK *task);
 
+struct DLL_STRPICENV {	/* 64KB */
+	int work[64 * 1024 / 4];
+};
+
+struct RGB {
+	unsigned char b, g, r, t;
+};
+
+/* bmp.nasm */
+int info_BMP(struct DLL_STRPICENV *env, int *info, int size, char *fp);
+int decode0_BMP(struct DLL_STRPICENV *env, int size, char *fp, int b_type, char *buf, int skip);
+
+/* jpeg.c */
+int info_JPEG(struct DLL_STRPICENV *env, int *info, int size, char *fp);
+int decode0_JPEG(struct DLL_STRPICENV *env, int size, char *fp, int b_type, char *buf, int skip);
+unsigned char rgb2pal(int r, int g, int b, int x, int y);
+
+void load_background_pic(char* back_buf, int *fat);
+
 void HariMain(void)
 {
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
@@ -82,6 +101,8 @@ void HariMain(void)
 	/* sht_back */
 	sht_back  = sheet_alloc(shtctl);
 	buf_back  = (unsigned char *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
+	
+	
 	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1); /* 摟柧怓側偟 */
 	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
 
@@ -110,6 +131,10 @@ void HariMain(void)
 	/* nihongo.fnt偺撉傒崬傒 */
 	fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 	file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
+	
+	//加载壁纸
+	load_background_pic(buf_back, fat);
+	sheet_slide(sht_back,  0,  0); //刷新壁纸
 
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {
@@ -438,4 +463,113 @@ void close_console(struct SHEET *sht)
 	sheet_free(sht);
 	close_constask(task);
 	return;
+}
+
+unsigned char rgb2pal(int r, int g, int b, int x, int y)
+{
+	static int table[4] = { 3, 1, 0, 2 };
+	int i;
+	x &= 1; /* 嬼悢偐婏悢偐 */
+	y &= 1;
+	i = table[x + y * 2];	/* 拞娫怓傪嶌傞偨傔偺掕悢 */
+	r = (r * 21) / 256;	/* 偙傟偱 0乣20 偵側傞 */
+	g = (g * 21) / 256;
+	b = (b * 21) / 256;
+	r = (r + i) / 4;	/* 偙傟偱 0乣5 偵側傞 */
+	g = (g + i) / 4;
+	b = (b + i) / 4;
+	return 16 + r + g * 6 + b * 36;
+}
+
+void load_background_pic(char* buf_back, int *fat)
+{
+	struct DLL_STRPICENV env;
+	char * filebuf, *p;
+	char filename[20] ;
+	sprintf(filename, "night.bmp");
+	p = filename;
+	
+	int win, i, j, fsize, xsize, info[8];
+	struct RGB picbuf[300*300], *q;	 //这里的空间不能太大，否则内核的栈不够用了
+	//picbuf = memman_alloc((struct MEMMAN *) MEMMAN_ADDR, 1024 * 768 * sizeof(struct RGB));
+	if(picbuf == 0)
+	{
+		return;
+	}
+	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
+
+	char strbuf[50];
+	sprintf(strbuf,p);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 200-16, 200+8*50, 200+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 200-16, COL8_000000, strbuf);		
+	
+	//查找文件
+	struct FILEINFO *finfo = file_search(p,(struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224); 
+	if( finfo ==0 ) //文件找不到
+		return;
+
+	sprintf(strbuf,"found %s, clustno = %d, size = %d", filename, finfo->clustno, finfo->size);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 200, 200+8*50, 200+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 200, COL8_000000, strbuf);					
+	
+	fsize = finfo->size;
+	//加载文件内容
+	filebuf = file_loadfile2(finfo->clustno,&fsize,fat);
+	
+	/* 检查文件类型*/
+	if (info_BMP(&env, info, fsize, filebuf) == 0) {
+		/* 不是BMP */
+		if (info_JPEG(&env, info, fsize, filebuf) == 0) {
+			/*  不是JPEG */
+			//api_putstr0("file type unknown.\n");
+			//api_end();
+			memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, filebuf, fsize);
+			return;
+		}
+	}
+	sprintf(strbuf,"load file contents, x = %d, y = %d, info[0] = %d",info[2],info[3],info[0]);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 200+16, 200+8*50, 200+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 200+16, COL8_000000, strbuf);			
+	
+	/* 上面其中一个info函数调用成功的话，info中包含以下信息 */
+	/*	info[0] : 文件类型 (1:BMP, 2:JPEG) */
+	/*	info[1] : 颜色数信息 */
+	/*	info[2] : xsize */
+	/*	info[3] : ysize */
+
+	if (info[2] > 500 || info[3] > 400) {
+		//error("picture too large.\n");
+		memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, filebuf, fsize);
+		return;
+	}
+
+	if (info[0] == 1) {
+		i = decode0_BMP (&env, fsize, filebuf, 4, (char *) picbuf, 0);
+	} else {
+		i = decode0_JPEG(&env, fsize, filebuf, 4, (char *) picbuf, 0);
+	}
+	
+	sprintf(strbuf,"parse image, i = %d",i);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 200+16+16, 200+8*50, 200+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 200+16+16, COL8_000000, strbuf);	
+
+	if (i != 0) {
+		//error("decode error.\n");
+		memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, filebuf, fsize);
+		return;
+	}
+	
+		
+	
+	buf_back = buf_back + binfo->scrnx * ( (binfo->scrny - 24) / 2 - info[3] / 2);
+
+	for (i = 0; i < info[3]; i++) {
+		p = buf_back + i * binfo->scrnx + binfo->scrnx / 2 - info[2] / 2;
+		q = picbuf + i * info[2];
+		for (j = 0; j < info[2]; j++) {
+			p[j] = rgb2pal(q[j].r, q[j].g, q[j].b, j, i);
+		}
+	}
+	
+	memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, filebuf, fsize);
 }

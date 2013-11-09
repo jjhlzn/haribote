@@ -1,6 +1,6 @@
 OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj \
 		int.obj fifo.obj keyboard.obj mouse.obj memory.obj sheet.obj timer.obj \
-		mtask.obj window.obj console.obj file.obj tek.obj
+		mtask.obj window.obj console.obj file.obj tek.obj bmp.obj jpeg.obj ../apilib/alloca.obj
 
 TOOLPATH = ../../../tolset/z_tools/
 INCPATH  = ../../../tolset/z_tools/haribote/
@@ -40,7 +40,7 @@ hankaku.bin : hankaku.txt Makefile
 hankaku.obj : hankaku.bin Makefile
 	$(BIN2OBJ) hankaku.bin hankaku.obj _hankaku
 
-bootpack.bim : $(OBJS_BOOTPACK) Makefile
+bootpack.bim : $(OBJS_BOOTPACK)  Makefile
 	$(OBJ2BIM) @$(RULEFILE) out:bootpack.bim stack:3136k map:bootpack.map \
 		$(OBJS_BOOTPACK)
 # 3MB+64KB=3136KB
