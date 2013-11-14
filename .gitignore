@@ -9,7 +9,9 @@
 *.org
 *.lib
 *.sys
-
+*.gas
+*.nas
+*.jpg
 
 
 
