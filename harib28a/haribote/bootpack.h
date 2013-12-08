@@ -1,4 +1,13 @@
 /* asmhead.nas */
+struct hd_i_struct {
+	int head; //磁头数
+	int sect; //没磁道扇区数
+	int cyl;  //柱面数
+	int wpcom; //写前预补偿柱面号
+	int lzone; //磁头着陆区柱面号
+	int ctl; //控制字节
+};
+	
 struct BOOTINFO { /* 0x0ff0-0x0fff */
 	char cyls; /* 僽乕僩僙僋僞偼偳偙傑偱僨傿僗僋傪撉傫偩偺偐 */
 	char leds; /* 僽乕僩帪偺僉乕儃乕僪偺LED偺忬懺 */
@@ -6,6 +15,9 @@ struct BOOTINFO { /* 0x0ff0-0x0fff */
 	char reserve;
 	short scrnx, scrny; /* 夋柺夝憸搙 */
 	char *vram;
+	int hd0;
+	char hd1[16];
+	//struct hd_i_struct hd_info;
 };
 #define ADR_BOOTINFO	0x00000ff0
 #define ADR_DISKIMG		0x00100000

@@ -43,12 +43,12 @@ entry:
 		MOV		CH,0			; 柱面0
 		MOV		DH,0			; 磁头0
 		MOV		CL,2			; 扇区2
-		MOV		BX,18*2*CYLS-1	; 撉傒崬傒偨偄崌寁僙僋僞悢
-		CALL	readfast		; 崅懍撉傒崬傒
+		MOV		BX,18*2*CYLS-1	; 要读取的合计扇区数，从此开始
+		CALL	readfast		; 告诉读取
 
-; 撉傒廔傢偭偨偺偱haribote.sys傪幚峴偩両
+; 读取结束，运行haribote.sys
 
-		MOV		BYTE [0x0ff0],CYLS	; IPL偑偳偙傑偱撉傫偩偺偐傪儊儌
+		MOV		BYTE [0x0ff0],CYLS	; 记录IPL实际读取了多少内容，到此结束
 		JMP		0xc200
 
 error:
@@ -57,32 +57,32 @@ error:
 		MOV		SI,msg
 putloop:
 		MOV		AL,[SI]
-		ADD		SI,1			; SI偵1傪懌偡
+		ADD		SI,1			; SI加1
 		CMP		AL,0
 		JE		fin
-		MOV		AH,0x0e			; 堦暥帤昞帵僼傽儞僋僔儑儞
-		MOV		BX,15			; 僇儔乕僐乕僪
-		INT		0x10			; 價僨僆BIOS屇傃弌偟
+		MOV		AH,0x0e			; 显示一个字符
+		MOV		BX,15			; 颜色代码
+		INT		0x10			; 调用显示BIOS
 		JMP		putloop
 fin:
-		HLT						; 壗偐偁傞傑偱CPU傪掆巭偝偣傞
-		JMP		fin				; 柍尷儖乕僾
+		HLT						; 暂时让CPU停止
+		JMP		fin				; 无限循环
 msg:
-		DB		0x0a, 0x0a		; 夵峴傪2偮
+		DB		0x0a, 0x0a		; 两个换行
 		DB		"load error"
-		DB		0x0a			; 夵峴
+		DB		0x0a			; 换行
 		DB		0
 
-readfast:	; AL傪巊偭偰偱偒傞偩偗傑偲傔偰撉傒弌偡
-;	ES:撉傒崬傒斣抧, CH:僔儕儞僟, DH:僿僢僪, CL:僙僋僞, BX:撉傒崬傒僙僋僞悢
+readfast:	; 使用AL尽量一次性读取数据，从此开始
+;	ES:撉傒崬傒斣抧, CH:柱面, DH:磁头, CL:扇区, BX:读取扇区数
 
-		MOV		AX,ES			; < ES偐傜AL偺嵟戝抣傪寁嶼 >
-		SHL		AX,3			; AX傪32偱妱偭偰丄偦偺寢壥傪AH偵擖傟偨偙偲偵側傞 乮SHL偼嵍僔僼僩柦椷乯
-		AND		AH,0x7f			; AH偼AH傪128偱妱偭偨梋傝乮512*128=64K乯
-		MOV		AL,128			; AL = 128 - AH; 堦斣嬤偄64KB嫬奅傑偱嵟戝壗僙僋僞擖傞偐
+		MOV		AX,ES			; < 通过ES计算AL的最大值 >
+		SHL		AX,3			; 将AX除以32,将结果存入AH
+		AND		AH,0x7f			; AH是AH除以128所得的余数（512*128=64K)
+		MOV		AL,128			; AL = 128 - AH; AH是AH除以128所得的余数
 		SUB		AL,AH
 
-		MOV		AH,BL			; < BX偐傜AL偺嵟戝抣傪AH偵寁嶼 >
+		MOV		AH,BL			; < 通过BX计算AL的最大值并存入AH >
 		CMP		BH,0			; if (BH != 0) { AH = 18; }
 		JE		.skip1
 		MOV		AH,18
@@ -92,7 +92,7 @@ readfast:	; AL傪巊偭偰偱偒傞偩偗傑偲傔偰撉傒弌偡
 		MOV		AL,AH
 .skip2:
 
-		MOV		AH,19			; < CL偐傜AL偺嵟戝抣傪AH偵寁嶼 >
+		MOV		AH,19			; < 通过CL计算AL的最大值并存入AH >
 		SUB		AH,CL			; AH = 19 - CL;
 		CMP		AL,AH			; if (AL > AH) { AL = AH; }
 		JBE		.skip3
@@ -100,23 +100,23 @@ readfast:	; AL傪巊偭偰偱偒傞偩偗傑偲傔偰撉傒弌偡
 .skip3:
 
 		PUSH	BX
-		MOV		SI,0			; 幐攕夞悢傪悢偊傞儗僕僗僞
+		MOV		SI,0			; 计算失败次数的寄存器
 retry:
-		MOV		AH,0x02			; AH=0x02 : 僨傿僗僋撉傒崬傒
+		MOV		AH,0x02			; AH=0x02 : 读取磁盘
 		MOV		BX,0
-		MOV		DL,0x00			; A僪儔僀僽
+		MOV		DL,0x00			; A盘
 		PUSH	ES
 		PUSH	DX
 		PUSH	CX
 		PUSH	AX
-		INT		0x13			; 僨傿僗僋BIOS屇傃弌偟
-		JNC		next			; 僄儔乕偑偍偒側偗傟偽next傊
-		ADD		SI,1			; SI偵1傪懌偡
-		CMP		SI,5			; SI偲5傪斾妑
-		JAE		error			; SI >= 5 偩偭偨傜error傊
+		INT		0x13			; 调用磁盘BIOS
+		JNC		next			; 没有出错的话则跳转至next
+		ADD		SI,1			; 将SI加1
+		CMP		SI,5			; 将SI与6比较
+		JAE		error			; SI >= 5 则跳转至error
 		MOV		AH,0x00
-		MOV		DL,0x00			; A僪儔僀僽
-		INT		0x13			; 僪儔僀僽偺儕僙僢僩
+		MOV		DL,0x00			; A盘
+		INT		0x13			; 驱动器重置
 		POP		AX
 		POP		CX
 		POP		DX
@@ -126,28 +126,28 @@ next:
 		POP		AX
 		POP		CX
 		POP		DX
-		POP		BX				; ES偺撪梕傪BX偱庴偗庢傞
-		SHR		BX,5			; BX傪16僶僀僩扨埵偐傜512僶僀僩扨埵傊
+		POP		BX				; 将ES的内容存入BX
+		SHR		BX,5			; 将BX由16字节为单位转换为512字节为单位
 		MOV		AH,0
 		ADD		BX,AX			; BX += AL;
-		SHL		BX,5			; BX傪512僶僀僩扨埵偐傜16僶僀僩扨埵傊
-		MOV		ES,BX			; 偙傟偱 ES += AL * 0x20; 偵側傞
+		SHL		BX,5			; 将BX由512字节为单位转换为16字节为单位
+		MOV		ES,BX			; 相当于 ES += AL * 0x20; 
 		POP		BX
 		SUB		BX,AX
 		JZ		.ret
-		ADD		CL,AL			; CL偵AL傪懌偡
-		CMP		CL,18			; CL偲18傪斾妑
-		JBE		readfast		; CL <= 18 偩偭偨傜readfast傊
+		ADD		CL,AL			; 将CL加上AL
+		CMP		CL,18			; 将CL与18比较
+		JBE		readfast		; CL <= 18 则跳转至readfast
 		MOV		CL,1
 		ADD		DH,1
 		CMP		DH,2
-		JB		readfast		; DH < 2 偩偭偨傜readfast傊
+		JB		readfast		; DH < 2 则跳转至readfast
 		MOV		DH,0
 		ADD		CH,1
 		JMP		readfast
 .ret:
-		RET
+		RET						 ;到此结束
 
-		RESB	0x7dfe-$		; 0x7dfe傑偱傪0x00偱杽傔傞柦椷
+		RESB	0x7dfe-$		; 到0x7dfe为止用0x00填充的指令
 
 		DB		0x55, 0xaa
