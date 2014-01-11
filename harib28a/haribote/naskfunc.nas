@@ -19,6 +19,7 @@
 		GLOBAL	_memtest_sub
 		GLOBAL	_farjmp, _farcall
 		GLOBAL	_asm_hrb_api, _start_app
+		GLOBAL  _disable_irq, _enable_irq
 		EXTERN	_inthandler20, _inthandler21
 		EXTERN	_inthandler2c, _inthandler0d
 		EXTERN	_inthandler0c
@@ -113,6 +114,82 @@ _store_cr0:		; void store_cr0(int cr0);
 _load_tr:		; void load_tr(int tr);
 		LTR		[ESP+4]			; tr
 		RET
+		
+; ========================================================================
+;		   void disable_irq(int irq);
+; ========================================================================
+; Disable an interrupt request line by setting an 8259 bit.
+; Equivalent code:
+;	if(irq < 8){
+;		out_byte(INT_M_CTLMASK, in_byte(INT_M_CTLMASK) | (1 << irq));
+;	}
+;	else{
+;		out_byte(INT_S_CTLMASK, in_byte(INT_S_CTLMASK) | (1 << irq));
+;	}
+_disable_irq:
+	mov	ecx, [esp + 4]		; irq
+	pushf
+	cli
+	mov	ah, 1
+	rol	ah, cl			; ah = (1 << (irq % 8))
+	cmp	cl, 8
+	jae	disable_8		; disable irq >= 8 at the slave 8259
+disable_0:
+	in	al, 0x21
+	test	al, ah
+	jnz	dis_already		; already disabled?
+	or	al, ah
+	out	0x21, al	; set bit at master 8259
+	popf
+	mov	eax, 1			; disabled by this function
+	ret
+disable_8:
+	in	al, 0xA1
+	test	al, ah
+	jnz	dis_already		; already disabled?
+	or	al, ah
+	out	0xA1, al	; set bit at slave 8259
+	popf
+	mov	eax, 1			; disabled by this function
+	ret
+dis_already:
+	popf
+	xor	eax, eax		; already disabled
+	ret
+
+; ========================================================================
+;		   void enable_irq(int irq);
+; ========================================================================
+; Enable an interrupt request line by clearing an 8259 bit.
+; Equivalent code:
+;	if(irq < 8){
+;		out_byte(INT_M_CTLMASK, in_byte(INT_M_CTLMASK) & ~(1 << irq));
+;	}
+;	else{
+;		out_byte(INT_S_CTLMASK, in_byte(INT_S_CTLMASK) & ~(1 << irq));
+;	}
+;
+_enable_irq:
+	mov	ecx, [esp + 4]		; irq
+	pushf
+	cli
+	mov	ah, ~1
+	rol	ah, cl			; ah = ~(1 << (irq % 8))
+	cmp	cl, 8
+	jae	enable_8		; enable irq >= 8 at the slave 8259
+enable_0:
+	in	al, 0x21
+	and	al, ah
+	out	0x21, al	; clear bit at master 8259
+	popf
+	ret
+enable_8:
+	in	al, 0xA1
+	and	al, ah
+	out	0xA1, al	; clear bit at slave 8259
+	popf
+	ret
+
 
 _asm_inthandler20:
 		PUSH	ES
@@ -289,3 +366,5 @@ _start_app:		; void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 		PUSH	EAX				; 应用程序的EIP
 		RETF
 ;	应用程序结束后不会回到这里
+
+

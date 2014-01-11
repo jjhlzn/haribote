@@ -26,6 +26,7 @@ int decode0_BMP(struct DLL_STRPICENV *env, int size, char *fp, int b_type, char 
 int info_JPEG(struct DLL_STRPICENV *env, int *info, int size, char *fp);
 int decode0_JPEG(struct DLL_STRPICENV *env, int size, char *fp, int b_type, char *buf, int skip);
 unsigned char rgb2pal(int r, int g, int b, int x, int y);
+void init_hd();
 
 void load_background_pic(char* back_buf, int *fat);
 
@@ -163,7 +164,7 @@ void HariMain(void)
 	//¼ÓÔØ±ÚÖ½
 	//load_background_pic(buf_back, fat);
 	//sheet_slide(sht_back,  0,  0); //Ë¢ÐÂ±ÚÖ½
-	
+	init_hd();
 	
 
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
@@ -493,6 +494,25 @@ void close_console(struct SHEET *sht)
 	sheet_free(sht);
 	close_constask(task);
 	return;
+}
+
+void init_hd()
+{
+	/* Get the number of drives from the BIOS data area */
+	unsigned char * pNrDrives = (unsigned char *)(0x475);
+	//printl("NrDrives:%d.\n", *pNrDrives);
+	//assert(*pNrDrives);
+	char strbuf[50];
+	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
+	
+	sprintf(strbuf,"NrDrives:%d", *pNrDrives);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 220+16+16, 220+8*50, 220+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 220+16+16, COL8_000000, strbuf);	
+
+
+	//put_irq_handler(AT_WINI_IRQ, hd_handler);
+	//enable_irq(CASCADE_IRQ);
+	//enable_irq(AT_WINI_IRQ);
 }
 
 unsigned char rgb2pal(int r, int g, int b, int x, int y)
