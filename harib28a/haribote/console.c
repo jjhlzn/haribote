@@ -226,13 +226,58 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 		cmd_ncst(cons, cmdline, memtotal);
 	} else if (strncmp(cmdline, "langmode ", 9) == 0) {
 		cmd_langmode(cons, cmdline);
-	} else if (cmdline[0] != 0) {
+	} else if (strcmp(cmdline, "hd") == 0 && cons->sht != 0){
+		cmd_hd(cons);
+	}else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
 			/* コマンドではなく、アプリでもなく、さらに空行でもない */
 			cons_putstr0(cons, "Bad command.\n\n");
 		}
 	}
 	return;
+}
+
+
+void cmd_hd(struct CONSOLE *cons)
+{
+	u8* hdinfo = hd_identify(0);
+	//char str[200];
+	//print_identify_info(hdinfo,str);
+	//cons_putstr0(cons, str);
+}
+
+void print_identify_info(u16* hdinfo, char* str)
+{
+	int i, k;
+	char s[64];
+	
+	struct iden_info_ascii {
+		int idx;
+		int len;
+		char * desc;
+	} iinfo[] = {{10, 20, "HD SN"}, /* Serial number in ASCII */
+	{27, 40, "HD Model"} /* Model number in ASCII */ };
+
+	for (k = 0; k < sizeof(iinfo)/sizeof(iinfo[0]); k++) {
+		char * p = (char*)&hdinfo[iinfo[k].idx];
+		for (i = 0; i < iinfo[k].len/2; i++) {
+			s[i*2+1] = *p++;
+			s[i*2] = *p++;
+		}
+		s[i*2] = 0;
+		sprintf(str+strlen(str), "%s: %s\n", iinfo[k].desc, s);
+	}
+
+	int capabilities = hdinfo[49];
+	sprintf(str+strlen(str), "LBA supported: %s\n",
+	       (capabilities & 0x0200) ? "Yes" : "No");
+
+	int cmd_set_supported = hdinfo[83];
+	sprintf(str+strlen(str), "LBA48 supported: %s\n",
+	       (cmd_set_supported & 0x0400) ? "Yes" : "No");
+
+	int sectors = ((int)hdinfo[61] << 16) + hdinfo[60];
+	sprintf(str+strlen(str), "HD size: %dMB\n", sectors * 512 / 1000000);
 }
 
 void cmd_mem(struct CONSOLE *cons, int memtotal)

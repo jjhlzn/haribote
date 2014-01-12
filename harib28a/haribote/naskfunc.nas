@@ -15,13 +15,15 @@
 		GLOBAL	_load_tr
 		GLOBAL	_asm_inthandler20, _asm_inthandler21
 		GLOBAL	_asm_inthandler2c, _asm_inthandler0c
+		GLOBAL  _asm_inthandler2e
 		GLOBAL	_asm_inthandler0d, _asm_end_app
 		GLOBAL	_memtest_sub
 		GLOBAL	_farjmp, _farcall
 		GLOBAL	_asm_hrb_api, _start_app
-		GLOBAL  _disable_irq, _enable_irq
+		GLOBAL  _disable_irq, _enable_irq, _port_read
 		EXTERN	_inthandler20, _inthandler21
 		EXTERN	_inthandler2c, _inthandler0d
+		EXTERN 	_inthandler2e
 		EXTERN	_inthandler0c
 		EXTERN	_hrb_api
 
@@ -189,6 +191,18 @@ enable_8:
 	out	0xA1, al	; clear bit at slave 8259
 	popf
 	ret
+	
+; ========================================================================
+;                  void port_read(u16 port, void* buf, int n);
+; ========================================================================
+_port_read:
+	mov	edx, [esp + 4]		; port
+	mov	edi, [esp + 4 + 4]	; buf
+	mov	ecx, [esp + 4 + 4 + 4]	; n
+	shr	ecx, 1
+	cld
+	rep	insw
+	ret
 
 
 _asm_inthandler20:
@@ -222,6 +236,7 @@ _asm_inthandler21:
 		POP		DS
 		POP		ES
 		IRETD
+		
 
 _asm_inthandler2c:
 		PUSH	ES
@@ -257,6 +272,22 @@ _asm_inthandler0c:
 		POP		DS
 		POP		ES
 		ADD		ESP,4			; INT 0x0c Ç≈Ç‡ÅAÇ±ÇÍÇ™ïKóv
+		IRETD
+		
+_asm_inthandler2e:
+		PUSH	ES
+		PUSH	DS
+		PUSHAD
+		MOV		EAX,ESP
+		PUSH	EAX
+		MOV		AX,SS
+		MOV		DS,AX
+		MOV		ES,AX
+		CALL	_inthandler2e
+		POP		EAX
+		POPAD
+		POP		DS
+		POP		ES
 		IRETD
 
 _asm_inthandler0d:

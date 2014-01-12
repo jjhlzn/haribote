@@ -41,6 +41,7 @@ void asm_inthandler0d(void);
 void asm_inthandler20(void);
 void asm_inthandler21(void);
 void asm_inthandler2c(void);
+void asm_inthandler2e(void);
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 void farjmp(int eip, int cs);
 void farcall(int eip, int cs);
@@ -126,6 +127,11 @@ void init_pic(void);
 #define PIC1_ICW2		0x00a1
 #define PIC1_ICW3		0x00a1
 #define PIC1_ICW4		0x00a1
+
+typedef	unsigned long long	u64;
+typedef	unsigned int		u32;
+typedef	unsigned short		u16;
+typedef	unsigned char		u8;
 
 /* keyboard.c */
 void inthandler21(int *esp);
