@@ -4,6 +4,7 @@
 #include "kernel.h"
 #include <stdio.h>
 #include <string.h>
+#include "hd.h"
 
 void console_task(struct SHEET *sheet, int memtotal)
 {
@@ -228,7 +229,9 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 		cmd_langmode(cons, cmdline);
 	} else if (strcmp(cmdline, "hd") == 0 && cons->sht != 0){
 		cmd_hd(cons);
-	}else if (cmdline[0] != 0) {
+	} else if (strcmp(cmdline, "hdpartition") == 0 && cons->sht != 0){
+		cmd_partition(cons);
+	} else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
 			/* コマンドではなく、アプリでもなく、さらに空行でもない */
 			cons_putstr0(cons, "Bad command.\n\n");
@@ -237,6 +240,15 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 	return;
 }
 
+void cmd_partition(struct CONSOLE *cons)
+{
+	hd_identify(0);
+	partition( 0 * (NR_PART_PER_DRIVE + 1), P_PRIMARY);
+	char str[600];
+	sprintf(str,"");
+	print_hdinfo(str);
+	cons_putstr0(cons, str);
+}
 
 void cmd_hd(struct CONSOLE *cons)
 {

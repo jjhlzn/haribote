@@ -133,6 +133,9 @@ typedef	unsigned int		u32;
 typedef	unsigned short		u16;
 typedef	unsigned char		u8;
 
+#define	PUBLIC		/* PUBLIC is the opposite of PRIVATE */
+#define	PRIVATE	static	/* PRIVATE x limits the scope of x */
+
 /* keyboard.c */
 void inthandler21(int *esp);
 void wait_KBC_sendready(void);
