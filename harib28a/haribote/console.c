@@ -241,9 +241,9 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 void cmd_hd(struct CONSOLE *cons)
 {
 	u8* hdinfo = hd_identify(0);
-	//char str[200];
-	//print_identify_info(hdinfo,str);
-	//cons_putstr0(cons, str);
+	char str[200];
+	print_identify_info(hdinfo,str);
+	cons_putstr0(cons, str);
 }
 
 void print_identify_info(u16* hdinfo, char* str)
@@ -257,7 +257,9 @@ void print_identify_info(u16* hdinfo, char* str)
 		char * desc;
 	} iinfo[] = {{10, 20, "HD SN"}, /* Serial number in ASCII */
 	{27, 40, "HD Model"} /* Model number in ASCII */ };
-
+	
+	sprintf(str,"");
+	
 	for (k = 0; k < sizeof(iinfo)/sizeof(iinfo[0]); k++) {
 		char * p = (char*)&hdinfo[iinfo[k].idx];
 		for (i = 0; i < iinfo[k].len/2; i++) {

@@ -196,12 +196,21 @@ enable_8:
 ;                  void port_read(u16 port, void* buf, int n);
 ; ========================================================================
 _port_read:
-	mov	edx, [esp + 4]		; port
-	mov	edi, [esp + 4 + 4]	; buf
-	mov	ecx, [esp + 4 + 4 + 4]	; n
+	;mov	edx, [esp + 4]		; port
+	;mov	edi, [esp + 4 + 4]	; buf
+	;mov	ecx, [esp + 4 + 4 + 4]	; n
+	push edx
+	push edi
+	push ecx
+	mov	edx, [esp + 4 + 12]		; port
+	mov	edi, [esp + 4 + 4+ 12]	; buf
+	mov	ecx, [esp + 4 + 4 + 4+ 12]	; n
 	shr	ecx, 1
 	cld
 	rep	insw
+	pop ecx
+	pop edi
+	pop edx
 	ret
 
 

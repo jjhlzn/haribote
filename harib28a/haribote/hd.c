@@ -8,6 +8,7 @@ int waitfor(int mask, int val, int timeout);
 
 struct FIFO32 *hdfifo;
 int hasInterrupt = 0;
+u8	hdbuf[SECTOR_SIZE * 2];
 
 struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 
@@ -39,7 +40,7 @@ void init_hd(struct FIFO32 * fifo)
 	//enable_irq(AT_WINI_IRQ);
 }
 
-u8	hdbuf[SECTOR_SIZE * 2];
+
 u8* hd_identify(int drive)
 {
 	struct hd_cmd cmd;
