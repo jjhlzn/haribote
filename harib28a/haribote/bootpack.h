@@ -323,6 +323,9 @@ struct SHEET *open_console(struct SHTCTL *shtctl, unsigned int memtotal);
 /*  proc.c */
 PUBLIC	void*	va2la(int pid, void* va);
 
+/*  fs.c */
+void init_fs();
+
 
 /* Hard Drive */
 #define SECTOR_SIZE		512
@@ -405,5 +408,12 @@ enum msgtype {
 	DEV_WRITE,
 	DEV_IOCTL
 };
+
+#define	phys_copy	memcpy1
+#define	phys_set	memset1
+
+/* max() & min() */
+#define	max(a,b)	((a) > (b) ? (a) : (b))
+#define	min(a,b)	((a) < (b) ? (a) : (b))
 
 #define	DIOCTL_GET_GEO	1

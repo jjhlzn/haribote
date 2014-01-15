@@ -273,4 +273,5 @@ struct hd_info
 	struct part_info	logical[NR_SUB_PER_DRIVE];
 };
 
+
 #endif 

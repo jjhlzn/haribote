@@ -20,7 +20,8 @@
 		GLOBAL	_memtest_sub
 		GLOBAL	_farjmp, _farcall
 		GLOBAL	_asm_hrb_api, _start_app
-		GLOBAL  _disable_irq, _enable_irq, _port_read
+		GLOBAL  _disable_irq, _enable_irq, _port_read,_port_write
+		GLOBAL  _memcpy1, _memset1
 		EXTERN	_inthandler20, _inthandler21
 		EXTERN	_inthandler2c, _inthandler0d
 		EXTERN 	_inthandler2e
@@ -191,6 +192,80 @@ enable_8:
 	out	0xA1, al	; clear bit at slave 8259
 	popf
 	ret
+
+
+; ------------------------------------------------------------------------
+; void* memcpy(void* es:p_dst, void* ds:p_src, int size);
+; ------------------------------------------------------------------------
+_memcpy1:
+	push	ebp
+	mov	ebp, esp
+
+	push	esi
+	push	edi
+	push	ecx
+
+	mov	edi, [ebp + 8]	; Destination
+	mov	esi, [ebp + 12]	; Source
+	mov	ecx, [ebp + 16]	; Counter
+.1:
+	cmp	ecx, 0		; 判断计数器
+	jz	.2		; 计数器为零时跳出
+
+	mov	al, [ds:esi]		; ┓
+	inc	esi			; ┃
+					; ┣ 逐字节移动
+	mov	byte [es:edi], al	; ┃
+	inc	edi			; ┛
+
+	dec	ecx		; 计数器减一
+	jmp	.1		; 循环
+.2:
+	mov	eax, [ebp + 8]	; 返回值
+
+	pop	ecx
+	pop	edi
+	pop	esi
+	mov	esp, ebp
+	pop	ebp
+
+	ret			; 函数结束，返回
+; memcpy 结束-------------------------------------------------------------
+
+
+; ------------------------------------------------------------------------
+; void memset(void* p_dst, char ch, int size);
+; ------------------------------------------------------------------------
+_memset1:
+	push	ebp
+	mov	ebp, esp
+
+	push	esi
+	push	edi
+	push	ecx
+
+	mov	edi, [ebp + 8]	; Destination
+	mov	edx, [ebp + 12]	; Char to be putted
+	mov	ecx, [ebp + 16]	; Counter
+.1:
+	cmp	ecx, 0		; 判断计数器
+	jz	.2		; 计数器为零时跳出
+
+	mov	byte [edi], dl		; ┓
+	inc	edi			; ┛
+
+	dec	ecx		; 计数器减一
+	jmp	.1		; 循环
+.2:
+
+	pop	ecx
+	pop	edi
+	pop	esi
+	mov	esp, ebp
+	pop	ebp
+
+	ret			; 函数结束，返回
+; ------------------------------------------------------------------------
 	
 ; ========================================================================
 ;                  void port_read(u16 port, void* buf, int n);
@@ -212,6 +287,28 @@ _port_read:
 	pop edi
 	pop edx
 	ret
+	
+; ========================================================================
+;                  void port_write(u16 port, void* buf, int n);
+; ========================================================================
+_port_write:
+	;mov	edx, [esp + 4]		; port
+	;mov	edi, [esp + 4 + 4]	; buf
+	;mov	ecx, [esp + 4 + 4 + 4]	; n
+	push edx
+	push edi
+	push ecx
+	mov	edx, [esp + 4 + 12]		; port
+	mov	edi, [esp + 4 + 4+ 12]	; buf
+	mov	ecx, [esp + 4 + 4 + 4+ 12]	; n
+	shr	ecx, 1
+	cld
+	rep	outsw
+	pop ecx
+	pop edi
+	pop edx
+	ret
+
 
 
 _asm_inthandler20:

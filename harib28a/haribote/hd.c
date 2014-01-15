@@ -11,7 +11,7 @@ struct FIFO32 *hdfifo;
 int hasInterrupt = 0;
 u8	hdbuf[SECTOR_SIZE * 2];
 
-struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
+static struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 static struct hd_info	hd_info[1];
 PRIVATE struct part_ent PARTITION_ENTRY;
 #define	DRV_OF_DEV(dev) (dev <= MAX_PRIM ? \
@@ -68,7 +68,7 @@ void hd_open(int device)
  * 
  * @param p  Ptr to the MESSAGE.
  *****************************************************************************/
-PRIVATE void hd_ioctl(MESSAGE * p)
+ void hd_ioctl(MESSAGE * p)
 {
 	int device = p->DEVICE;
 	int drive = DRV_OF_DEV(device);
@@ -98,7 +98,7 @@ PRIVATE void hd_ioctl(MESSAGE * p)
  * 
  * @param p Message ptr.
  *****************************************************************************/
-PRIVATE void hd_rdwt(MESSAGE * p)
+ void hd_rdwt(MESSAGE * p)
 {
 	int drive = DRV_OF_DEV(p->DEVICE);
 
@@ -139,10 +139,19 @@ PRIVATE void hd_rdwt(MESSAGE * p)
 		else {
 			if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT)){
 				//panic("hd writing error.");
+				char strbuf[200];
+				sprintf(strbuf,"hd writing error.");
+				boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
+				putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
+				return;
 			}
 
 			port_write(REG_DATA, la, bytes);
 			interrupt_wait();
+			char strbuf[200];
+			sprintf(strbuf,"write %d bytes to hd.", bytes);
+			boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
+			putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
 		}
 		bytes_left -= SECTOR_SIZE;
 		la += SECTOR_SIZE;

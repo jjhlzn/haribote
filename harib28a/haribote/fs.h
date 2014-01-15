@@ -128,14 +128,30 @@ struct file_desc {
 				       dev,				\
 				       (sect_nr) * SECTOR_SIZE,		\
 				       SECTOR_SIZE, /* read one sector */ \
-				       TASK_FS,				\
+				       0,  /* TASK_FS, */  \ 		
 				       fsbuf);
 #define WR_SECT(dev,sect_nr) rw_sector(DEV_WRITE, \
 				       dev,				\
 				       (sect_nr) * SECTOR_SIZE,		\
 				       SECTOR_SIZE, /* write one sector */ \
-				       TASK_FS,				\
+				       0, /* TASK_FS, */ \ 				
 				       fsbuf);
 
-	
+#define	INVALID_INODE		0
+#define	ROOT_INODE		1
+
+#define NR_CONSOLES	3	/* consoles */
+
+/* INODE::i_mode (octal, lower 12 bits reserved) */
+#define I_TYPE_MASK     0170000
+#define I_REGULAR       0100000
+#define I_BLOCK_SPECIAL 0060000
+#define I_DIRECTORY     0040000
+#define I_CHAR_SPECIAL  0020000
+#define I_NAMED_PIPE	0010000
+
+#define	NR_DEFAULT_FILE_SECTS	2048 /* 2048 * 512 = 1MB */
+
+
+
 #endif /* _FS_H_ */

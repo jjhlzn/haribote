@@ -5,6 +5,13 @@
 
 void init_fs();
 PRIVATE void mkfs();
+/**
+ * 6MB~7MB: buffer for FS
+ */
+PUBLIC	u8 *		fsbuf		= (u8*)0x600000;
+PUBLIC	const int	FSBUF_SIZE	= 0x100000;
+
+static struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 
 /*****************************************************************************
  *                                init_fs
@@ -13,7 +20,7 @@ PRIVATE void mkfs();
  * <Ring 1> Do some preparation.
  * 
  *****************************************************************************/
-PRIVATE void init_fs()
+void init_fs()
 {
 	/* open the device: hard disk */
 	hd_open(MINOR(ROOT_DEV));
@@ -53,6 +60,10 @@ PRIVATE void mkfs()
 	
 	//调试输出
 	//printl("dev size: 0x%x sectors\n", geo.size);
+	char strbuf[200];
+	sprintf(strbuf,"dev size: 0x%x sectors", geo.size);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 420+16+16, 420+8*50, 420+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 420+16+16, COL8_000000, strbuf);
 
 	/************************/
 	/*      super block     */
@@ -65,8 +76,8 @@ PRIVATE void mkfs()
 	sb.nr_imap_sects  = 1; //inode-map所占用的扇区数
 	sb.nr_smap_sects  = sb.nr_sects / bits_per_sect + 1; //secotr-map所占用的扇区数
 	sb.n_1st_sect	  = 1 + 1 +   /* boot sector & super block */
-		sb.nr_imap_sects + sb.nr_smap_sects + sb.nr_inode_sects; //数据区的第一个扇区编号
-	sb.root_inode	  = ROOT_INODE  //root directory占用的inode编号
+	sb.nr_imap_sects + sb.nr_smap_sects + sb.nr_inode_sects; //数据区的第一个扇区编号
+	sb.root_inode	  = ROOT_INODE;  //root directory占用的inode编号
 	sb.inode_size	  = INODE_SIZE; 
 	struct inode x;
 	sb.inode_isize_off= (int)&x.i_size - (int)&x; //i_size在i-node结构中的偏移
@@ -90,6 +101,15 @@ PRIVATE void mkfs()
 	//       (geo.base + 1 + 1 + sb.nr_imap_sects) * 2,
 	//       (geo.base + 1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * 2,
 	//       (geo.base + sb.n_1st_sect) * 2);
+	sprintf(strbuf,"devbase:0x%x00 sb:0x%x00 imap:0x%x00 smap:0x%x00    inodes:0x%x00, 1st_sector:0x%x00", 
+			       geo.base * 2, //这里为什么都乘以2
+			       (geo.base + 1) * 2,
+			       (geo.base + 1 + 1) * 2,
+			       (geo.base + 1 + 1 + sb.nr_imap_sects) * 2,
+			       (geo.base + 1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * 2,
+			       (geo.base + sb.n_1st_sect) * 2);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
 
 	/************************/
 	/*       inode map      */

@@ -108,8 +108,6 @@ void HariMain(void)
 	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1); /* “§–¾F‚È‚µ */
 	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
 	
-	
-
 	/* sht_cons */
 	key_win = open_console(shtctl, memtotal);
 
@@ -166,7 +164,7 @@ void HariMain(void)
 	//load_background_pic(buf_back, fat);
 	//sheet_slide(sht_back,  0,  0); //Ë¢ÐÂ±ÚÖ½
 	init_hd(&fifo);
-	
+	init_fs();
 
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {
