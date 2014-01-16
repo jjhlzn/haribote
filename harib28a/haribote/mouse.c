@@ -5,6 +5,9 @@
 struct FIFO32 *mousefifo;
 int mousedata0;
 
+static struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
+static char strbuf[200];
+static long i = 0;
 void inthandler2c(int *esp)
 /* PS/2ƒ}ƒEƒX‚©‚ç‚ÌŠ„‚è‚İ */
 {
@@ -13,6 +16,10 @@ void inthandler2c(int *esp)
 	io_out8(PIC0_OCW2, 0x62);	/* IRQ-02ó•tŠ®—¹‚ğPIC0‚É’Ê’m */
 	data = io_in8(PORT_KEYDAT);
 	fifo32_put(mousefifo, data + mousedata0);
+	
+	sprintf(strbuf,"mouse interrupt %d happen", i++);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 500+16+16, 500+8*50, 500+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 500+16+16, COL8_000000, strbuf);
 	return;
 }
 
@@ -24,7 +31,7 @@ void enable_mouse(struct FIFO32 *fifo, int data0, struct MOUSE_DEC *mdec)
 	/* ‘‚«‚İæ‚ÌFIFOƒoƒbƒtƒ@‚ğ‹L‰¯ */
 	mousefifo = fifo;
 	mousedata0 = data0;
-	/* ƒ}ƒEƒX—LŒø */
+	/* ¼¤»îÊó±ê */
 	wait_KBC_sendready();
 	io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
 	wait_KBC_sendready();

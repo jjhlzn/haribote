@@ -72,19 +72,23 @@ void HariMain(void)
 	unsigned char *nihongo;
 	struct FILEINFO *finfo;
 	extern char hankaku[4096];
-	
-	char strbuf[50];
 
+	char strbuf[50];
+	
 	init_gdtidt();
 	init_pic();
+
+	
 	io_sti(); /* IDT/PICの初期化が終わったのでCPUの割り込み禁止を解除 */
 	fifo32_init(&fifo, 128, fifobuf, 0);
 	*((int *) 0x0fec) = (int) &fifo;
 	init_pit();
+	
 	init_keyboard(&fifo, 256);
 	enable_mouse(&fifo, 512, &mdec);
 	io_out8(PIC0_IMR, 0xf8); /* PITとPIC1とキーボードを許可(11111000) */
-	io_out8(PIC1_IMR, 0xef); /* マウスを許可(11101111) */
+	//io_out8(PIC1_IMR, 0xef); /* マウスを許可(11101111)  */
+	io_out8(PIC1_IMR, 0xaf); /* マウスを許可(10101111), ﾍｬﾊｱｴｪﾓｲﾅﾌﾖﾐｶﾏ  */ 
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 
 	memtotal = memtest(0x00400000, 0xbfffffff);
@@ -164,7 +168,7 @@ void HariMain(void)
 	//load_background_pic(buf_back, fat);
 	//sheet_slide(sht_back,  0,  0); //ﾋ｢ﾐﾂｱﾚﾖｽ
 	init_hd(&fifo);
-	init_fs();
+	//init_fs();
 
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {

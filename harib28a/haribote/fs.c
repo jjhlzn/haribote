@@ -87,8 +87,8 @@ PRIVATE void mkfs()
 	sb.dir_ent_inode_off = (int)&de.inode_nr - (int)&de; //inode_nr在dir_entry中的偏移
 	sb.dir_ent_fname_off = (int)&de.name - (int)&de; //name在dir_entry中的偏移
 
-	memset(fsbuf, 0x90, SECTOR_SIZE);
-	memcpy(fsbuf, &sb, SUPER_BLOCK_SIZE);
+	memset1(fsbuf, 0x90, SECTOR_SIZE);
+	memcpy1(fsbuf, &sb, SUPER_BLOCK_SIZE);
 
 	/* write the super block */
 	WR_SECT(ROOT_DEV, 1);
@@ -114,7 +114,7 @@ PRIVATE void mkfs()
 	/************************/
 	/*       inode map      */
 	/************************/
-	memset(fsbuf, 0, SECTOR_SIZE);
+	memset1(fsbuf, 0, SECTOR_SIZE);
 	for (i = 0; i < (NR_CONSOLES + 2); i++)
 		fsbuf[0] |= 1 << i;
 
@@ -132,7 +132,7 @@ PRIVATE void mkfs()
 	/************************/
 	/*      secter map      */
 	/************************/
-	memset(fsbuf, 0, SECTOR_SIZE);
+	memset1(fsbuf, 0, SECTOR_SIZE);
 	int nr_sects = NR_DEFAULT_FILE_SECTS + 1;
 	/*             ~~~~~~~~~~~~~~~~~~~|~   |
 	 *                                |    `--- bit 0 is reserved
@@ -147,7 +147,7 @@ PRIVATE void mkfs()
 	WR_SECT(ROOT_DEV, 2 + sb.nr_imap_sects);
 
 	/* zeromemory the rest sector-map */
-	memset(fsbuf, 0, SECTOR_SIZE);
+	memset1(fsbuf, 0, SECTOR_SIZE);
 	for (i = 1; i < sb.nr_smap_sects; i++)
 		WR_SECT(ROOT_DEV, 2 + sb.nr_imap_sects + i);
 
@@ -155,7 +155,7 @@ PRIVATE void mkfs()
 	/*       inodes         */
 	/************************/
 	/* inode of `/' */
-	memset(fsbuf, 0, SECTOR_SIZE);
+	memset1(fsbuf, 0, SECTOR_SIZE);
 	struct inode * pi = (struct inode*)fsbuf;
 	pi->i_mode = I_DIRECTORY;
 	pi->i_size = DIR_ENTRY_SIZE * 4; /* 4 files:
@@ -177,7 +177,7 @@ PRIVATE void mkfs()
 	/************************/
 	/*          `/'         */
 	/************************/
-	memset(fsbuf, 0, SECTOR_SIZE);
+	memset1(fsbuf, 0, SECTOR_SIZE);
 	struct dir_entry * pde = (struct dir_entry *)fsbuf;
 
 	pde->inode_nr = 1;
@@ -209,7 +209,8 @@ PRIVATE void mkfs()
  * 
  * @return Zero if success.
  *****************************************************************************/
-PUBLIC int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr,
+//TODO: 将pos的类型改为u32，因此硬盘大小不能超过4G
+PUBLIC int rw_sector(int io_type, int dev, u32 pos, int bytes, int proc_nr,
 		     void* buf)
 {
 	MESSAGE driver_msg;
@@ -220,6 +221,12 @@ PUBLIC int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr,
 	driver_msg.BUF		= buf;
 	driver_msg.CNT		= bytes;
 	driver_msg.PROC_NR	= proc_nr;
+	
+	//char strbuf[100];
+	//sprintf(strbuf,"driver_msg.CNT = %d", driver_msg.CNT);
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 480+16+16, 480+8*50, 480+16+16+16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 480+16+16, COL8_000000, strbuf);
+	
 	//assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
 	//send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
 	hd_rdwt(&driver_msg);

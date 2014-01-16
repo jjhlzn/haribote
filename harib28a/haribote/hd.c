@@ -17,12 +17,17 @@ PRIVATE struct part_ent PARTITION_ENTRY;
 #define	DRV_OF_DEV(dev) (dev <= MAX_PRIM ? \
 							dev / NR_PRIM_PER_DRIVE : \
 						   (dev - MINOR_hd1a) / NR_SUB_PER_DRIVE)
-
+static char strbuf[50];
 void inthandler2e(int *esp)
 {
 	unsigned char hd_status = io_in8(REG_STATUS);
 	//fifo32_put(hdfifo,3000);
 	hasInterrupt = 1;
+	
+	
+	sprintf(strbuf,"hd interrupt happen");
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 300+16+16, 300+8*50, 300+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 300+16+16, COL8_000000, strbuf);
 	return;
 }
 
@@ -32,15 +37,13 @@ void init_hd(struct FIFO32 * fifo)
 	
 	/* Get the number of drives from the BIOS data area */
 	unsigned char * pNrDrives = (unsigned char *)(0x475);
-	//printl("NrDrives:%d.\n", *pNrDrives);
 	//assert(*pNrDrives);
 	char strbuf[50];
 	
 	sprintf(strbuf,"NrDrives:%d", *pNrDrives);
 	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 220+16+16, 220+8*50, 220+16+16+16);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 220+16+16, COL8_000000, strbuf);	
-
-
+	
 	//put_irq_handler(AT_WINI_IRQ, hd_handler);
 	//enable_irq(CASCADE_IRQ);
 	//enable_irq(AT_WINI_IRQ);
@@ -128,9 +131,20 @@ void hd_open(int device)
 
 	int bytes_left = p->CNT;
 	void * la = (void*)va2la(p->PROC_NR, p->BUF);
-
+	
+    char strbuf[200];
+	sprintf(strbuf,"begin write hd(%d bytes).",bytes_left);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
+	return;
+	
 	while (bytes_left) {
+		
 		int bytes = min(SECTOR_SIZE, bytes_left);
+		sprintf(strbuf,"begin write hd(%d bytes).",bytes);
+		boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
+		putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
+		
 		if (p->type == DEV_READ) {
 			interrupt_wait();
 			port_read(REG_DATA, hdbuf, SECTOR_SIZE);
@@ -139,19 +153,19 @@ void hd_open(int device)
 		else {
 			if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT)){
 				//panic("hd writing error.");
-				char strbuf[200];
+				
 				sprintf(strbuf,"hd writing error.");
-				boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
-				putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
+				boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 460+16+16, 460+8*50, 460+16+16+16);
+				putfonts8_asc(binfo->vram, binfo->scrnx, 10, 460+16+16, COL8_000000, strbuf);
 				return;
 			}
 
 			port_write(REG_DATA, la, bytes);
 			interrupt_wait();
-			char strbuf[200];
+
 			sprintf(strbuf,"write %d bytes to hd.", bytes);
-			boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
-			putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
+			boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 460+16+16, 460+8*50, 460+16+16+16);
+			putfonts8_asc(binfo->vram, binfo->scrnx, 10, 460+16+16, COL8_000000, strbuf);
 		}
 		bytes_left -= SECTOR_SIZE;
 		la += SECTOR_SIZE;
@@ -188,7 +202,7 @@ u8* hd_identify(int drive)
 }
 
 void interrupt_wait(){
-	while(hasInterrupt == 1);
+	//while(!hasInterrupt);
 	hasInterrupt = 0;
 }
 

@@ -272,6 +272,7 @@ struct hd_info
 	struct part_info	primary[NR_PRIM_PER_DRIVE];
 	struct part_info	logical[NR_SUB_PER_DRIVE];
 };
-
+#define	CASCADE_IRQ	2	/* cascade enable for 2nd AT controller */
+#define	AT_WINI_IRQ	14	/* at winchester */
 
 #endif 

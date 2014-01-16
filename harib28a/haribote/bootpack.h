@@ -409,6 +409,8 @@ enum msgtype {
 	DEV_IOCTL
 };
 
+
+
 #define	phys_copy	memcpy1
 #define	phys_set	memset1
 
