@@ -168,7 +168,11 @@ void HariMain(void)
 	//load_background_pic(buf_back, fat);
 	//sheet_slide(sht_back,  0,  0); //Ë¢ÐÂ±ÚÖ½
 	init_hd(&fifo);
-	//init_fs();
+	init_fs();
+	
+	sprintf(strbuf,"hd and fs initialized!");
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,600, 20+8*50, 600+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 20, 600, COL8_000000, strbuf);
 
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {

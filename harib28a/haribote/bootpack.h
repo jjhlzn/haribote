@@ -418,4 +418,10 @@ enum msgtype {
 #define	max(a,b)	((a) > (b) ? (a) : (b))
 #define	min(a,b)	((a) < (b) ? (a) : (b))
 
+PUBLIC	void*	memcpy1(void* p_dst, void* p_src, int size);
+PUBLIC	void	memset1(void* p_dst, char ch, int size);
+
+PUBLIC void	port_read(u16 port, void* buf, int n);
+PUBLIC void	port_write(u16 port, void* buf, int n);
+
 #define	DIOCTL_GET_GEO	1

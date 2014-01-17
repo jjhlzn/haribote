@@ -12,14 +12,14 @@ void inthandler2c(int *esp)
 /* PS/2儅僂僗偐傜偺妱傝崬傒 */
 {
 	int data;
-	io_out8(PIC1_OCW2, 0x64);	/* IRQ-12庴晅姰椆傪PIC1偵捠抦 */
-	io_out8(PIC0_OCW2, 0x62);	/* IRQ-02庴晅姰椆傪PIC0偵捠抦 */
+	io_out8(PIC1_OCW2, 0x64);	/* 通知PIC1 IRQ-12的受理已经完成  0x64 = 0110 0100*/
+	io_out8(PIC0_OCW2, 0x62);	/* 通知PIC0 IRQ-02的受理已经完成  0x62 = 0110 0010 */
 	data = io_in8(PORT_KEYDAT);
 	fifo32_put(mousefifo, data + mousedata0);
 	
 	sprintf(strbuf,"mouse interrupt %d happen", i++);
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 500+16+16, 500+8*50, 500+16+16+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 500+16+16, COL8_000000, strbuf);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 620+16+16, 620+8*50, 620+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 620+16+16, COL8_000000, strbuf);
 	return;
 }
 

@@ -292,20 +292,17 @@ _port_read:
 ;                  void port_write(u16 port, void* buf, int n);
 ; ========================================================================
 _port_write:
-	;mov	edx, [esp + 4]		; port
-	;mov	edi, [esp + 4 + 4]	; buf
-	;mov	ecx, [esp + 4 + 4 + 4]	; n
 	push edx
-	push edi
+	push esi
 	push ecx
 	mov	edx, [esp + 4 + 12]		; port
-	mov	edi, [esp + 4 + 4+ 12]	; buf
-	mov	ecx, [esp + 4 + 4 + 4+ 12]	; n
+	mov	esi, [esp + 4 + 4 + 12]	; buf
+	mov	ecx, [esp + 4 + 4 + 4 + 12]	; n
 	shr	ecx, 1
 	cld
 	rep	outsw
 	pop ecx
-	pop edi
+	pop esi
 	pop edx
 	ret
 

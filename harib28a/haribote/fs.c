@@ -8,7 +8,7 @@ PRIVATE void mkfs();
 /**
  * 6MB~7MB: buffer for FS
  */
-PUBLIC	u8 *		fsbuf		= (u8*)0x600000;
+PUBLIC	u8 *		fsbuf		= (u8*)0xe00000;
 PUBLIC	const int	FSBUF_SIZE	= 0x100000;
 
 static struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
@@ -88,19 +88,15 @@ PRIVATE void mkfs()
 	sb.dir_ent_fname_off = (int)&de.name - (int)&de; //name在dir_entry中的偏移
 
 	memset1(fsbuf, 0x90, SECTOR_SIZE);
-	memcpy1(fsbuf, &sb, SUPER_BLOCK_SIZE);
+	memcpy1(fsbuf, &sb,  SUPER_BLOCK_SIZE);
+	
+	sprintf(strbuf,"addr of fsbuf = %x fsbuf[0] = %x fusbuf[1] = %x", fsbuf, fsbuf[0], fsbuf[1]);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 680+16+16, 680+8*50, 680+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 680+16+16, COL8_000000, strbuf);
 
 	/* write the super block */
 	WR_SECT(ROOT_DEV, 1);
 
-	//printl("devbase:0x%x00, sb:0x%x00, imap:0x%x00, smap:0x%x00\n"
-	//       "        inodes:0x%x00, 1st_sector:0x%x00\n", 
-	//       geo.base * 2, //这里为什么都乘以2
-	//       (geo.base + 1) * 2,
-	//       (geo.base + 1 + 1) * 2,
-	//       (geo.base + 1 + 1 + sb.nr_imap_sects) * 2,
-	//       (geo.base + 1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * 2,
-	//       (geo.base + sb.n_1st_sect) * 2);
 	sprintf(strbuf,"devbase:0x%x00 sb:0x%x00 imap:0x%x00 smap:0x%x00    inodes:0x%x00, 1st_sector:0x%x00", 
 			       geo.base * 2, //这里为什么都乘以2
 			       (geo.base + 1) * 2,
@@ -222,10 +218,10 @@ PUBLIC int rw_sector(int io_type, int dev, u32 pos, int bytes, int proc_nr,
 	driver_msg.CNT		= bytes;
 	driver_msg.PROC_NR	= proc_nr;
 	
-	//char strbuf[100];
-	//sprintf(strbuf,"driver_msg.CNT = %d", driver_msg.CNT);
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 480+16+16, 480+8*50, 480+16+16+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 480+16+16, COL8_000000, strbuf);
+	char strbuf[200];
+	sprintf(strbuf,"add of buf = %x, pos = %d, bytes = %d",buf, pos,bytes);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 660+16+16, 660+8*50, 660+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 660+16+16, COL8_000000, strbuf);
 	
 	//assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
 	//send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);

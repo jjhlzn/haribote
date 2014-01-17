@@ -3,7 +3,7 @@
 #include "hd.h"
 #include <stdio.h>
 #include <string.h>
-
+extern u8 *fsbuf;
 void	port_read(u16 port, void* buf, int n);
 int waitfor(int mask, int val, int timeout);
 
@@ -18,14 +18,16 @@ PRIVATE struct part_ent PARTITION_ENTRY;
 							dev / NR_PRIM_PER_DRIVE : \
 						   (dev - MINOR_hd1a) / NR_SUB_PER_DRIVE)
 static char strbuf[50];
+static int hd_interrupt_count = 0;
 void inthandler2e(int *esp)
 {
 	unsigned char hd_status = io_in8(REG_STATUS);
+	io_out8(PIC1_OCW2, 0x66);	/* 通知PIC1 IRQ-14的受理已经完成  */
+	io_out8(PIC0_OCW2, 0x62);	/* 通知PIC0 IRQ-02的受理已经完成  */
 	//fifo32_put(hdfifo,3000);
 	hasInterrupt = 1;
 	
-	
-	sprintf(strbuf,"hd interrupt happen");
+	sprintf(strbuf,"hd interrupt happen %d, hasInterrupt=%d", ++hd_interrupt_count,hasInterrupt);
 	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 300+16+16, 300+8*50, 300+16+16+16);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 300+16+16, COL8_000000, strbuf);
 	return;
@@ -103,6 +105,7 @@ void hd_open(int device)
  *****************************************************************************/
  void hd_rdwt(MESSAGE * p)
 {
+	char strbuf[200];
 	int drive = DRV_OF_DEV(p->DEVICE);
 
 	u64 pos = p->POSITION;
@@ -114,10 +117,13 @@ void hd_open(int device)
 	//assert((pos & 0x1FF) == 0);
 
 	u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT); /* pos / SECTOR_SIZE */
+	
 	int logidx = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
 	sect_nr += p->DEVICE < MAX_PRIM ?
 		hd_info[drive].primary[p->DEVICE].base :
 		hd_info[drive].logical[logidx].base;
+
+	//sect_nr = 1;
 
 	struct hd_cmd cmd;
 	cmd.features	= 0;
@@ -127,49 +133,94 @@ void hd_open(int device)
 	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
 	cmd.device	= MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
 	cmd.command	= (p->type == DEV_READ) ? ATA_READ : ATA_WRITE;
+	
+	sprintf(strbuf,"sect_nr =%d, cmd.count = %d, cmd.lba_low = %d, cmd.lba_mid = %d, cmd_high = %d, cmd.device = %d",
+				sect_nr,
+				cmd.count,
+			    cmd.lba_low,
+				cmd.lba_mid,
+				cmd.lba_high,
+			    cmd.device);
+	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 420+16+16, 420+8*50, 420+16+16+16);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 420+16+16, COL8_000000, strbuf);
+	
 	hd_cmd_out(&cmd);
 
 	int bytes_left = p->CNT;
-	void * la = (void*)va2la(p->PROC_NR, p->BUF);
+	int i = 0;
 	
-    char strbuf[200];
-	sprintf(strbuf,"begin write hd(%d bytes).",bytes_left);
+	//void * la = (void*)va2la(p->PROC_NR, p->BUF);
+	void * la = (void *)fsbuf;
+	
+    
+	sprintf(strbuf,"begin write hd1(%d bytes). p->CNT = %d %d",bytes_left, p->CNT,i);
 	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
-	return;
 	
+	int loopcount = 0;
 	while (bytes_left) {
-		
 		int bytes = min(SECTOR_SIZE, bytes_left);
-		sprintf(strbuf,"begin write hd(%d bytes).",bytes);
-		boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
-		putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
+		sprintf(strbuf,"in while: begin write hd(%d bytes). loopcount = %d", bytes_left, ++loopcount);
+		boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 460+16+16, 460+8*50, 460+16+16+16);
+		putfonts8_asc(binfo->vram, binfo->scrnx, 10, 460+16+16, COL8_000000, strbuf);
 		
 		if (p->type == DEV_READ) {
 			interrupt_wait();
 			port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 			phys_copy(la, (void*)va2la(0, hdbuf), bytes);
+			
+			//sprintf(strbuf,"read %d bytes from hd.", bytes);
+			//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 480+16+16, 480+8*50, 480+16+16+16);
+			//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 480+16+16, COL8_000000, strbuf);
 		}
 		else {
 			if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT)){
 				//panic("hd writing error.");
-				
 				sprintf(strbuf,"hd writing error.");
-				boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 460+16+16, 460+8*50, 460+16+16+16);
-				putfonts8_asc(binfo->vram, binfo->scrnx, 10, 460+16+16, COL8_000000, strbuf);
+				boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 500+16+16, 500+8*50, 500+16+16+16);
+				putfonts8_asc(binfo->vram, binfo->scrnx, 10, 500+16+16, COL8_000000, strbuf);
 				return;
 			}
-
+			//sprintf(strbuf,"before write: bytes_left = %d", bytes_left);
+			//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 500+16+16, 500+8*50, 500+16+16+16);
+			//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 500+16+16, COL8_000000, strbuf);
+			
+			sprintf(strbuf,"");
+			int i=0; 
+			u8 *buf = (u8 *)la;
+			for(i =0; i<16; i++){
+				sprintf(strbuf+strlen(strbuf),"%x ",buf[i]);
+			}
+			boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 700+16+16, 700+8*50, 700+16+16+16);
+			putfonts8_asc(binfo->vram, binfo->scrnx, 10, 700+16+16, COL8_000000, strbuf);
+		
+			
 			port_write(REG_DATA, la, bytes);
 			interrupt_wait();
+			
+	
+			
+			//for(i = 0; i<bytes; i++){
+			//	io_out8(REG_DATA, buf[i]);
+			//}
+			
+			//sprintf(strbuf,"after  write: bytes_left = %d", bytes_left);
+			//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 520+16+16, 520+8*50, 520+16+16+16);
+			//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 520+16+16, COL8_000000, strbuf);
 
-			sprintf(strbuf,"write %d bytes to hd.", bytes);
-			boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 460+16+16, 460+8*50, 460+16+16+16);
-			putfonts8_asc(binfo->vram, binfo->scrnx, 10, 460+16+16, COL8_000000, strbuf);
+			//sprintf(strbuf,"write %d bytes to hd.", bytes);
+			//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 480+16+16, 480+8*50, 480+16+16+16);
+			//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 480+16+16, COL8_000000, strbuf);
 		}
+		
 		bytes_left -= SECTOR_SIZE;
 		la += SECTOR_SIZE;
+
 	}
+	
+	//sprintf(strbuf,"write hd end.");
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 540+16+16, 540+8*50, 540+16+16+16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 540+16+16, COL8_000000, strbuf);
 }	
 
 u8* hd_identify(int drive)
@@ -202,8 +253,25 @@ u8* hd_identify(int drive)
 }
 
 void interrupt_wait(){
-	//while(!hasInterrupt);
+	char strbuf[100];
+	static int waitcount = 0;
+	
+	//sprintf(strbuf,"waiting for hd interrupt, hasInterrupt = %d", hasInterrupt);
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 400+16+16 + waitcount*16, 400+8*50+ waitcount*16, 400+16+16+16+ waitcount*16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 400+16+16+ waitcount*16, COL8_000000, strbuf);
+	int loopcount = 0;
+	while(!hasInterrupt){
+		sprintf(strbuf,"interrupt_wait: loopcount = %d", loopcount++);
+		boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 660+16+16+ (waitcount+1)*16, 660+8*50+ (waitcount+1)*16, 660+16+16+16+ (waitcount+1)*16);
+		putfonts8_asc(binfo->vram, binfo->scrnx, 10, 660+16+16+ (waitcount+1)*16, COL8_000000, strbuf);
+	}
 	hasInterrupt = 0;
+	
+	//sprintf(strbuf,"interrupt_wait: get hd interrupt");
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 600+16+16, 600+8*50, 600+16+16+16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 600+16+16, COL8_000000, strbuf);
+	
+	//waitcount++;
 }
 
 void hd_cmd_out(struct hd_cmd* cmd)
@@ -239,10 +307,15 @@ int waitfor(int mask, int val, int timeout)
 	//int t = get_ticks();
 
 	//while(((get_ticks() - t) * 1000 / HZ) < timeout)
-	while(1)   //简单处理，先不实现get_ticks()
+	int loopcount = 0;
+	while(1){   //简单处理，先不实现get_ticks()
 		if ((io_in8(REG_STATUS) & mask) == val)
 			return 1;
-
+		char strbuf[100];
+		sprintf(strbuf,"waite for hd status, loopcount = %d", loopcount++);
+		boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 620+16+16, 620+8*50, 620+16+16+16);
+		putfonts8_asc(binfo->vram, binfo->scrnx, 10, 620+16+16, COL8_000000, strbuf);
+	}
 	return 0;
 }
 
@@ -272,7 +345,7 @@ void get_part_table(int drive, int sect_nr, struct part_ent * entry)
 	interrupt_wait();
 
 	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
-	memcpy(entry,
+	memcpy1(entry,
 	       hdbuf + PARTITION_TABLE_OFFSET,
 	       sizeof(struct part_ent) * NR_PART_PER_DRIVE);
 }
