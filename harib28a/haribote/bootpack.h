@@ -424,4 +424,8 @@ PUBLIC	void	memset1(void* p_dst, char ch, int size);
 PUBLIC void	port_read(u16 port, void* buf, int n);
 PUBLIC void	port_write(u16 port, void* buf, int n);
 
+
+PUBLIC void print_on_screen2(char *msg, int x, int y);
+PUBLIC void print_on_screen(char *msg);
+
 #define	DIOCTL_GET_GEO	1

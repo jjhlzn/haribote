@@ -6,6 +6,7 @@
 #include <string.h>
 #include "hd.h"
 
+ 
 void console_task(struct SHEET *sheet, int memtotal)
 {
 	struct TASK *task = task_now();
@@ -747,6 +748,10 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 					
 			}
 		}
+	} else if (edx == 29) {
+		//char *pathname = (char *)ebp;
+		//int flags = eax;
+		print_on_screen("api_open");
 	}
 	return 0;
 }

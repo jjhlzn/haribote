@@ -32,4 +32,10 @@ int api_cmdline(char *buf, int maxsize);
 int api_getlang(void);
 void api_getmouse(int mode,char *minfo);
 
+/*打开文件
+	@pathname 文件路径名
+	@flag  OCREAT, O_RDWR, etc.
+*/
+int api_open(const char *pathname, int flags);
+
 #endif

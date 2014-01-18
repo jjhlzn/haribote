@@ -30,7 +30,7 @@ unsigned char rgb2pal(int r, int g, int b, int x, int y);
 
 
 void load_background_pic(char* back_buf, int *fat);
-
+static struct BOOTINFO *bootinfo = (struct BOOTINFO *) ADR_BOOTINFO;
 void HariMain(void)
 {
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
@@ -613,4 +613,17 @@ void load_background_pic(char* buf_back, int *fat)
 	}
 	
 	memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, filebuf, fsize);
+}
+
+void print_on_screen2(char *msg, int x, int y){
+	
+	boxfill8(bootinfo->vram,bootinfo->scrnx, COL8_848484, x, y, x + strlen(msg)*8, y+16);
+	putfonts8_asc(bootinfo->vram, bootinfo->scrnx, x, y, COL8_000000, msg);	
+}
+
+void print_on_screen(char *msg){
+	int x0 = 10, y0 = 200;
+	static int invoke_count = 0;
+	boxfill8(bootinfo->vram,bootinfo->scrnx, COL8_848484, x0, y0 + invoke_count * 16, x0 + strlen(msg)*8, y0 + invoke_count * 16 + 16);
+	putfonts8_asc(bootinfo->vram, bootinfo->scrnx, x0, y0 + invoke_count * 16, COL8_000000, msg);	
 }
