@@ -626,4 +626,5 @@ void print_on_screen(char *msg){
 	static int invoke_count = 0;
 	boxfill8(bootinfo->vram,bootinfo->scrnx, COL8_848484, x0, y0 + invoke_count * 16, x0 + strlen(msg)*8, y0 + invoke_count * 16 + 16);
 	putfonts8_asc(bootinfo->vram, bootinfo->scrnx, x0, y0 + invoke_count * 16, COL8_000000, msg);	
+	invoke_count++;
 }

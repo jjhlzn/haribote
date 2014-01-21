@@ -749,9 +749,13 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 			}
 		}
 	} else if (edx == 29) {
-		//char *pathname = (char *)ebp;
-		//int flags = eax;
+		char *pathname = (char *) eax + ds_base;
+		cons_putstr0(cons, (char *) eax + ds_base);
+		int flags = ebx;
 		print_on_screen("api_open");
+		char str[100];
+		sprintf(str,"pathname = %s, flag = %d", pathname, flags);
+		print_on_screen(str);
 	}
 	return 0;
 }

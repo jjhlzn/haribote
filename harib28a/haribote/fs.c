@@ -184,8 +184,7 @@ PRIVATE void mkfs()
 		pde++;
 		pde->inode_nr = i + 2; /* dev_tty0's inode_nr is 2 */
 		
-		//TODO ต๗สิ
-		//sprintf(pde->name, "dev_tty%d", i);
+		sprintf(pde->name, "dev_tty%d", i);
 	}
 	WR_SECT(ROOT_DEV, sb.n_1st_sect);
 }
@@ -219,7 +218,7 @@ PUBLIC int rw_sector(int io_type, int dev, u32 pos, int bytes, int proc_nr,
 	driver_msg.PROC_NR	= proc_nr;
 	
 	char strbuf[200];
-	sprintf(strbuf,"add of buf = %x, pos = %d, bytes = %d",buf, pos,bytes);
+	sprintf(strbuf,"address of buf = %x, pos = %d, bytes = %d",buf, pos,bytes);
 	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 660+16+16, 660+8*50, 660+16+16+16);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 660+16+16, COL8_000000, strbuf);
 	
