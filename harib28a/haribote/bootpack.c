@@ -628,3 +628,33 @@ void print_on_screen(char *msg){
 	putfonts8_asc(bootinfo->vram, bootinfo->scrnx, x0, y0 + invoke_count * 16, COL8_000000, msg);	
 	invoke_count++;
 }
+
+PUBLIC void spin(char * func_name)
+{
+	char str[100];
+	sprintf(str,"\nspinning in %s ...\n", func_name);
+	print_on_screen(str);
+	while (1) {}
+}
+
+PUBLIC void assertion_failure(char *exp, char *file, char *base_file, int line)
+{
+	char str[200];
+	sprintf(str,"%c  assert(%s) failed: file: %s, base_file: %s, ln%d",
+	       MAG_CH_ASSERT,
+	       exp, file, base_file, line);
+	print_on_screen(str);
+
+	/**
+	 * If assertion fails in a TASK, the system will halt before
+	 * printl() returns. If it happens in a USER PROC, printl() will
+	 * return like a common routine and arrive here. 
+	 * @see sys_printx()
+	 * 
+	 * We use a forever loop to prevent the proc from going on:
+	 */
+	spin("assertion_failure()");
+
+	/* should never arrive here */
+	//__asm__ __volatile__("ud2");
+}

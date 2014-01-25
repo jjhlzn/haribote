@@ -1,6 +1,7 @@
 /* 儅儖僠僞僗僋娭學 */
 
 #include "bootpack.h"
+#include "fs.h"
 
 struct TASKCTL *taskctl;
 struct TIMER *task_timer;
@@ -74,7 +75,7 @@ void task_idle(void)
 
 struct TASK *task_init(struct MEMMAN *memman)
 {
-	int i;
+	int i,j;
 	struct TASK *task, *idle;
 	struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
 
@@ -85,6 +86,11 @@ struct TASK *task_init(struct MEMMAN *memman)
 		taskctl->tasks0[i].tss.ldtr = (TASK_GDT0 + MAX_TASKS + i) * 8;
 		set_segmdesc(gdt + TASK_GDT0 + i, 103, (int) &taskctl->tasks0[i].tss, AR_TSS32);
 		set_segmdesc(gdt + TASK_GDT0 + MAX_TASKS + i, 15, (int) taskctl->tasks0[i].ldt, AR_LDT);
+		//初始化任务的文件描述符
+		//struct file_desc * pfile_desc = memman_alloc_4k(memman, sizeof (struct file_desc) * NR_FILES);
+		for(j=0; j<NR_FILES; j++){
+			taskctl->tasks0[i].filp[j] = 0;
+		}
 	}
 	for (i = 0; i < MAX_TASKLEVELS; i++) {
 		taskctl->level[i].running = 0;

@@ -756,6 +756,16 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		char str[100];
 		sprintf(str,"pathname = %s, flag = %d", pathname, flags);
 		print_on_screen(str);
+		int fd = do_open(pathname,flags,task);
+		sprintf(str,"fd = %d", fd);
+		print_on_screen(str);
+		reg[7] = fd;
+	} else if(edx == 30){
+		int fd = eax;
+		char str[100];
+		sprintf(str,"close fd(%d)",fd);
+		print_on_screen(str);
+		do_close(fd,task);
 	}
 	return 0;
 }

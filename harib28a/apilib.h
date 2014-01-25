@@ -37,5 +37,5 @@ void api_getmouse(int mode,char *minfo);
 	@flag  OCREAT, O_RDWR, etc.
 */
 int api_open(const char *pathname, int flags);
-
+int api_close(const int fd);
 #endif

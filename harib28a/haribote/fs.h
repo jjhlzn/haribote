@@ -15,6 +15,7 @@ struct dev_drv_map {
  */
 #define	MAGIC_V1	0x111
 
+
 /**
  * @struct super_block fs.h "include/fs.h"
  * @brief  The 2nd sector of the FS
@@ -128,13 +129,13 @@ struct file_desc {
 				       dev,				\
 				       (sect_nr) * SECTOR_SIZE,		\
 				       SECTOR_SIZE, /* read one sector */ \
-				       0,  /* TASK_FS, */  \ 		
+				       0, \
 				       fsbuf);
 #define WR_SECT(dev,sect_nr) rw_sector(DEV_WRITE, \
 				       dev,				\
 				       (sect_nr) * SECTOR_SIZE,		\
 				       SECTOR_SIZE, /* write one sector */ \
-				       0, /* TASK_FS, */ \ 				
+				       0, \
 				       fsbuf);
 
 #define	INVALID_INODE		0
@@ -153,5 +154,17 @@ struct file_desc {
 #define	NR_DEFAULT_FILE_SECTS	2048 /* 2048 * 512 = 1MB */
 
 
+#define	O_CREAT		1
+#define	O_RDWR		2
+
+#define SEEK_SET	1
+#define SEEK_CUR	2
+#define SEEK_END	3
+
+extern struct file_desc	f_desc_table[NR_FILE_DESC];
+extern struct inode		inode_table[NR_INODE];
+extern struct super_block	super_block[NR_SUPER_BLOCK];
+
+#define	MAX_PATH	128
 
 #endif /* _FS_H_ */

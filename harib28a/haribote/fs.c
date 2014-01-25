@@ -13,6 +13,11 @@ PUBLIC	const int	FSBUF_SIZE	= 0x100000;
 
 static struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 
+struct file_desc	f_desc_table[NR_FILE_DESC];
+struct inode		inode_table[NR_INODE];
+struct super_block	super_block[NR_SUPER_BLOCK];
+struct inode *		root_inode;
+
 /*****************************************************************************
  *                                init_fs
  *****************************************************************************/
@@ -22,10 +27,33 @@ static struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
  *****************************************************************************/
 void init_fs()
 {
+	
+	int i;
+	/* f_desc_table[] */
+	for (i = 0; i < NR_FILE_DESC; i++)
+		memset1(&f_desc_table[i], 0, sizeof(struct file_desc));
+
+	/* inode_table[] */
+	for (i = 0; i < NR_INODE; i++)
+		memset1(&inode_table[i], 0, sizeof(struct inode));
+
+	/* super_block[] */
+	struct super_block * sb = super_block;
+	for (; sb < &super_block[NR_SUPER_BLOCK]; sb++)
+		sb->sb_dev = NO_DEV;
+
 	/* open the device: hard disk */
 	hd_open(MINOR(ROOT_DEV));
 
 	mkfs();
+	
+	/* load super block of ROOT */
+	read_super_block(ROOT_DEV);
+
+	sb = get_super_block(ROOT_DEV);
+	assert(sb->magic == MAGIC_V1);
+
+	root_inode = get_inode(ROOT_DEV, ROOT_INODE);
 }
 
 /*****************************************************************************
@@ -61,9 +89,9 @@ PRIVATE void mkfs()
 	//调试输出
 	//printl("dev size: 0x%x sectors\n", geo.size);
 	char strbuf[200];
-	sprintf(strbuf,"dev size: 0x%x sectors", geo.size);
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 420+16+16, 420+8*50, 420+16+16+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 420+16+16, COL8_000000, strbuf);
+	//sprintf(strbuf,"dev size: 0x%x sectors", geo.size);
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 420+16+16, 420+8*50, 420+16+16+16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 420+16+16, COL8_000000, strbuf);
 
 	/************************/
 	/*      super block     */
@@ -90,22 +118,22 @@ PRIVATE void mkfs()
 	memset1(fsbuf, 0x90, SECTOR_SIZE);
 	memcpy1(fsbuf, &sb,  SUPER_BLOCK_SIZE);
 	
-	sprintf(strbuf,"addr of fsbuf = %x fsbuf[0] = %x fusbuf[1] = %x", fsbuf, fsbuf[0], fsbuf[1]);
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 680+16+16, 680+8*50, 680+16+16+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 680+16+16, COL8_000000, strbuf);
+	//sprintf(strbuf,"addr of fsbuf = %x fsbuf[0] = %x fusbuf[1] = %x", fsbuf, fsbuf[0], fsbuf[1]);
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 680+16+16, 680+8*50, 680+16+16+16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 680+16+16, COL8_000000, strbuf);
 
 	/* write the super block */
 	WR_SECT(ROOT_DEV, 1);
 
-	sprintf(strbuf,"devbase:0x%x00 sb:0x%x00 imap:0x%x00 smap:0x%x00    inodes:0x%x00, 1st_sector:0x%x00", 
-			       geo.base * 2, //这里为什么都乘以2
-			       (geo.base + 1) * 2,
-			       (geo.base + 1 + 1) * 2,
-			       (geo.base + 1 + 1 + sb.nr_imap_sects) * 2,
-			       (geo.base + 1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * 2,
-			       (geo.base + sb.n_1st_sect) * 2);
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
+	//sprintf(strbuf,"devbase:0x%x00 sb:0x%x00 imap:0x%x00 smap:0x%x00    inodes:0x%x00, 1st_sector:0x%x00", 
+	//		       geo.base * 2, //这里为什么都乘以2
+	//		       (geo.base + 1) * 2,
+	//		       (geo.base + 1 + 1) * 2,
+	//		       (geo.base + 1 + 1 + sb.nr_imap_sects) * 2,
+	//		       (geo.base + 1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * 2,
+	//		       (geo.base + sb.n_1st_sect) * 2);
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
 
 	/************************/
 	/*       inode map      */
@@ -227,4 +255,176 @@ PUBLIC int rw_sector(int io_type, int dev, u32 pos, int bytes, int proc_nr,
 	hd_rdwt(&driver_msg);
 	return 0;
 }
+
+/*****************************************************************************
+ *                                read_super_block
+ *****************************************************************************/
+/**
+ * <Ring 1> Read super block from the given device then write it into a free
+ *          super_block[] slot.
+ * 
+ * @param dev  From which device the super block comes.
+ *****************************************************************************/
+PRIVATE void read_super_block(int dev)
+{
+	int i;
+	MESSAGE driver_msg;
+
+	driver_msg.type		= DEV_READ;
+	driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.POSITION	= SECTOR_SIZE * 1;
+	driver_msg.BUF		= fsbuf;
+	driver_msg.CNT		= SECTOR_SIZE;
+	driver_msg.PROC_NR	= 0;
+	//assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
+	//send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
+	hd_rdwt(&driver_msg);
+
+	/* find a free slot in super_block[] */
+	for (i = 0; i < NR_SUPER_BLOCK; i++)
+		if (super_block[i].sb_dev == NO_DEV)
+			break;
+	if (i == NR_SUPER_BLOCK)
+		//panic("super_block slots used up");
+		;
+
+	//assert(i == 0); /* currently we use only the 1st slot */
+
+	struct super_block * psb = (struct super_block *)fsbuf;
+
+	super_block[i] = *psb;
+	super_block[i].sb_dev = dev;
+}
+
+PUBLIC int do_close(int fd, struct TASK *pcaller)
+{
+	put_inode(pcaller->filp[fd]->fd_inode);
+	pcaller->filp[fd]->fd_inode = 0;
+	pcaller->filp[fd] = 0;
+
+	return 0;
+}
+
+/*****************************************************************************
+ *                                get_super_block
+ *****************************************************************************/
+/**
+ * <Ring 1> Get the super block from super_block[].
+ * 
+ * @param dev Device nr.
+ * 
+ * @return Super block ptr.
+ *****************************************************************************/
+PUBLIC struct super_block * get_super_block(int dev)
+{
+	struct super_block * sb = super_block;
+	for (; sb < &super_block[NR_SUPER_BLOCK]; sb++)
+		if (sb->sb_dev == dev)
+			return sb;
+
+	print_on_screen("super block of devie not found.");
+
+	return 0;
+}
+
+
+/*****************************************************************************
+ *                                get_inode
+ *****************************************************************************/
+/**
+ * <Ring 1> Get the inode ptr of given inode nr. A cache -- inode_table[] -- is
+ * maintained to make things faster. If the inode requested is already there,
+ * just return it. Otherwise the inode will be read from the disk.
+ * 
+ * @param dev Device nr.
+ * @param num I-node nr.
+ * 
+ * @return The inode ptr requested.
+ *****************************************************************************/
+PUBLIC struct inode * get_inode(int dev, int num)
+{
+	if (num == 0)
+		return 0;
+
+	struct inode * p;
+	struct inode * q = 0;
+	for (p = &inode_table[0]; p < &inode_table[NR_INODE]; p++) {
+		if (p->i_cnt) {	/* not a free slot */
+			if ((p->i_dev == dev) && (p->i_num == num)) {
+				/* this is the inode we want */
+				p->i_cnt++;
+				return p;
+			}
+		}
+		else {		/* a free slot */
+			if (!q) /* q hasn't been assigned yet */
+				q = p; /* q <- the 1st free slot */
+		}
+	}
+
+	if (!q)
+		//panic("the inode table is full");
+		print_on_screen("the inode table is full");
+	q->i_dev = dev;
+	q->i_num = num;
+	q->i_cnt = 1;
+
+	struct super_block * sb = get_super_block(dev);
+	int blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects +
+		((num - 1) / (SECTOR_SIZE / INODE_SIZE));
+	RD_SECT(dev, blk_nr);
+	struct inode * pinode =
+		(struct inode*)((u8*)fsbuf +
+				((num - 1 ) % (SECTOR_SIZE / INODE_SIZE))
+				 * INODE_SIZE);
+	q->i_mode = pinode->i_mode;
+	q->i_size = pinode->i_size;
+	q->i_start_sect = pinode->i_start_sect;
+	q->i_nr_sects = pinode->i_nr_sects;
+	return q;
+}
+
+/*****************************************************************************
+ *                                put_inode
+ *****************************************************************************/
+/**
+ * Decrease the reference nr of a slot in inode_table[]. When the nr reaches
+ * zero, it means the inode is not used any more and can be overwritten by
+ * a new inode.
+ * 
+ * @param pinode I-node ptr.
+ *****************************************************************************/
+PUBLIC void put_inode(struct inode * pinode)
+{
+	assert(pinode->i_cnt > 0);
+	pinode->i_cnt--;
+}
+
+/*****************************************************************************
+ *                                sync_inode
+ *****************************************************************************/
+/**
+ * <Ring 1> Write the inode back to the disk. Commonly invoked as soon as the
+ *          inode is changed.
+ * 
+ * @param p I-node ptr.
+ *****************************************************************************/
+PUBLIC void sync_inode(struct inode * p)
+{
+	struct inode * pinode;
+	struct super_block * sb = get_super_block(p->i_dev);
+	int blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects +
+		((p->i_num - 1) / (SECTOR_SIZE / INODE_SIZE));
+	RD_SECT(p->i_dev, blk_nr);
+	pinode = (struct inode*)((u8*)fsbuf +
+				 (((p->i_num - 1) % (SECTOR_SIZE / INODE_SIZE))
+				  * INODE_SIZE));
+	pinode->i_mode = p->i_mode;
+	pinode->i_size = p->i_size;
+	pinode->i_start_sect = p->i_start_sect;
+	pinode->i_nr_sects = p->i_nr_sects;
+	WR_SECT(p->i_dev, blk_nr);
+}
+
+
 

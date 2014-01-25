@@ -1,3 +1,6 @@
+#ifndef	_BOOTPACK_H
+#define	_BOOTPACK_H
+
 /* asmhead.nas */
 struct hd_i_struct {
 	int head; //¥≈Õ∑ ˝
@@ -227,6 +230,7 @@ struct TSS32 {
 	int es, cs, ss, ds, fs, gs;
 	int ldtr, iomap;
 };
+#define	NR_FILES	10
 struct TASK {
 	int sel, flags; /* selÇÕGDTÇÃî‘çÜÇÃÇ±Ç∆ */
 	int level, priority;
@@ -242,6 +246,7 @@ struct TASK {
 	int *fat;
 	char *cmdline;
 	unsigned char langmode, langbyte1;
+	struct file_desc *filp[NR_FILES];
 };
 struct TASKLEVEL {
 	int running; /* ìÆçÏÇµÇƒÇ¢ÇÈÉ^ÉXÉNÇÃêî */
@@ -428,4 +433,27 @@ PUBLIC void	port_write(u16 port, void* buf, int n);
 PUBLIC void print_on_screen2(char *msg, int x, int y);
 PUBLIC void print_on_screen(char *msg);
 
+#define	NR_FILES	64
+#define	NR_FILE_DESC	64	/* FIXME */
+#define	NR_INODE	64	/* FIXME */
+#define	NR_SUPER_BLOCK	8
+
+
+/* magic chars used by `printx' */
+#define MAG_CH_PANIC	'\002'
+#define MAG_CH_ASSERT	'\003'
+
+/* the assert macro */
+#define ASSERT
+#ifdef ASSERT
+void assertion_failure(char *exp, char *file, char *base_file, int line);
+#define assert(exp)  if (exp) ; \
+        else assertion_failure(#exp, __FILE__, __BASE_FILE__, __LINE__)
+#else
+#define assert(exp)
+#endif
+
+
 #define	DIOCTL_GET_GEO	1
+
+#endif
