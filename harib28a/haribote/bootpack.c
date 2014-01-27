@@ -142,18 +142,21 @@ void HariMain(void)
 	
 	sprintf(strbuf,"dd1 = %8x, dd2 = %8x, dd3 = %8x, dd4 = %8x", 
 		*BIOS2, *(BIOS2+1), *(BIOS2+2), *(BIOS2+3));
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,320, 20+8*50, 320+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 20, 320, COL8_000000, strbuf);
+	print_on_screen(strbuf);
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,320, 20+8*50, 320+16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 20, 320, COL8_000000, strbuf);
 	
 	sprintf(strbuf,"cyl = %u, head = %u, wpcom = %u ctl = %u, lzone = %u, sect = %u", 
 		cyl, head, wpcom,
 		ctl, lzone, sect);
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,340, 20+8*50, 340+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 20, 340, COL8_000000, strbuf);
+	print_on_screen(strbuf);
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,340, 20+8*50, 340+16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 20, 340, COL8_000000, strbuf);
 	
 	sprintf(strbuf,"hd = %x", binfo->hd0);
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,300, 20+8*50, 300+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 20, 300, COL8_000000, strbuf);
+	print_on_screen(strbuf);
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,300, 20+8*50, 300+16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 20, 300, COL8_000000, strbuf);
 
 	/* 最初にキーボード状態との食い違いがないように、設定しておくことにする */
 	fifo32_put(&keycmd, KEYCMD_LED);
@@ -171,8 +174,7 @@ void HariMain(void)
 	init_fs();
 	
 	sprintf(strbuf,"hd and fs initialized!");
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,600, 20+8*50, 600+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 20, 600, COL8_000000, strbuf);
+	print_on_screen(strbuf);
 
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {

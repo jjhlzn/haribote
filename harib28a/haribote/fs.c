@@ -245,10 +245,10 @@ PUBLIC int rw_sector(int io_type, int dev, u32 pos, int bytes, int proc_nr,
 	driver_msg.CNT		= bytes;
 	driver_msg.PROC_NR	= proc_nr;
 	
-	char strbuf[200];
-	sprintf(strbuf,"address of buf = %x, pos = %d, bytes = %d",buf, pos,bytes);
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 660+16+16, 660+8*50, 660+16+16+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 660+16+16, COL8_000000, strbuf);
+	//char strbuf[200];
+	//sprintf(strbuf,"address of buf = %x, pos = %d, bytes = %d",buf, pos,bytes);
+	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 660+16+16, 660+8*50, 660+16+16+16);
+	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 660+16+16, COL8_000000, strbuf);
 	
 	//assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
 	//send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
@@ -396,7 +396,7 @@ PUBLIC struct inode * get_inode(int dev, int num)
  *****************************************************************************/
 PUBLIC void put_inode(struct inode * pinode)
 {
-	assert(pinode->i_cnt > 0);
+	//assert(pinode->i_cnt > 0);
 	pinode->i_cnt--;
 }
 

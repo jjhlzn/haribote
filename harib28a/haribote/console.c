@@ -766,6 +766,22 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		sprintf(str,"close fd(%d)",fd);
 		print_on_screen(str);
 		do_close(fd,task);
+	} else if(edx == 31){
+		int fd = eax;
+		char *buf = (char *)(ebx+ds_base);
+		int len = ebp;
+		char str[100];
+		sprintf(str,"read content from fd(%d)",fd);
+		print_on_screen(str);
+		do_close(fd,task);
+	} else if(edx == 32){
+		int fd = eax;
+		char *buf = (char *)(ebx+ds_base);
+		int len = ebp;
+		char str[100];
+		sprintf(str,"write contets(%s) to fd(%d)",buf, fd);
+		print_on_screen(str);
+		do_close(fd,task);
 	}
 	return 0;
 }
