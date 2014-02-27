@@ -165,6 +165,8 @@ extern struct file_desc	f_desc_table[NR_FILE_DESC];
 extern struct inode		inode_table[NR_INODE];
 extern struct super_block	super_block[NR_SUPER_BLOCK];
 
+
+
 #define	MAX_PATH	128
 
 #endif /* _FS_H_ */

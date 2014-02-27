@@ -6,6 +6,7 @@
 #include <string.h>
 #include "hd.h"
 
+int do_rdwt(MESSAGE * msg,struct TASK *pcaller);
  
 void console_task(struct SHEET *sheet, int memtotal)
 {
@@ -750,14 +751,14 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		}
 	} else if (edx == 29) {
 		char *pathname = (char *) eax + ds_base;
-		cons_putstr0(cons, (char *) eax + ds_base);
+		//cons_putstr0(cons, (char *) eax + ds_base);
 		int flags = ebx;
-		print_on_screen("api_open");
+		//print_on_screen("api_open");
 		char str[100];
-		sprintf(str,"pathname = %s, flag = %d", pathname, flags);
-		print_on_screen(str);
+		//sprintf(str,"pathname = %s, flag = %d", pathname, flags);
+		//print_on_screen(str);
 		int fd = do_open(pathname,flags,task);
-		sprintf(str,"fd = %d", fd);
+		sprintf(str,"open fd(%d)", fd);
 		print_on_screen(str);
 		reg[7] = fd;
 	} else if(edx == 30){
@@ -771,17 +772,34 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		char *buf = (char *)(ebx+ds_base);
 		int len = ebp;
 		char str[100];
-		sprintf(str,"read content from fd(%d)",fd);
+		//sprintf(str,"read content from fd(%d)",fd);
+		MESSAGE msg;
+		msg.FD = fd;
+		msg.BUF = buf;
+		msg.CNT = len;
+		msg.type = READ;
+		do_rdwt(&msg,task);
+		
+		sprintf(str,"contents = [%s]",buf);
 		print_on_screen(str);
-		do_close(fd,task);
+		
+		//do_close(fd,task);
 	} else if(edx == 32){
 		int fd = eax;
 		char *buf = (char *)(ebx+ds_base);
 		int len = ebp;
 		char str[100];
 		sprintf(str,"write contets(%s) to fd(%d)",buf, fd);
+		MESSAGE msg;
+		msg.FD = fd;
+		msg.BUF = buf;
+		msg.CNT = len;
+		msg.type = WRITE;
+		//sprintf(str,"len = %d",len);
+		//print_on_screen(str);
+		do_rdwt(&msg,task);
 		print_on_screen(str);
-		do_close(fd,task);
+		//do_close(fd,task);
 	}
 	return 0;
 }

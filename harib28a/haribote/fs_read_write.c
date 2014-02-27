@@ -6,20 +6,11 @@
  * @date   2008
  *****************************************************************************
  *****************************************************************************/
-
-#include "type.h"
-#include "stdio.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
+#include "bootpack.h"
 #include "fs.h"
-#include "proc.h"
-#include "tty.h"
-#include "console.h"
-#include "global.h"
-#include "keyboard.h"
-#include "proto.h"
 
+extern int FSBUF_SIZE;
+extern u8 *		fsbuf;
 
 /*****************************************************************************
  *                                do_rdwt
@@ -32,8 +23,13 @@
  * 
  * @return How many bytes have been read/written.
  *****************************************************************************/
-PUBLIC int do_rdwt()
+PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 {
+	char str[200];
+	//sprintf(str,"in do_rdwt");
+	//print_on_screen(str);
+	
+	MESSAGE fs_msg = *msg;
 	int fd = fs_msg.FD;	/**< file descriptor. */
 	void * buf = fs_msg.BUF;/**< r/w buffer */
 	int len = fs_msg.CNT;	/**< r/w bytes */
@@ -53,21 +49,22 @@ PUBLIC int do_rdwt()
 	assert(pin >= &inode_table[0] && pin < &inode_table[NR_INODE]);
 
 	int imode = pin->i_mode & I_TYPE_MASK;
-
+	
 	if (imode == I_CHAR_SPECIAL) {
-		int t = fs_msg.type == READ ? DEV_READ : DEV_WRITE;
-		fs_msg.type = t;
+		//int t = fs_msg.type == READ ? DEV_READ : DEV_WRITE;
+		//fs_msg.type = t;
 
-		int dev = pin->i_start_sect;
-		assert(MAJOR(dev) == 4);
+		//int dev = pin->i_start_sect;
+		//assert(MAJOR(dev) == 4);
 
-		fs_msg.DEVICE	= MINOR(dev);
-		fs_msg.BUF	= buf;
-		fs_msg.CNT	= len;
-		fs_msg.PROC_NR	= src;
-		assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
-		send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &fs_msg);
-		assert(fs_msg.CNT == len);
+		//fs_msg.DEVICE	= MINOR(dev);
+		//fs_msg.BUF	= buf;
+		//fs_msg.CNT	= len;
+		//fs_msg.PROC_NR	= src;
+		////assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
+		////send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &fs_msg);
+		//hd_rdwt(&fs_msg);
+		//assert(fs_msg.CNT == len);
 
 		return fs_msg.CNT;
 	}
@@ -91,6 +88,8 @@ PUBLIC int do_rdwt()
 		int bytes_rw = 0;
 		int bytes_left = len;
 		int i;
+		//sprintf(str,"rw_sect_min = %d, rw_sect_max = %d, chunk = %d",rw_sect_min,rw_sect_max,chunk);
+		//print_on_screen(str);
 		for (i = rw_sect_min; i <= rw_sect_max; i += chunk) {
 			/* read/write this amount of bytes every time */
 			int bytes = min(bytes_left, chunk * SECTOR_SIZE - off);
@@ -98,16 +97,20 @@ PUBLIC int do_rdwt()
 				  pin->i_dev,
 				  i * SECTOR_SIZE,
 				  chunk * SECTOR_SIZE,
-				  TASK_FS,
+				  -1,
 				  fsbuf);
 
 			if (fs_msg.type == READ) {
+				//sprintf(str, "call hd driver to read %d bytes ", bytes);
+				print_on_screen(str);
 				phys_copy((void*)va2la(src, buf + bytes_rw),
-					  (void*)va2la(TASK_FS, fsbuf + off),
+					  (void*)va2la(-1, fsbuf + off),
 					  bytes);
+				//phys_copy(la, (void*)va2la(0, hdbuf), bytes);
 			}
 			else {	/* WRITE */
-				phys_copy((void*)va2la(TASK_FS, fsbuf + off),
+				
+				phys_copy((void*)va2la(-1, fsbuf + off),
 					  (void*)va2la(src, buf + bytes_rw),
 					  bytes);
 
@@ -115,8 +118,10 @@ PUBLIC int do_rdwt()
 					  pin->i_dev,
 					  i * SECTOR_SIZE,
 					  chunk * SECTOR_SIZE,
-					  TASK_FS,
+					  -1,
 					  fsbuf);
+				//sprintf(str, "call hd driver to write %d bytes ", bytes);
+				print_on_screen(str);
 			}
 			off = 0;
 			bytes_rw += bytes;
