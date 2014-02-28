@@ -1,6 +1,8 @@
 /* bootpack偺儊僀儞 */
 
 #include "bootpack.h"
+#include "keyboard.h"
+#include "keymap.h"
 
 #include <stdio.h>
 
@@ -228,13 +230,13 @@ void HariMain(void)
 			if (256 <= i && i <= 511) { /* 键盘数据 */
 				if (i < 0x80 + 256) { /* 常规字符 */
 					if (key_shift == 0) {
-						s[0] = keytable0[i - 256];
+						s[0] = keymap[(i - 256)*MAP_COLS];
 					} else {
-						s[0] = keytable1[i - 256];
+						s[0] = keymap[(i - 256)*MAP_COLS+1];
 					}
 				} else {
 					s[0] = 0;
-				}
+				} 
 				if ('A' <= s[0] && s[0] <= 'Z') {	/* 擖椡暥帤偑傾儖僼傽儀僢僩 */
 					if (((key_leds & 4) == 0 && key_shift == 0) ||
 							((key_leds & 4) != 0 && key_shift != 0)) {

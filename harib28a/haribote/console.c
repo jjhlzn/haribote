@@ -780,10 +780,8 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		msg.type = READ;
 		do_rdwt(&msg,task);
 		
-		sprintf(str,"contents = [%s]",buf);
+		sprintf(str,"read contents = [%s]",buf);
 		print_on_screen(str);
-		
-		//do_close(fd,task);
 	} else if(edx == 32){
 		int fd = eax;
 		char *buf = (char *)(ebx+ds_base);
@@ -799,7 +797,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		//print_on_screen(str);
 		do_rdwt(&msg,task);
 		print_on_screen(str);
-		//do_close(fd,task);
+
 	}
 	return 0;
 }

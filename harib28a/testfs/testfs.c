@@ -14,6 +14,10 @@ void HariMain(){
 	//api_putstr0(pathname);
 	int fd = api_open(pathname,O_CREATE | O_RDWR);
 	
+	if(fd <0){
+		fd = api_open(pathname, O_RDWR);
+	}
+	
 	int n = 0;
 	char bufw[100], bufr[100] = {0};
 	sprintf(bufw,"my name is jinjunhang!");

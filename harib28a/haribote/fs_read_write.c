@@ -36,6 +36,7 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 
 	int src = fs_msg.source;		/* caller proc nr. */
 
+	sprintf(str,"fd = %d");
 	assert((pcaller->filp[fd] >= &f_desc_table[0]) &&
 	       (pcaller->filp[fd] < &f_desc_table[NR_FILE_DESC]));
 

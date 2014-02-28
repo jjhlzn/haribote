@@ -8,7 +8,7 @@ void init_gdtidt(void)
 	struct GATE_DESCRIPTOR    *idt = (struct GATE_DESCRIPTOR    *) ADR_IDT;
 	int i;
 
-	/* GDT偺弶婜壔 */
+	/* GDT(全局描述符表)*/
 	for (i = 0; i <= LIMIT_GDT / 8; i++) {
 		set_segmdesc(gdt + i, 0, 0, 0);
 	}
@@ -16,7 +16,7 @@ void init_gdtidt(void)
 	set_segmdesc(gdt + 2, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
 	load_gdtr(LIMIT_GDT, ADR_GDT);
 
-	/* IDT偺弶婜壔 */
+	/* IDT(中断描述符表) */
 	for (i = 0; i <= LIMIT_IDT / 8; i++) {
 		set_gatedesc(idt + i, 0, 0, 0);
 	}
