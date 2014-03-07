@@ -5,6 +5,9 @@
 #define EFLAGS_AC_BIT		0x00040000
 #define CR0_CACHE_DISABLE	0x60000000
 
+/**
+  用于计算计算机内存大小。方法：通过不断的测试来获取计算机内存大小。
+*/
 unsigned int memtest(unsigned int start, unsigned int end)
 {
 	char flg486 = 0;
@@ -40,10 +43,10 @@ unsigned int memtest(unsigned int start, unsigned int end)
 
 void memman_init(struct MEMMAN *man)
 {
-	man->frees = 0;			/* 偁偒忣曬偺屄悢 */
-	man->maxfrees = 0;		/* 忬嫷娤嶡梡丗frees偺嵟戝抣 */
-	man->lostsize = 0;		/* 夝曻偵幐攕偟偨崌寁僒僀僘 */
-	man->losts = 0;			/* 夝曻偵幐攕偟偨夞悢 */
+	man->frees = 0;			/* 可用信息数目 */
+	man->maxfrees = 0;		/* 用于观察可用状况：frees的最大值 */
+	man->lostsize = 0;		/* 释放失败的内存大小总和 */
+	man->losts = 0;			/* 释放失败次数 */
 	return;
 }
 

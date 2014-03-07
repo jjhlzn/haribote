@@ -156,12 +156,12 @@ void enable_mouse(struct FIFO32 *fifo, int data0, struct MOUSE_DEC *mdec);
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat);
 
 /* memory.c */
-#define MEMMAN_FREES		4090	/* 偙傟偱栺32KB */
+#define MEMMAN_FREES		4090	/* 大约是32KB */
 #define MEMMAN_ADDR			0x003c0000
-struct FREEINFO {	/* 偁偒忣曬 */
+struct FREEINFO {	/* 可用信息 */
 	unsigned int addr, size;
 };
-struct MEMMAN {		/* 儊儌儕娗棟 */
+struct MEMMAN {		/* 内存管理 */
 	int frees, maxfrees, lostsize, losts;
 	struct FREEINFO free[MEMMAN_FREES];
 };
