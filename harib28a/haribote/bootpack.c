@@ -58,7 +58,7 @@ void HariMain(void)
 		0,   0,   0,   0x5c, 0,  0,   0,   0,   0,   0,   0,   0,   0,   0x5c, 0,  0
 	};
 	static char keytable1[0x80] = {
-		0,   0,   '!', 0x22, '#', '$', '%', '&', 0x27, '(', ')', '~', '=', '~', 0x08, 0,
+		0,   0,   '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', 0x08, 0,
 		'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '`', '{', 0x0a, 0, 'A', 'S',
 		'D', 'F', 'G', 'H', 'J', 'K', 'L', '+', '*', 0,   0,   '}', 'Z', 'X', 'C', 'V',
 		'B', 'N', 'M', '<', '>', '?', 0,   '*', 0,   ' ', 0,   0,   0,   0,   0,   0,
@@ -97,6 +97,9 @@ void HariMain(void)
 	memman_init(memman);
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
 	memman_free(memman, 0x00400000, memtotal - 0x00400000);
+	
+	sprintf(strbuf,"memory %dMB free : %dKB", memtotal / (1024 * 1024), 
+			memman_total(memman) / 1024);
 
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
@@ -109,7 +112,6 @@ void HariMain(void)
 	/* sht_back */
 	sht_back  = sheet_alloc(shtctl);
 	buf_back  = (unsigned char *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
-	
 	
 	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1); /* 摟柧怓側偟 */
 	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
@@ -142,23 +144,20 @@ void HariMain(void)
 	unsigned short lzone = *(unsigned short *) (12+BIOS);
 	unsigned char sect = *(unsigned char *) (14+BIOS);    //63
 	
+	//显示内存信息 
+	print_on_screen(strbuf);
+	
 	sprintf(strbuf,"dd1 = %8x, dd2 = %8x, dd3 = %8x, dd4 = %8x", 
 		*BIOS2, *(BIOS2+1), *(BIOS2+2), *(BIOS2+3));
 	print_on_screen(strbuf);
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,320, 20+8*50, 320+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 20, 320, COL8_000000, strbuf);
 	
 	sprintf(strbuf,"cyl = %u, head = %u, wpcom = %u ctl = %u, lzone = %u, sect = %u", 
 		cyl, head, wpcom,
 		ctl, lzone, sect);
 	print_on_screen(strbuf);
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,340, 20+8*50, 340+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 20, 340, COL8_000000, strbuf);
 	
 	sprintf(strbuf,"hd = %x", binfo->hd0);
 	print_on_screen(strbuf);
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 20,300, 20+8*50, 300+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 20, 300, COL8_000000, strbuf);
 
 	/* 嵟弶偵僉乕儃乕僪忬懺偲偺怘偄堘偄偑側偄傛偆偵丄愝掕偟偰偍偔偙偲偵偡傞 */
 	fifo32_put(&keycmd, KEYCMD_LED);
@@ -228,15 +227,21 @@ void HariMain(void)
 				}
 			}
 			if (256 <= i && i <= 511) { /* 键盘数据 */
+				//sprintf(strbuf,"%d",i);
+				//print_on_screen(strbuf);
+				
 				if (i < 0x80 + 256) { /* 常规字符 */
 					if (key_shift == 0) {
-						s[0] = keymap[(i - 256)*MAP_COLS];
+						//s[0] = keymap[(i - 256)*MAP_COLS];
+						s[0] = keytable0[(i - 256)];
 					} else {
-						s[0] = keymap[(i - 256)*MAP_COLS+1];
+						//s[0] = keymap[(i - 256)*MAP_COLS+1];
+						s[0] = keytable1[(i - 256)];
 					}
 				} else {
 					s[0] = 0;
 				} 
+				
 				if ('A' <= s[0] && s[0] <= 'Z') {	/* 擖椡暥帤偑傾儖僼傽儀僢僩 */
 					if (((key_leds & 4) == 0 && key_shift == 0) ||
 							((key_leds & 4) != 0 && key_shift != 0)) {
@@ -244,6 +249,8 @@ void HariMain(void)
 					}
 				}
 				if (s[0] != 0 && key_win != 0) { /* 把字符发送给相应的任务 */
+					//sprintf(strbuf,"send to task [%d]",s[0] + 256);
+					//print_on_screen(strbuf);
 					fifo32_put(&key_win->task->fifo, s[0] + 256);
 				}
 				if (i == 256 + 0x0f && key_win != 0) {	/* Tab */
@@ -631,6 +638,13 @@ void print_on_screen(char *msg){
 	boxfill8(bootinfo->vram,bootinfo->scrnx, COL8_848484, x0, y0 + invoke_count * 16, x0 + strlen(msg)*8, y0 + invoke_count * 16 + 16);
 	putfonts8_asc(bootinfo->vram, bootinfo->scrnx, x0, y0 + invoke_count * 16, COL8_000000, msg);	
 	invoke_count++;
+	
+	//没有空间记录日志，则刷新日志，从头开始显示日志
+	if(invoke_count == 35){
+		invoke_count = 0;
+		boxfill8(bootinfo->vram,bootinfo->scrnx, COL8_008484, x0, y0, x0 + 1024, y0 + 768);
+		putfonts8_asc(bootinfo->vram, bootinfo->scrnx, x0, y0 + invoke_count * 16, COL8_000000, msg);
+	}
 }
 
 PUBLIC void spin(char * func_name)

@@ -17,7 +17,7 @@ void task_add(struct TASK *task)
 	struct TASKLEVEL *tl = &taskctl->level[task->level];
 	tl->tasks[tl->running] = task;
 	tl->running++;
-	task->flags = 2; /* 摦嶌拞 */
+	task->flags = 2; /* 活动中 */
 	return;
 }
 
@@ -26,25 +26,25 @@ void task_remove(struct TASK *task)
 	int i;
 	struct TASKLEVEL *tl = &taskctl->level[task->level];
 
-	/* task偑偳偙偵偄傞偐傪扵偡 */
+	/* 寻找task所在的位置 */
 	for (i = 0; i < tl->running; i++) {
 		if (tl->tasks[i] == task) {
-			/* 偙偙偵偄偨 */
+			/* 在这里 */
 			break;
 		}
 	}
 
 	tl->running--;
 	if (i < tl->now) {
-		tl->now--; /* 偢傟傞偺偱丄偙傟傕偁傢偣偰偍偔 */
+		tl->now--; /* 需要移动成员，要相应的处理 */
 	}
 	if (tl->now >= tl->running) {
-		/* now偑偍偐偟側抣偵側偭偰偄偨傜丄廋惓偡傞 */
+		/* 如果now的值出现异常，则进行修正 */
 		tl->now = 0;
 	}
-	task->flags = 1; /* 僗儕乕僾拞 */
+	task->flags = 1; /* 休眠中 */
 
-	/* 偢傜偟 */
+	/* 移动 */
 	for (; i < tl->running; i++) {
 		tl->tasks[i] = tl->tasks[i + 1];
 	}
@@ -52,16 +52,17 @@ void task_remove(struct TASK *task)
 	return;
 }
 
+/* 切换到最高优先级的LEVEL  */
 void task_switchsub(void)
 {
 	int i;
-	/* 堦斣忋偺儗儀儖傪扵偡 */
+	/* 寻找最上层的LEVEL */
 	for (i = 0; i < MAX_TASKLEVELS; i++) {
 		if (taskctl->level[i].running > 0) {
-			break; /* 尒偮偐偭偨 */
+			break; /* 找到了 */
 		}
 	}
-	taskctl->now_lv = i;
+	taskctl->now_lv = i; //切换到最高优先级的LEVEL
 	taskctl->lv_change = 0;
 	return;
 }
@@ -80,14 +81,14 @@ struct TASK *task_init(struct MEMMAN *memman)
 	struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
 
 	taskctl = (struct TASKCTL *) memman_alloc_4k(memman, sizeof (struct TASKCTL));
+	//事先将全部的TASK结构的TSS和LDT、文件描述符都设置好
 	for (i = 0; i < MAX_TASKS; i++) {
-		taskctl->tasks0[i].flags = 0;
-		taskctl->tasks0[i].sel = (TASK_GDT0 + i) * 8;
-		taskctl->tasks0[i].tss.ldtr = (TASK_GDT0 + MAX_TASKS + i) * 8;
+		taskctl->tasks0[i].flags = 0; //标志未使用
+		taskctl->tasks0[i].sel = (TASK_GDT0 + i) * 8; //设置TSS的seletor
+		taskctl->tasks0[i].tss.ldtr = (TASK_GDT0 + MAX_TASKS + i) * 8; 
 		set_segmdesc(gdt + TASK_GDT0 + i, 103, (int) &taskctl->tasks0[i].tss, AR_TSS32);
 		set_segmdesc(gdt + TASK_GDT0 + MAX_TASKS + i, 15, (int) taskctl->tasks0[i].ldt, AR_LDT);
-		//初始化任务的文件描述符
-		//struct file_desc * pfile_desc = memman_alloc_4k(memman, sizeof (struct file_desc) * NR_FILES);
+		//设置任务的文件描述符
 		for(j=0; j<NR_FILES; j++){
 			taskctl->tasks0[i].filp[j] = 0;
 		}
@@ -98,11 +99,11 @@ struct TASK *task_init(struct MEMMAN *memman)
 	}
 
 	task = task_alloc();
-	task->flags = 2;	/* 摦嶌拞儅乕僋 */
-	task->priority = 2; /* 0.02昩 */
-	task->level = 0;	/* 嵟崅儗儀儖 */
+	task->flags = 2;	/* 活动中标志 */
+	task->priority = 2; /* 0.02秒 */
+	task->level = 0;	/* 最高LEVEL */
 	task_add(task);
-	task_switchsub();	/* 儗儀儖愝掕 */
+	task_switchsub();	/* LEVEL设置 */
 	load_tr(task->sel);
 	task_timer = timer_alloc();
 	timer_settime(task_timer, task->priority);
@@ -128,9 +129,9 @@ struct TASK *task_alloc(void)
 	for (i = 0; i < MAX_TASKS; i++) {
 		if (taskctl->tasks0[i].flags == 0) {
 			task = &taskctl->tasks0[i];
-			task->flags = 1; /* 巊梡拞儅乕僋 */
+			task->flags = 1; /* 正在使用的标志 */
 			task->tss.eflags = 0x00000202; /* IF = 1; */
-			task->tss.eax = 0; /* 偲傝偁偊偢0偵偟偰偍偔偙偲偵偡傞 */
+			task->tss.eax = 0; /* 这里先设置为0 */
 			task->tss.ecx = 0;
 			task->tss.edx = 0;
 			task->tss.ebx = 0;
@@ -146,28 +147,28 @@ struct TASK *task_alloc(void)
 			return task;
 		}
 	}
-	return 0; /* 傕偆慡晹巊梡拞 */
+	return 0; /* 全部正在使用 */
 }
 
 void task_run(struct TASK *task, int level, int priority)
 {
 	if (level < 0) {
-		level = task->level; /* 儗儀儖傪曄峏偟側偄 */
+		level = task->level; /* 不改变LEVEL */
 	}
 	if (priority > 0) {
 		task->priority = priority;
 	}
 
-	if (task->flags == 2 && task->level != level) { /* 摦嶌拞偺儗儀儖偺曄峏 */
-		task_remove(task); /* 偙傟傪幚峴偡傞偲flags偼1偵側傞偺偱壓偺if傕幚峴偝傟傞 */
+	if (task->flags == 2 && task->level != level) { /* 改变活动中的LEVEL */
+		task_remove(task); /* 这里执行之后flag的值会变为1，于是下面的if语句也会被执行 */
 	}
 	if (task->flags != 2) {
-		/* 僗儕乕僾偐傜婲偙偝傟傞応崌 */
+		/* 从休眠状态唤醒的情形 */
 		task->level = level;
 		task_add(task);
 	}
 
-	taskctl->lv_change = 1; /* 師夞僞僗僋僗僀僢僠偺偲偒偵儗儀儖傪尒捈偡 */
+	taskctl->lv_change = 1; /* 下次任务切换时检查LEVEL */
 	return;
 }
 
@@ -175,13 +176,13 @@ void task_sleep(struct TASK *task)
 {
 	struct TASK *now_task;
 	if (task->flags == 2) {
-		/* 摦嶌拞偩偭偨傜 */
+		/* 如果处于活动状态 */
 		now_task = task_now();
-		task_remove(task); /* 偙傟傪幚峴偡傞偲flags偼1偵側傞 */
+		task_remove(task); /* 执行此语句的话flags将变为1 */
 		if (task == now_task) {
-			/* 帺暘帺恎偺僗儕乕僾偩偭偨偺偱丄僞僗僋僗僀僢僠偑昁梫 */
+			/* 如果是让自己休眠，则需要进行任务切换 */
 			task_switchsub();
-			now_task = task_now(); /* 愝掕屻偱偺丄乽尰嵼偺僞僗僋乿傪嫵偊偰傕傜偆 */
+			now_task = task_now(); /* 在设定后获取当前任务的值 */
 			farjmp(0, now_task->sel);
 		}
 	}
@@ -196,7 +197,7 @@ void task_switch(void)
 	if (tl->now == tl->running) {
 		tl->now = 0;
 	}
-	if (taskctl->lv_change != 0) {
+	if (taskctl->lv_change != 0) { //任务控制器的LEVEL已经发现过变化
 		task_switchsub();
 		tl = &taskctl->level[taskctl->now_lv];
 	}

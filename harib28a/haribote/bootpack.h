@@ -232,7 +232,7 @@ struct TSS32 {
 };
 #define	NR_FILES	10
 struct TASK {
-	int sel, flags; /* sel偼GDT偺斣崋偺偙偲 */
+	int sel, flags; /* sel代表TSS的GDT编号 */
 	int level, priority;
 	struct FIFO32 fifo;
 	int sendMouse;  //为了鼠标api,当调用api_getMouse的时候，sendMouse被置为1。如果没有这个标志位，那么鼠标的信息就会
@@ -246,16 +246,17 @@ struct TASK {
 	int *fat;
 	char *cmdline;
 	unsigned char langmode, langbyte1;
+	//任务的文件描述符
 	struct file_desc *filp[NR_FILES];
 };
 struct TASKLEVEL {
-	int running; /* 摦嶌偟偰偄傞僞僗僋偺悢 */
-	int now; /* 尰嵼摦嶌偟偰偄傞僞僗僋偑偳傟偩偐暘偐傞傛偆偵偡傞偨傔偺曄悢 */
+	int running; /* 正在运行的任务数量 */
+	int now; /* 这个变量用来记录当前正在运行的是哪个任务 */
 	struct TASK *tasks[MAX_TASKS_LV];
 };
 struct TASKCTL {
-	int now_lv; /* 尰嵼摦嶌拞偺儗儀儖 */
-	char lv_change; /* 師夞僞僗僋僗僀僢僠偺偲偒偵丄儗儀儖傕曄偊偨傎偆偑偄偄偐偳偆偐 */
+	int now_lv; /* 现在活动中的LEVEL */
+	char lv_change; /* 在下次任务切换时是否需要改变LEVEL */
 	struct TASKLEVEL level[MAX_TASKLEVELS];
 	struct TASK tasks0[MAX_TASKS];
 };

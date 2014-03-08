@@ -51,7 +51,7 @@ void memman_init(struct MEMMAN *man)
 }
 
 unsigned int memman_total(struct MEMMAN *man)
-/* 偁偒僒僀僘偺崌寁傪曬崘 */
+/* 报告空余内存大小的合计 */
 {
 	unsigned int i, t = 0;
 	for (i = 0; i < man->frees; i++) {
@@ -61,34 +61,34 @@ unsigned int memman_total(struct MEMMAN *man)
 }
 
 unsigned int memman_alloc(struct MEMMAN *man, unsigned int size)
-/* 妋曐 */
+/* 内存分配 */
 {
 	unsigned int i, a;
 	for (i = 0; i < man->frees; i++) {
 		if (man->free[i].size >= size) {
-			/* 廫暘側峀偝偺偁偒傪敪尒 */
+			/* 找到了足够大的内存 */
 			a = man->free[i].addr;
 			man->free[i].addr += size;
 			man->free[i].size -= size;
 			if (man->free[i].size == 0) {
-				/* free[i]偑側偔側偭偨偺偱慜傊偮傔傞 */
+				/* 如果free[i]变成了0，就减掉一条可用信息 */
 				man->frees--;
 				for (; i < man->frees; i++) {
-					man->free[i] = man->free[i + 1]; /* 峔憿懱偺戙擖 */
+					man->free[i] = man->free[i + 1]; 
 				}
 			}
 			return a;
 		}
 	}
-	return 0; /* 偁偒偑側偄 */
+	return 0; /* 没有可用空间 */
 }
 
 int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size)
-/* 夝曻 */
+/* 释放内存 */
 {
 	int i, j;
-	/* 傑偲傔傗偡偝傪峫偊傞偲丄free[]偑addr弴偵暲傫偱偄傞傎偆偑偄偄 */
-	/* 偩偐傜傑偢丄偳偙偵擖傟傞傋偒偐傪寛傔傞 */
+	 /* 为便于归纳内存，将free[]按照addr的顺序排列 */    
+	/* 所以，先决定应该放在哪里 */
 	for (i = 0; i < man->frees; i++) {
 		if (man->free[i].addr > addr) {
 			break;
@@ -96,54 +96,54 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size)
 	}
 	/* free[i - 1].addr < addr < free[i].addr */
 	if (i > 0) {
-		/* 慜偑偁傞 */
+		/* 前面有可用内存 */
 		if (man->free[i - 1].addr + man->free[i - 1].size == addr) {
-			/* 慜偺偁偒椞堟偵傑偲傔傜傟傞 */
+			/* 可以预前面的可用内存归纳到一起 */
 			man->free[i - 1].size += size;
 			if (i < man->frees) {
-				/* 屻傠傕偁傞 */
+				/* 后面也有 */
 				if (addr + size == man->free[i].addr) {
-					/* 側傫偲屻傠偲傕傑偲傔傜傟傞 */
+					/* 也可以与后面的可用内存归纳到一起 */
 					man->free[i - 1].size += man->free[i].size;
-					/* man->free[i]偺嶍彍 */
-					/* free[i]偑側偔側偭偨偺偱慜傊偮傔傞 */
+					/* man->free[i]删除*/
+					/* free[i]变成0后归纳到前面去 */
 					man->frees--;
 					for (; i < man->frees; i++) {
-						man->free[i] = man->free[i + 1]; /* 峔憿懱偺戙擖 */
+						man->free[i] = man->free[i + 1]; /* 结构体赋值 */
 					}
 				}
 			}
-			return 0; /* 惉岟廔椆 */
+			return 0; /* 成功完成 */
 		}
 	}
-	/* 慜偲偼傑偲傔傜傟側偐偭偨 */
+	/* 不能与前面归纳到一起*/
 	if (i < man->frees) {
-		/* 屻傠偑偁傞 */
+		/* 后面还有*/
 		if (addr + size == man->free[i].addr) {
-			/* 屻傠偲偼傑偲傔傜傟傞 */
+			/* 可以与后面的内容归纳到一起 */
 			man->free[i].addr = addr;
 			man->free[i].size += size;
-			return 0; /* 惉岟廔椆 */
+			return 0; /* 成功完成 */
 		}
 	}
-	/* 慜偵傕屻傠偵傕傑偲傔傜傟側偄 */
+	/* 不能与前面归纳到一起，也不能与后面归纳到一起 */
 	if (man->frees < MEMMAN_FREES) {
-		/* free[i]傛傝屻傠傪丄屻傠傊偢傜偟偰丄偡偒傑傪嶌傞 */
+		/* free[i]之后的，向后移动，腾出一点可用空间 */
 		for (j = man->frees; j > i; j--) {
 			man->free[j] = man->free[j - 1];
 		}
 		man->frees++;
 		if (man->maxfrees < man->frees) {
-			man->maxfrees = man->frees; /* 嵟戝抣傪峏怴 */
+			man->maxfrees = man->frees; /* 更新最大值 */
 		}
 		man->free[i].addr = addr;
 		man->free[i].size = size;
-		return 0; /* 惉岟廔椆 */
+		return 0; /* 成功完成 */
 	}
-	/* 屻傠偵偢傜偣側偐偭偨 */
+	/* 不能往后移动 */
 	man->losts++;
 	man->lostsize += size;
-	return -1; /* 幐攕廔椆 */
+	return -1; /* 失败 */
 }
 
 unsigned int memman_alloc_4k(struct MEMMAN *man, unsigned int size)

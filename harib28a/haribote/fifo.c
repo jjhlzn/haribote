@@ -5,23 +5,23 @@
 #define FLAGS_OVERRUN		0x0001
 
 void fifo32_init(struct FIFO32 *fifo, int size, int *buf, struct TASK *task)
-/* FIFO僶僢僼傽偺弶婜壔 */
+/* FIFO缓冲区初始化 */
 {
 	fifo->size = size;
 	fifo->buf = buf;
-	fifo->free = size; /* 嬻偒 */
+	fifo->free = size; /* 剩余空间 */
 	fifo->flags = 0;
-	fifo->p = 0; /* 彂偒崬傒埵抲 */
-	fifo->q = 0; /* 撉傒崬傒埵抲 */
-	fifo->task = task; /* 僨乕僞偑擖偭偨偲偒偵婲偙偡僞僗僋 */
+	fifo->p = 0; /* 写入位置 */
+	fifo->q = 0; /* 读取位置 */
+	fifo->task = task; /* 有数据写入时需要唤醒的任务 */
 	return;
 }
 
 int fifo32_put(struct FIFO32 *fifo, int data)
-/* FIFO傊僨乕僞傪憲傝崬傫偱拁偊傞 */
+/* 向FIFO写入数据并累积起来 */
 {
 	if (fifo->free == 0) {
-		/* 嬻偒偑側偔偰偁傆傟偨 */
+		/* 没有剩余空间则溢出 */
 		fifo->flags |= FLAGS_OVERRUN;
 		return -1;
 	}
@@ -32,8 +32,8 @@ int fifo32_put(struct FIFO32 *fifo, int data)
 	}
 	fifo->free--;
 	if (fifo->task != 0) {
-		if (fifo->task->flags != 2) { /* 僞僗僋偑怮偰偄偨傜 */
-			task_run(fifo->task, -1, 0); /* 婲偙偟偰偁偘傞 */
+		if (fifo->task->flags != 2) { /* 如果任务处于休眠状态 */
+			task_run(fifo->task, -1, 0); /* 将任务唤醒 */
 		}
 	}
 	return 0;

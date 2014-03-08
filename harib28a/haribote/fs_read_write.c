@@ -26,17 +26,15 @@ extern u8 *		fsbuf;
 PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 {
 	char str[200];
-	//sprintf(str,"in do_rdwt");
-	//print_on_screen(str);
 	
 	MESSAGE fs_msg = *msg;
-	int fd = fs_msg.FD;	/**< file descriptor. */
+	int fd = msg->FD;	/**< file descriptor. */
 	void * buf = fs_msg.BUF;/**< r/w buffer */
 	int len = fs_msg.CNT;	/**< r/w bytes */
 
 	int src = fs_msg.source;		/* caller proc nr. */
 
-	sprintf(str,"fd = %d");
+	sprintf(str,"fd = %d, len = %d", fd, len);
 	assert((pcaller->filp[fd] >= &f_desc_table[0]) &&
 	       (pcaller->filp[fd] < &f_desc_table[NR_FILE_DESC]));
 

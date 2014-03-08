@@ -773,29 +773,36 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		int len = ebp;
 		char str[100];
 		//sprintf(str,"read content from fd(%d)",fd);
+		
 		MESSAGE msg;
 		msg.FD = fd;
 		msg.BUF = buf;
 		msg.CNT = len;
 		msg.type = READ;
-		do_rdwt(&msg,task);
+		
+		reg[7] = do_rdwt(&msg,task);
+		buf[reg[7]] = 0; //…Ë÷√Ω·Œ≤∑˚
 		
 		sprintf(str,"read contents = [%s]",buf);
 		print_on_screen(str);
+		
 	} else if(edx == 32){
 		int fd = eax;
 		char *buf = (char *)(ebx+ds_base);
 		int len = ebp;
 		char str[100];
-		sprintf(str,"write contets(%s) to fd(%d)",buf, fd);
+
 		MESSAGE msg;
 		msg.FD = fd;
 		msg.BUF = buf;
 		msg.CNT = len;
 		msg.type = WRITE;
-		//sprintf(str,"len = %d",len);
+		//sprintf(str,"msg.FD = %d",msg.FD);
 		//print_on_screen(str);
-		do_rdwt(&msg,task);
+		
+		reg[7] = do_rdwt(&msg,task);
+		
+		sprintf(str,"write contets(%s) to fd(%d)",buf, fd);
 		print_on_screen(str);
 
 	}

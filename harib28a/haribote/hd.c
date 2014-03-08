@@ -27,9 +27,6 @@ void inthandler2e(int *esp)
 	//fifo32_put(hdfifo,3000);
 	hasInterrupt = 1;
 	
-	//sprintf(strbuf,"hd interrupt happen %d, hasInterrupt=%d", ++hd_interrupt_count,hasInterrupt);
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 300+16+16, 300+8*50, 300+16+16+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 300+16+16, COL8_000000, strbuf);
 	return;
 }
 
@@ -40,15 +37,7 @@ void init_hd(struct FIFO32 * fifo)
 	/* Get the number of drives from the BIOS data area */
 	unsigned char * pNrDrives = (unsigned char *)(0x475);
 	//assert(*pNrDrives);
-	char strbuf[50];
-	
-	sprintf(strbuf,"NrDrives:%d", *pNrDrives);
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 220+16+16, 220+8*50, 220+16+16+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 220+16+16, COL8_000000, strbuf);	
-	
-	//put_irq_handler(AT_WINI_IRQ, hd_handler);
-	//enable_irq(CASCADE_IRQ);
-	//enable_irq(AT_WINI_IRQ);
+	char strbuf[50];	
 }
 
 
@@ -134,16 +123,6 @@ void hd_open(int device)
 	cmd.device	= MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
 	cmd.command	= (p->type == DEV_READ) ? ATA_READ : ATA_WRITE;
 	
-	//sprintf(strbuf,"sect_nr =%d, cmd.count = %d, cmd.lba_low = %d, cmd.lba_mid = %d, cmd_high = %d, cmd.device = %d",
-	//			sect_nr,
-	//			cmd.count,
-	//		    cmd.lba_low,
-	//			cmd.lba_mid,
-	//			cmd.lba_high,
-	//		    cmd.device);
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 420+16+16, 420+8*50, 420+16+16+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 420+16+16, COL8_000000, strbuf);
-	
 	hd_cmd_out(&cmd);
 
 	int bytes_left = p->CNT;
@@ -152,26 +131,15 @@ void hd_open(int device)
 	//void * la = (void*)va2la(p->PROC_NR, p->BUF);
 	void * la = (void *)fsbuf;
 	
-    
-	//sprintf(strbuf,"begin write hd1(%d bytes). p->CNT = %d %d",bytes_left, p->CNT,i);
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 440+16+16, 440+8*50, 440+16+16+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 440+16+16, COL8_000000, strbuf);
-	
 	int loopcount = 0;
 	while (bytes_left) {
 		int bytes = min(SECTOR_SIZE, bytes_left);
-		//sprintf(strbuf,"in while: begin write hd(%d bytes). loopcount = %d", bytes_left, ++loopcount);
-		//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 460+16+16, 460+8*50, 460+16+16+16);
-		//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 460+16+16, COL8_000000, strbuf);
 		
 		if (p->type == DEV_READ) {
 			interrupt_wait();
 			port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 			phys_copy(la, (void*)va2la(0, hdbuf), bytes);
-			
-			//sprintf(strbuf,"read %d bytes from hd.", bytes);
-			//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 480+16+16, 480+8*50, 480+16+16+16);
-			//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 480+16+16, COL8_000000, strbuf);
+
 		}
 		else {
 			if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT)){
@@ -198,29 +166,12 @@ void hd_open(int device)
 			port_write(REG_DATA, la, bytes);
 			interrupt_wait();
 			
-	
-			
-			//for(i = 0; i<bytes; i++){
-			//	io_out8(REG_DATA, buf[i]);
-			//}
-			
-			//sprintf(strbuf,"after  write: bytes_left = %d", bytes_left);
-			//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 520+16+16, 520+8*50, 520+16+16+16);
-			//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 520+16+16, COL8_000000, strbuf);
-
-			//sprintf(strbuf,"write %d bytes to hd.", bytes);
-			//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 480+16+16, 480+8*50, 480+16+16+16);
-			//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 480+16+16, COL8_000000, strbuf);
 		}
 		
 		bytes_left -= SECTOR_SIZE;
 		la += SECTOR_SIZE;
 
 	}
-	
-	//sprintf(strbuf,"write hd end.");
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 540+16+16, 540+8*50, 540+16+16+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 540+16+16, COL8_000000, strbuf);
 }	
 
 u8* hd_identify(int drive)
@@ -232,15 +183,8 @@ u8* hd_identify(int drive)
 	interrupt_wait();
 	
 	char strbuf[100];
-	//sprintf(strbuf,"after interrupt_wait");
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 240+16+16, 240+8*50, 240+16+16+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 240+16+16, COL8_000000, strbuf);	
 	
 	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
-
-	//sprintf(strbuf,"after port_read");
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 260+16+16, 260+8*50, 260+16+16+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 260+16+16, COL8_000000, strbuf);
 	
 	u16* hdinfo = (u16*)hdbuf;
 
