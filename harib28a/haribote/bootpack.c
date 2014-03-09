@@ -35,6 +35,7 @@ void load_background_pic(char* back_buf, int *fat);
 static struct BOOTINFO *bootinfo = (struct BOOTINFO *) ADR_BOOTINFO;
 void HariMain(void)
 {
+	
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 	struct SHTCTL *shtctl;
 	char s[40];
@@ -173,6 +174,7 @@ void HariMain(void)
 	//sheet_slide(sht_back,  0,  0); //Ë¢ÐÂ±ÚÖ½
 	init_hd(&fifo);
 	init_fs();
+
 	
 	sprintf(strbuf,"hd and fs initialized!");
 	print_on_screen(strbuf);
@@ -631,6 +633,35 @@ void print_on_screen2(char *msg, int x, int y){
 	boxfill8(bootinfo->vram,bootinfo->scrnx, COL8_848484, x, y, x + strlen(msg)*8, y+16);
 	putfonts8_asc(bootinfo->vram, bootinfo->scrnx, x, y, COL8_000000, msg);	
 }
+
+void debug(const char *fmt, ...){
+	int i;
+	char buf[1024];
+	
+	va_list arg = (va_list)((char *)(&fmt) + 4);
+	
+	i = vsprintf(buf,fmt,arg);
+	print_on_screen(buf);
+	
+	return;
+}
+
+PUBLIC void panic(const char *fmt, ...)
+{
+	int i;
+	char buf[256];
+
+	/* 4 is the size of fmt in the stack */
+	va_list arg = (va_list)((char*)&fmt + 4);
+
+	i = vsprintf(buf, fmt, arg);
+
+	debug("%c !!panic!! %s", MAG_CH_PANIC, buf);
+
+	/* should never arrive here */
+	ud2();
+}
+
 
 void print_on_screen(char *msg){
 	int x0 = 10, y0 = 200;

@@ -33,8 +33,8 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 	int len = fs_msg.CNT;	/**< r/w bytes */
 
 	int src = fs_msg.source;		/* caller proc nr. */
-
-	sprintf(str,"fd = %d, len = %d", fd, len);
+	debug("pos of fd[%d] = %d, inode_number = %d",fd,pcaller->filp[fd]->fd_pos,pcaller->filp[fd]->fd_inode->i_num);
+	//sprintf(str,"fd = %d, len = %d", fd, len);
 	assert((pcaller->filp[fd] >= &f_desc_table[0]) &&
 	       (pcaller->filp[fd] < &f_desc_table[NR_FILE_DESC]));
 
@@ -77,6 +77,8 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 		else		/* WRITE */
 			pos_end = min(pos + len, pin->i_nr_sects * SECTOR_SIZE);
 
+		debug("pin->i_size = %d, pos_end = %d",pin->i_size, pos_end);
+		
 		int off = pos % SECTOR_SIZE;
 		int rw_sect_min=pin->i_start_sect+(pos>>SECTOR_SIZE_SHIFT);
 		int rw_sect_max=pin->i_start_sect+(pos_end>>SECTOR_SIZE_SHIFT);
@@ -87,11 +89,11 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 		int bytes_rw = 0;
 		int bytes_left = len;
 		int i;
-		//sprintf(str,"rw_sect_min = %d, rw_sect_max = %d, chunk = %d",rw_sect_min,rw_sect_max,chunk);
-		//print_on_screen(str);
+
 		for (i = rw_sect_min; i <= rw_sect_max; i += chunk) {
 			/* read/write this amount of bytes every time */
 			int bytes = min(bytes_left, chunk * SECTOR_SIZE - off);
+			debug("bytes = %d",bytes);
 			rw_sector(DEV_READ,
 				  pin->i_dev,
 				  i * SECTOR_SIZE,
@@ -100,8 +102,7 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 				  fsbuf);
 
 			if (fs_msg.type == READ) {
-				//sprintf(str, "call hd driver to read %d bytes ", bytes);
-				print_on_screen(str);
+				//print_on_screen(str);
 				phys_copy((void*)va2la(src, buf + bytes_rw),
 					  (void*)va2la(-1, fsbuf + off),
 					  bytes);
@@ -120,11 +121,13 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 					  -1,
 					  fsbuf);
 				//sprintf(str, "call hd driver to write %d bytes ", bytes);
-				print_on_screen(str);
+				//print_on_screen(str);
 			}
 			off = 0;
 			bytes_rw += bytes;
 			pcaller->filp[fd]->fd_pos += bytes;
+			debug("pos of fd[%d] = %d",fd,pcaller->filp[fd]->fd_pos);
+			
 			bytes_left -= bytes;
 		}
 

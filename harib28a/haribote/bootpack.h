@@ -232,6 +232,7 @@ struct TSS32 {
 };
 #define	NR_FILES	10
 struct TASK {
+	int pid;
 	int sel, flags; /* sel´ú±íTSSµÄGDT±àºÅ */
 	int level, priority;
 	struct FIFO32 fifo;
@@ -440,6 +441,8 @@ PUBLIC void	port_write(u16 port, void* buf, int n);
 
 PUBLIC void print_on_screen2(char *msg, int x, int y);
 PUBLIC void print_on_screen(char *msg);
+PUBLIC void debug(const char *fmt, ...);
+void panic(const char *fmt, ...);
 
 #define	NR_FILES	64
 #define	NR_FILE_DESC	64	/* FIXME */
@@ -463,8 +466,5 @@ void assertion_failure(char *exp, char *file, char *base_file, int line);
 
 
 #define	DIOCTL_GET_GEO	1
-
-
-
 
 #endif

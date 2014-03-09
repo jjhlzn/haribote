@@ -83,6 +83,7 @@ struct TASK *task_init(struct MEMMAN *memman)
 	taskctl = (struct TASKCTL *) memman_alloc_4k(memman, sizeof (struct TASKCTL));
 	//事先将全部的TASK结构的TSS和LDT、文件描述符都设置好
 	for (i = 0; i < MAX_TASKS; i++) {
+		taskctl->tasks0[i].pid = i;
 		taskctl->tasks0[i].flags = 0; //标志未使用
 		taskctl->tasks0[i].sel = (TASK_GDT0 + i) * 8; //设置TSS的seletor
 		taskctl->tasks0[i].tss.ldtr = (TASK_GDT0 + MAX_TASKS + i) * 8; 

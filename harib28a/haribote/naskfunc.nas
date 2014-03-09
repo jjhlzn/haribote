@@ -21,7 +21,7 @@
 		GLOBAL	_farjmp, _farcall
 		GLOBAL	_asm_hrb_api, _start_app
 		GLOBAL  _disable_irq, _enable_irq, _port_read,_port_write
-		GLOBAL  _memcpy1, _memset1
+		GLOBAL  _memcpy1, _memset1,_ud2
 		EXTERN	_inthandler20, _inthandler21
 		EXTERN	_inthandler2c, _inthandler0d
 		EXTERN 	_inthandler2e
@@ -29,6 +29,10 @@
 		EXTERN	_hrb_api
 
 [SECTION .text]
+
+_ud2:
+	DB 0x0f, 0x0b
+	RET
 
 _io_hlt:	; void io_hlt(void);
 		HLT
@@ -458,13 +462,13 @@ _asm_hrb_api:
 		STI
 		PUSH	DS
 		PUSH	ES
-		PUSHAD		; 曐懚偺偨傔偺PUSH
-		PUSHAD		; hrb_api偵傢偨偡偨傔偺PUSH
+		PUSHAD		; 用于保存寄存器值得PUSH
+		PUSHAD		; 用于向hrb_api传值得PUSH
 		MOV		AX,SS
-		MOV		DS,AX		; OS梡偺僙僌儊儞僩傪DS偲ES偵傕擖傟傞
+		MOV		DS,AX		; 将操作系统用段地址存入DS和ES
 		MOV		ES,AX
 		CALL	_hrb_api
-		CMP		EAX,0		; EAX偑0偱側偗傟偽傾僾儕廔椆張棟
+		CMP		EAX,0		; 当EAX不为0时程序结束
 		JNE		_asm_end_app
 		ADD		ESP,32
 		POPAD

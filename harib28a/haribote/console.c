@@ -233,6 +233,8 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 		cmd_hd(cons);
 	} else if (strcmp(cmdline, "hdpartition") == 0 && cons->sht != 0){
 		cmd_partition(cons);
+	} else if(strcmp(cmdline, "ls") == 0){
+		cmd_ls(cons);
 	} else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
 			/* 僐儅儞僪偱偼側偔丄傾僾儕偱傕側偔丄偝傜偵嬻峴偱傕側偄 */
@@ -714,10 +716,6 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		sprintf(strbuf,"invoke 28 minfo->flag = %d", minfo->flag);
 		putfonts8_asc_sht(sht, 60, 70, 0, 15, strbuf,40);
 		
-	    //int size = (sizeof(struct MOUSE_INFO) + 0x0f) & 0xfffffff0;
-		//minfo = memman_alloc((struct MEMMAN *) (ebx + ds_base), size);
-		//minfo->flag = -1;
-		
 		for (;;) {
 			io_cli();
 			if (fifo32_status(&task->fifo) == 0) {
@@ -749,17 +747,13 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 					
 			}
 		}
-	} else if (edx == 29) {
+	} else if (edx == 29) { //api_open
 		char *pathname = (char *) eax + ds_base;
-		//cons_putstr0(cons, (char *) eax + ds_base);
 		int flags = ebx;
-		//print_on_screen("api_open");
-		char str[100];
-		//sprintf(str,"pathname = %s, flag = %d", pathname, flags);
-		//print_on_screen(str);
+		debug("open fd: pathname = %s, flags = %d",pathname,flags);
 		int fd = do_open(pathname,flags,task);
-		sprintf(str,"open fd(%d)", fd);
-		print_on_screen(str);
+		debug("open fd(%d)", fd);
+		//debug("open fd: pathname = %s, flags = %d",pathname,flags);
 		reg[7] = fd;
 	} else if(edx == 30){
 		int fd = eax;
@@ -786,24 +780,22 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		sprintf(str,"read contents = [%s]",buf);
 		print_on_screen(str);
 		
-	} else if(edx == 32){
+	} else if(edx == 32){        //api_write
 		int fd = eax;
 		char *buf = (char *)(ebx+ds_base);
 		int len = ebp;
-		char str[100];
-
+		
+		//构建写文件内容的参数
 		MESSAGE msg;
 		msg.FD = fd;
 		msg.BUF = buf;
 		msg.CNT = len;
 		msg.type = WRITE;
-		//sprintf(str,"msg.FD = %d",msg.FD);
-		//print_on_screen(str);
 		
 		reg[7] = do_rdwt(&msg,task);
 		
-		sprintf(str,"write contets(%s) to fd(%d)",buf, fd);
-		print_on_screen(str);
+		char str[100];
+		debug("write contets(%s) to fd(%d)",buf, fd);
 
 	}
 	return 0;

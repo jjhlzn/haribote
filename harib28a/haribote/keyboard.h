@@ -27,14 +27,13 @@
 #define FLAG_PAD	0x8000		/* keys in num pad		*/
 
 #define MASK_RAW	0x01FF		/* raw key value = code passed to tty & MASK_RAW
-					   the value can be found either in the keymap column 0
-					   or in the list below */
+the value can be found either in the keymap column 0
+or in the list below */
 
-/* Special keys */  
+/* Special keys */
 #define ESC		(0x01 + FLAG_EXT)	/* Esc		*/
 #define TAB		(0x02 + FLAG_EXT)	/* Tab		*/
-//#define ENTER		(0x03 + FLAG_EXT)	/* Enter	*/
-#define ENTER		0x0a	/* Enter	*/
+#define ENTER		(0x03 + FLAG_EXT)	/* Enter	*/
 #define BACKSPACE	(0x04 + FLAG_EXT)	/* BackSpace	*/
 
 #define GUI_L		(0x05 + FLAG_EXT)	/* L GUI	*/

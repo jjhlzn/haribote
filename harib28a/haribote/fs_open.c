@@ -33,20 +33,9 @@ extern	u8 *		fsbuf;
  *****************************************************************************/
 PUBLIC int do_open(char *pathname, int flags, struct TASK *pcaller)
 {
+	
 	int fd = -1;		/* return value */
-
-	//char pathname[MAX_PATH];
-
-	/* get parameters from the message */
-	//int flags = fs_msg.FLAGS;	/* access mode */
-	//int name_len = fs_msg.NAME_LEN;	/* length of filename */
-	//int src = fs_msg.source;	/* caller proc nr. */
-	//assert(name_len < MAX_PATH);
-	//phys_copy((void*)va2la(0, pathname),
-	//	  (void*)va2la(0, fs_msg.PATHNAME),
-	//	  name_len);
-	//pathname[name_len] = 0;
-
+	
 	/* find a free slot in PROCESS::filp[] */
 	int i;
 	for (i = 0; i < NR_FILES; i++) {
@@ -56,7 +45,7 @@ PUBLIC int do_open(char *pathname, int flags, struct TASK *pcaller)
 		}
 	}
 	if ((fd < 0) || (fd >= NR_FILES)){
-		//panic("filp[] is full (PID:%d)", proc2pid(pcaller));
+		panic("filp[] is full (PID:%d)", pcaller->pid);
 	}
 
 	/* find a free slot in f_desc_table[] */
@@ -64,15 +53,14 @@ PUBLIC int do_open(char *pathname, int flags, struct TASK *pcaller)
 		if (f_desc_table[i].fd_inode == 0)
 			break;
 	if (i >= NR_FILE_DESC)
-		//panic("f_desc_table[] is full (PID:%d)", proc2pid(pcaller));
-		;
+		panic("f_desc_table[] is full (PID:%d)", pcaller->pid);
 
 	int inode_nr = search_file(pathname);
 
 	struct inode * pin = 0;
 	if (flags & O_CREAT) {
 		if (inode_nr) {
-			print_on_screen("file exists.\n");
+			debug("file exists.\n");
 			return -1;
 		}
 		else {
@@ -153,11 +141,9 @@ PRIVATE struct inode * create_file(char * path, int flags)
 
 	int inode_nr = alloc_imap_bit(dir_inode->i_dev);
 
-	int free_sect_nr = alloc_smap_bit(dir_inode->i_dev,
-					  NR_DEFAULT_FILE_SECTS);
+	int free_sect_nr = alloc_smap_bit(dir_inode->i_dev,NR_DEFAULT_FILE_SECTS);
 
-	struct inode *newino = new_inode(dir_inode->i_dev, inode_nr,
-					 free_sect_nr);
+	struct inode *newino = new_inode(dir_inode->i_dev, inode_nr, free_sect_nr);
 
 	new_dir_entry(dir_inode, newino->i_num, filename);
 
