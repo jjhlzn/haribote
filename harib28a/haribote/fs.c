@@ -8,7 +8,7 @@ PRIVATE void mkfs();
 /**
  * 6MB~7MB: buffer for FS
  */
-PUBLIC	u8 *		fsbuf		= (u8*)0xe00000;
+PUBLIC	u8 *		fsbuf;
 PUBLIC	const int	FSBUF_SIZE	= 0x100000;
 
 static struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
@@ -74,6 +74,9 @@ PRIVATE void mkfs()
 	int i, j;
 
 	int bits_per_sect = SECTOR_SIZE * 8; /* 8 bits per byte */
+	
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	fsbuf = memman_alloc(memman,FSBUF_SIZE);
 
 	/* get the geometry of ROOTDEV */
 	struct part_info geo;
@@ -81,12 +84,10 @@ PRIVATE void mkfs()
 	driver_msg.DEVICE	= MINOR(ROOT_DEV);
 	driver_msg.REQUEST	= DIOCTL_GET_GEO;
 	driver_msg.BUF		= &geo;
-	driver_msg.PROC_NR	= 0; //TASK_FS;
-    //assert(dd_map[MAJOR(ROOT_DEV)].driver_nr != INVALID_DRIVER);
-	//send_recv(BOTH, dd_map[MAJOR(ROOT_DEV)].driver_nr, &driver_msg);
+	driver_msg.PROC_NR	= 0; //TASK_FS
 	hd_ioctl(&driver_msg);
 	
-	char strbuf[200];
+	debug("dev size: 0x%x sectors", geo.size);
 
 	/************************/
 	/*      super block     */
@@ -113,6 +114,9 @@ PRIVATE void mkfs()
 	memset1(fsbuf, 0x90, SECTOR_SIZE);
 	memcpy1(fsbuf, &sb,  SUPER_BLOCK_SIZE);
 	
+	
+	debug("sb.n_1st_sect = %d",sb.n_1st_sect);
+	
 	/* write the super block */
 	WR_SECT(ROOT_DEV, 1);
 
@@ -123,7 +127,7 @@ PRIVATE void mkfs()
 	for (i = 0; i < (NR_CONSOLES + 2); i++)
 		fsbuf[0] |= 1 << i;
 
-	//assert(fsbuf[0] == 0x1F);/* 0001 1111 : 
+	assert(fsbuf[0] == 0x1F);/* 0001 1111 : 
 	//			  *    | ||||
 	//			  *    | |||`--- bit 0 : reserved
 	//			  *    | ||`---- bit 1 : the first inode,
@@ -175,6 +179,7 @@ PRIVATE void mkfs()
 		pi->i_mode = I_CHAR_SPECIAL;
 		pi->i_size = 0;
 		pi->i_start_sect = MAKE_DEV(DEV_CHAR_TTY, i);
+		debug("pi->i_start_sect = %d",MAKE_DEV(DEV_CHAR_TTY, i));
 		pi->i_nr_sects = 0;
 	}
 	WR_SECT(ROOT_DEV, 2 + sb.nr_imap_sects + sb.nr_smap_sects);
@@ -194,6 +199,8 @@ PRIVATE void mkfs()
 		pde->inode_nr = i + 2; /* dev_tty0's inode_nr is 2 */
 		
 		sprintf(pde->name, "dev_tty%d", i);
+		debug("pde->inode_nr = %d",pde->inode_nr);
+		debug("pde->name = %s",pde->name);
 	}
 	WR_SECT(ROOT_DEV, sb.n_1st_sect);
 }
@@ -309,6 +316,72 @@ PUBLIC struct super_block * get_super_block(int dev)
 }
 
 
+/*****************************************************************************/
+/**
+ * Get all the inodes of files
+ *
+******************************************************************************/
+PUBLIC struct FILEINFO* get_all_files(int dev){
+	int i, j;
+	
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	
+	/**
+	 * Search the dir for the files.
+	 */
+	int dir_blk0_nr = root_inode->i_start_sect;
+	debug("root_inode->i_start_sect = %d",root_inode->i_start_sect);
+	int nr_dir_blks = (root_inode->i_size + SECTOR_SIZE - 1) / SECTOR_SIZE;
+	int nr_dir_entries = root_inode->i_size / DIR_ENTRY_SIZE; /**
+															   * including unused slots
+															   * (the file has been deleted
+															   * but the slot is still there)
+															   */
+	debug("nr_dir_blks = %d",nr_dir_blks);
+	debug("nr_dir_entries = %d",nr_dir_entries);
+	
+	int m = 0;
+	struct dir_entry * pde;
+	
+	struct FILEINFO * p_file = memman_alloc(memman, (nr_dir_entries+1) * sizeof(struct FILEINFO));
+	struct FILEINFO * file_list = p_file;
+	for (i = 0; i < nr_dir_blks; i++) {
+		debug("read sect[%d]",dir_blk0_nr + i);
+		RD_SECT(root_inode->i_dev, dir_blk0_nr + i);
+		
+		int index = 0;
+		char* str2[70];
+		str2[0] = 0;
+		debug("strlen(str) = %d",strlen(str2));
+		for(index = 0; index < 4; index++){
+			sprintf(str2+strlen(str2),"%x ",fsbuf[index]);
+			debug("strlen(str) = %d, str = %s",strlen(str2), str2);
+		}
+		debug(str2);
+		debug("strlen(str) = %d",strlen(str2));
+		
+		pde = (struct dir_entry *)fsbuf;
+		
+		for (j = 0; j < SECTOR_SIZE / DIR_ENTRY_SIZE; j++,pde++) {
+			struct inode *tmp_inode = get_inode(dev,pde->inode_nr);
+			//strcpy(p_file->name,pde->name);
+			//p_file->name[strlen(pde->name)] = 0;
+			debug("filename = %s, inode_nr = %d, tmp_inode->i_size = %d",pde->name,pde->inode_nr,tmp_inode->i_size);
+			
+			//p_file->size = tmp_inode->i_size;
+			
+			//p_file++;
+			if (++m > nr_dir_entries)
+				break;
+		}
+		if (m > nr_dir_entries) /* all entries have been iterated */
+			break;
+	}
+	p_file = 0;
+	return file_list;
+}
+
+
 /*****************************************************************************
  *                                get_inode
  *****************************************************************************/
@@ -344,8 +417,8 @@ PUBLIC struct inode * get_inode(int dev, int num)
 	}
 
 	if (!q)
-		//panic("the inode table is full");
-		print_on_screen("the inode table is full");
+		panic("the inode table is full");
+	
 	q->i_dev = dev;
 	q->i_num = num;
 	q->i_cnt = 1;

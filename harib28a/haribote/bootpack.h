@@ -313,6 +313,8 @@ struct FILEINFO {
 	char reserve[10];
 	unsigned short time, date, clustno;
 	unsigned int size;
+	
+	//unsigned char filename[20]; //为了处理大于6个字符文件名的情况
 };
 void file_readfat(int *fat, unsigned char *img);
 void file_loadfile(int clustno, int size, char *buf, int *fat, char *img);

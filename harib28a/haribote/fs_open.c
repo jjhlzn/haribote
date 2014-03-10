@@ -85,7 +85,7 @@ PUBLIC int do_open(char *pathname, int flags, struct TASK *pcaller)
 		f_desc_table[i].fd_inode = pin;
 
 		f_desc_table[i].fd_mode = flags;
-		/* f_desc_table[i].fd_cnt = 1; */
+		//f_desc_table[i].fd_cnt = 1; 
 		f_desc_table[i].fd_pos = 0;
 
 		int imode = pin->i_mode & I_TYPE_MASK;
@@ -104,10 +104,10 @@ PUBLIC int do_open(char *pathname, int flags, struct TASK *pcaller)
 			//	  &driver_msg);
 		}
 		else if (imode == I_DIRECTORY) {
-			//assert(pin->i_num == ROOT_INODE);
+			assert(pin->i_num == ROOT_INODE);
 		}
 		else {
-			//assert(pin->i_mode == I_REGULAR);
+			assert(pin->i_mode == I_REGULAR);
 		}
 	}
 	else {

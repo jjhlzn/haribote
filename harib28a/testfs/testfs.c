@@ -39,6 +39,7 @@ void HariMain(){
 		n = api_write(fd_write,bufw,strlen(bufw));
 		n = api_read(fd_read,bufw,25);
 		api_putstr0(bufw);
+		api_putstr0("\n");
 	}
 	api_close(fd_read);
 	api_close(fd_write);

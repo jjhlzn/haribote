@@ -16,10 +16,6 @@ void inthandler2c(int *esp)
 	io_out8(PIC0_OCW2, 0x62);	/* 通知PIC0 IRQ-02的受理已经完成  0x62 = 0110 0010 */
 	data = io_in8(PORT_KEYDAT);
 	fifo32_put(mousefifo, data + mousedata0);
-	
-	sprintf(strbuf,"mouse interrupt %d happen", i++);
-	boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 620+16+16, 620+8*50, 620+16+16+16);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 10, 620+16+16, COL8_000000, strbuf);
 	return;
 }
 

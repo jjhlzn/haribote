@@ -134,7 +134,7 @@ void cons_putchar(struct CONSOLE *cons, int chr, char move)
 	char s[2];
 	s[0] = chr;
 	s[1] = 0;
-	if (s[0] == 0x09) {	/* 僞僽 */
+	if (s[0] == 0x09) {	/* TAB */
 		for (;;) {
 			if (cons->sht != 0) {
 				putfonts8_asc_sht(cons->sht, cons->cur_x, cons->cur_y, COL8_FFFFFF, COL8_000000, " ", 1);
@@ -147,11 +147,11 @@ void cons_putchar(struct CONSOLE *cons, int chr, char move)
 				break;	/* 32偱妱傝愗傟偨傜break */
 			}
 		}
-	} else if (s[0] == 0x0a) {	/* 夵峴 */
+	} else if (s[0] == 0x0a) {	/* 换行 */
 		cons_newline(cons);
-	} else if (s[0] == 0x0d) {	/* 暅婣 */
-		/* 偲傝偁偊偢側偵傕偟側偄 */
-	} else {	/* 晛捠偺暥帤 */
+	} else if (s[0] == 0x0d) {	/* 回车 */
+		/*  */
+	} else {	/* 常规支付 */
 		if (cons->sht != 0) {
 			putfonts8_asc_sht(cons->sht, cons->cur_x, cons->cur_y, COL8_FFFFFF, COL8_000000, s, 1);
 		}
@@ -253,6 +253,21 @@ void cmd_partition(struct CONSOLE *cons)
 	print_hdinfo(str);
 	cons_putstr0(cons, str);
 }
+
+
+void cmd_ls(struct CONSOLE *cons){
+	//获取文件列表
+	int dev = ROOT_DEV;
+	debug("dev = %d",dev);
+	struct FILEINFO *p_file = get_all_files(dev);
+	char str[100];
+	while(p_file){
+		sprintf(str,"%s   %d",p_file->name,p_file->size);
+		cons_putstr0(cons,str);
+		p_file++;
+	}
+}
+
 
 void cmd_hd(struct CONSOLE *cons)
 {
@@ -442,6 +457,10 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 		name[i + 3] = 'B';
 		name[i + 4] = 0;
 		finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+	}
+	
+	if(finfo == 0){
+		debug("can't find file[%s]",name);
 	}
 
 	if (finfo != 0) {
@@ -753,13 +772,11 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		debug("open fd: pathname = %s, flags = %d",pathname,flags);
 		int fd = do_open(pathname,flags,task);
 		debug("open fd(%d)", fd);
-		//debug("open fd: pathname = %s, flags = %d",pathname,flags);
 		reg[7] = fd;
 	} else if(edx == 30){
 		int fd = eax;
 		char str[100];
-		sprintf(str,"close fd(%d)",fd);
-		print_on_screen(str);
+		debug("close fd(%d)",fd);
 		do_close(fd,task);
 	} else if(edx == 31){
 		int fd = eax;
