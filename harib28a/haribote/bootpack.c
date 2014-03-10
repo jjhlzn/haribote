@@ -33,6 +33,7 @@ unsigned char rgb2pal(int r, int g, int b, int x, int y);
 
 void load_background_pic(char* back_buf, int *fat);
 static struct BOOTINFO *bootinfo = (struct BOOTINFO *) ADR_BOOTINFO;
+static struct SHEET  *log_win = -1;
 void HariMain(void)
 {
 	
@@ -98,8 +99,6 @@ void HariMain(void)
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
 	memman_free(memman, 0x00400000, memtotal - 0x00400000);
 	
-	sprintf(strbuf,"memory %dMB free : %dKB", memtotal / (1024 * 1024), 
-			memman_total(memman) / 1024);
 
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
@@ -118,6 +117,9 @@ void HariMain(void)
 	
 	/* sht_cons */
 	key_win = open_console(shtctl, memtotal);
+	
+	log_win = open_log_console(shtctl,memtotal);
+	//key_win = log_win;
 
 	/* sht_mouse */
 	sht_mouse = sheet_alloc(shtctl);
@@ -127,13 +129,14 @@ void HariMain(void)
 	my = (binfo->scrny - 28 - 16) / 2;
 
 	sheet_slide(sht_back,  0,  0);
-	sheet_slide(key_win,   32, 4);
+	sheet_slide(key_win,   20, 4);
+	sheet_slide(log_win,   520, 4);
 	sheet_slide(sht_mouse, mx, my);
 	sheet_updown(sht_back,  0);
-	sheet_updown(key_win,   1);
-	sheet_updown(sht_mouse, 2);
+	sheet_updown(log_win,   1);
+	sheet_updown(key_win,   2);
+	sheet_updown(sht_mouse, 3);
 	keywin_on(key_win);
-	
 
 	char *BIOS = (char *)0xf00;
 	int *BIOS2 = (int *)0xf00;
@@ -145,19 +148,14 @@ void HariMain(void)
 	unsigned char sect = *(unsigned char *) (14+BIOS);    //63
 	
 	//显示内存信息 
-	print_on_screen(strbuf);
+	debug("memory %dMB free : %dKB", memtotal / (1024 * 1024), 
+			memman_total(memman) / 1024);
 	
-	sprintf(strbuf,"dd1 = %8x, dd2 = %8x, dd3 = %8x, dd4 = %8x", 
-		*BIOS2, *(BIOS2+1), *(BIOS2+2), *(BIOS2+3));
-	print_on_screen(strbuf);
+	debug("dd1 = %8x, dd2 = %8x, dd3 = %8x, dd4 = %8x", *BIOS2, *(BIOS2+1), *(BIOS2+2), *(BIOS2+3));
 	
-	sprintf(strbuf,"cyl = %u, head = %u, wpcom = %u ctl = %u, lzone = %u, sect = %u", 
+	debug("cyl = %u, head = %u, wpcom = %u ctl = %u, lzone = %u, sect = %u", 
 		cyl, head, wpcom,
 		ctl, lzone, sect);
-	print_on_screen(strbuf);
-	
-	sprintf(strbuf,"hd = %x", binfo->hd0);
-	print_on_screen(strbuf);
 
 	/* 嵟弶偵僉乕儃乕僪忬懺偲偺怘偄堘偄偑側偄傛偆偵丄愝掕偟偰偍偔偙偲偵偡傞 */
 	fifo32_put(&keycmd, KEYCMD_LED);
@@ -166,7 +164,6 @@ void HariMain(void)
 	/* nihongo.fnt偺撉傒崬傒 */
 	fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 	file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
-	
 	
 	//加载壁纸
 	//load_background_pic(buf_back, fat);
@@ -303,6 +300,7 @@ void HariMain(void)
 						keywin_off(key_win);
 					}
 					key_win = open_console(shtctl, memtotal);
+					log_win = key_win;
 					sheet_slide(key_win, 32, 4);
 					sheet_updown(key_win, shtctl->top);
 					keywin_on(key_win);
@@ -479,6 +477,27 @@ struct TASK *open_constask(struct SHEET *sht, unsigned int memtotal)
 	return task;
 }
 
+struct TASK *open_log_task(struct SHEET *sht, unsigned int memtotal)
+{
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	struct TASK *task = task_alloc();
+	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
+	task->cons_stack = memman_alloc_4k(memman, 64 * 1024);
+	task->tss.esp = task->cons_stack + 64 * 1024 - 12;
+	task->tss.eip = (int) &log_task;
+	task->tss.es = 1 * 8;
+	task->tss.cs = 2 * 8;
+	task->tss.ss = 1 * 8;
+	task->tss.ds = 1 * 8;
+	task->tss.fs = 1 * 8;
+	task->tss.gs = 1 * 8;
+	*((int *) (task->tss.esp + 4)) = (int) sht;
+	*((int *) (task->tss.esp + 8)) = memtotal;
+	task_run(task, 2, 2); /* level=2, priority=2 */
+	fifo32_init(&task->fifo, 128, cons_fifo, task);
+	return task;
+}
+
 
 struct SHEET *open_console(struct SHTCTL *shtctl, unsigned int memtotal)
 {
@@ -492,6 +511,20 @@ struct SHEET *open_console(struct SHTCTL *shtctl, unsigned int memtotal)
 	sht->flags |= 0x20;	/* 僇乕僜儖偁傝 */
 	return sht;
 }
+
+struct SHEET *open_log_console(struct SHTCTL *shtctl, unsigned int memtotal)
+{
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	struct SHEET *sht = sheet_alloc(shtctl);
+	unsigned char *buf = (unsigned char *) memman_alloc_4k(memman, CONSOLE_WIDTH * CONSOLE_HEIGHT); //长、宽都扩大一倍
+	sheet_setbuf(sht, buf, CONSOLE_WIDTH, CONSOLE_HEIGHT, -1); /* 摟柧怓側偟 */
+	make_window8(buf, CONSOLE_WIDTH, CONSOLE_HEIGHT, "log", 0);
+	make_textbox8(sht, 8, 28, CONSOLE_CONTENT_WIDTH, CONSOLE_CONENT_HEIGHT, COL8_000000);
+	sht->task = open_log_task(sht, memtotal);
+	sht->flags |= 0x20;	/* 僇乕僜儖偁傝 */
+	return sht;
+}
+
 
 void close_constask(struct TASK *task)
 {
@@ -631,28 +664,44 @@ void print_on_screen2(char *msg, int x, int y){
 }
 
 void debug(const char *fmt, ...){
+	static int invoke_level = 0;
+	invoke_level++;
+	
+	if(invoke_level > 1){
+		panic("debug nested call happen");
+	}
 	int i;
 	char buf[1024];
 	
 	va_list arg = (va_list)((char *)(&fmt) + 4);
 	
 	i = vsprintf(buf,fmt,arg);
-	print_on_screen(buf);
 	
+	//print_on_screen(buf);
+	
+	char buf2[1025];
+	sprintf(buf2,"%s\n",buf);
+	if(log_win != -1)
+		cons_putstr0(log_win->task->cons,buf2);
+	
+	//cons_putstr0(log_win,buf);
+	//print_on_screen(buf);
+	invoke_level--;
 	return;
 }
 
 PUBLIC void panic(const char *fmt, ...)
 {
 	int i;
-	char buf[256];
+	char buf[256], buf2[256];
 
 	/* 4 is the size of fmt in the stack */
 	va_list arg = (va_list)((char*)&fmt + 4);
 
 	i = vsprintf(buf, fmt, arg);
 
-	debug("%c !!panic!! %s", MAG_CH_PANIC, buf);
+	sprintf(buf2,"%c !!panic!! %s", MAG_CH_PANIC, buf);
+	print_on_screen(buf2);
 
 	/* should never arrive here */
 	ud2();

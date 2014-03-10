@@ -289,6 +289,7 @@ struct FILEHANDLE {
 	int pos;
 };
 void console_task(struct SHEET *sheet, int memtotal);
+void log_task(struct SHEET *sheet, int memtotal);
 void cons_putchar(struct CONSOLE *cons, int chr, char move);
 void cons_newline(struct CONSOLE *cons);
 void cons_putstr0(struct CONSOLE *cons, char *s);
@@ -469,8 +470,8 @@ void assertion_failure(char *exp, char *file, char *base_file, int line);
 
 #define	DIOCTL_GET_GEO	1
 
-#define CONSOLE_WIDTH_COLS 48
-#define CONSOLE_HEIGHT_LINES 14
+#define CONSOLE_WIDTH_COLS 56
+#define CONSOLE_HEIGHT_LINES 44
 #define CONSOLE_CONTENT_WIDTH (CONSOLE_WIDTH_COLS*8)
 #define CONSOLE_CONENT_HEIGHT (CONSOLE_HEIGHT_LINES*16)
 #define CONSOLE_WIDTH (CONSOLE_WIDTH_COLS*8+16)

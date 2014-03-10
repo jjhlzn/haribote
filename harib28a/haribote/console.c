@@ -7,7 +7,55 @@
 #include "hd.h"
 
 int do_rdwt(MESSAGE * msg,struct TASK *pcaller);
- 
+
+void log_task(struct SHEET *sheet, int memtotal)
+{
+	struct TASK *task = task_now();
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	unsigned int i;
+	int *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+	struct CONSOLE cons;
+	struct FILEHANDLE fhandle[8];
+	char cmdline[CONSOLE_WIDTH_COLS];
+	unsigned char *nihongo = (char *) *((int *) 0x0fe8);
+
+	cons.sht = sheet;
+	cons.cur_x =  8;
+	cons.cur_y = 28;
+	cons.cur_c = -1;
+	task->cons = &cons;
+	task->cmdline = cmdline;
+
+	if (cons.sht != 0) {
+		cons.timer = timer_alloc();
+		timer_init(cons.timer, &task->fifo, 1);
+		timer_settime(cons.timer, 50);
+	}
+	file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
+	for (i = 0; i < 8; i++) {
+		fhandle[i].buf = 0;	/* 枹巊梡儅乕僋 */
+	}
+	task->fhandle = fhandle;
+	task->fat = fat;
+	if (nihongo[4096] != 0xff) {	/* 擔杮岅僼僅儞僩僼傽僀儖傪撉傒崬傔偨偐丠 */
+		task->langmode = 1;
+	} else {
+		task->langmode = 0;
+	}
+	task->langbyte1 = 0;
+
+	for (;;) {
+		io_cli();
+		if (fifo32_status(&task->fifo) == 0) {
+			task_sleep(task);
+			io_sti();
+		} else{
+			i = fifo32_get(&task->fifo);
+			io_sti();
+		}
+	}
+}
+
 void console_task(struct SHEET *sheet, int memtotal)
 {
 	struct TASK *task = task_now();
@@ -735,8 +783,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		sht = (struct SHEET *) (ebx & 0xfffffffe);
 		
 		char strbuf[50];
-		sprintf(strbuf,"invoke 28 minfo->flag = %d", minfo->flag);
-		putfonts8_asc_sht(sht, 60, 70, 0, 15, strbuf,40);
+		debug("invoke 28 minfo->flag = %d", minfo->flag);
 		
 		for (;;) {
 			io_cli();
@@ -750,8 +797,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 				}
 			}
 			i = fifo32_get(&task->fifo);
-			sprintf(strbuf,"i = %x", i);
-			putfonts8_asc_sht(sht, 60, 95, 0, 15, strbuf,40);
+			debug("i = %x", i);
 			io_sti();
 	
 			if (i >= 0x80000000) { /* 鼠标数据 */
@@ -785,8 +831,6 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		int fd = eax;
 		char *buf = (char *)(ebx+ds_base);
 		int len = ebp;
-		char str[100];
-		//sprintf(str,"read content from fd(%d)",fd);
 		
 		MESSAGE msg;
 		msg.FD = fd;
@@ -797,8 +841,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		reg[7] = do_rdwt(&msg,task);
 		buf[reg[7]] = 0; //设置结尾符
 		
-		sprintf(str,"read contents = [%s]",buf);
-		print_on_screen(str);
+		debug("read contents = [%s]",buf);
 		
 	} else if(edx == 32){        //api_write
 		int fd = eax;
@@ -814,7 +857,6 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		
 		reg[7] = do_rdwt(&msg,task);
 		
-		char str[100];
 		debug("write contets(%s) to fd(%d)",buf, fd);
 
 	}
