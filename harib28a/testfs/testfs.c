@@ -35,7 +35,7 @@ void HariMain(){
 	
 	int i = 2;
 	while(i--){
-		sprintf(bufw,"my name is jinjunhang! %d ", i);
+		sprintf(bufw,"jinjunhang! %d ", i);
 		n = api_write(fd_write,bufw,strlen(bufw));
 		n = api_read(fd_read,bufw,25);
 		api_putstr0(bufw);

@@ -686,6 +686,13 @@ PUBLIC void spin(char * func_name)
 	while (1) {}
 }
 
+PUBLIC char * string_memory(u8 *mem, int size, char *buf){
+	int i = 0;
+	for(i = 0; i < size; i++){
+		sprintf(buf+strlen(buf),"%x ",mem[i]);
+	}
+}
+
 PUBLIC void assertion_failure(char *exp, char *file, char *base_file, int line)
 {
 	char str[200];

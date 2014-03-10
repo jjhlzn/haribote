@@ -261,11 +261,16 @@ void cmd_ls(struct CONSOLE *cons){
 	debug("dev = %d",dev);
 	struct FILEINFO *p_file = get_all_files(dev);
 	char str[100];
-	while(p_file){
-		sprintf(str,"%s   %d",p_file->name,p_file->size);
+	int size = 0;
+	while(p_file -> size != -1){
+		sprintf(str,"%12s   %5d\n",p_file->name,p_file->size);
 		cons_putstr0(cons,str);
 		p_file++;
+		size++;
 	}
+	// Õ∑≈p_file
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	memman_free(memman,p_file,(size+1) * sizeof(struct FILEINFO));
 }
 
 

@@ -339,45 +339,49 @@ PUBLIC struct FILEINFO* get_all_files(int dev){
 															   */
 	debug("nr_dir_blks = %d",nr_dir_blks);
 	debug("nr_dir_entries = %d",nr_dir_entries);
+
 	
 	int m = 0;
 	struct dir_entry * pde;
-	
 	struct FILEINFO * p_file = memman_alloc(memman, (nr_dir_entries+1) * sizeof(struct FILEINFO));
 	struct FILEINFO * file_list = p_file;
+	//获取文件名
 	for (i = 0; i < nr_dir_blks; i++) {
 		debug("read sect[%d]",dir_blk0_nr + i);
 		RD_SECT(root_inode->i_dev, dir_blk0_nr + i);
-		
-		int index = 0;
-		char* str2[70];
-		str2[0] = 0;
-		debug("strlen(str) = %d",strlen(str2));
-		for(index = 0; index < 4; index++){
-			sprintf(str2+strlen(str2),"%x ",fsbuf[index]);
-			debug("strlen(str) = %d, str = %s",strlen(str2), str2);
-		}
-		debug(str2);
-		debug("strlen(str) = %d",strlen(str2));
-		
 		pde = (struct dir_entry *)fsbuf;
-		
 		for (j = 0; j < SECTOR_SIZE / DIR_ENTRY_SIZE; j++,pde++) {
-			struct inode *tmp_inode = get_inode(dev,pde->inode_nr);
-			//strcpy(p_file->name,pde->name);
-			//p_file->name[strlen(pde->name)] = 0;
-			debug("filename = %s, inode_nr = %d, tmp_inode->i_size = %d",pde->name,pde->inode_nr,tmp_inode->i_size);
-			
-			//p_file->size = tmp_inode->i_size;
-			
-			//p_file++;
 			if (++m > nr_dir_entries)
 				break;
+			strcpy(p_file->name,pde->name);
+			p_file->size = pde->inode_nr; //暂时用i_size来存储inode_nr
+			p_file++;
+			debug(pde->name);
+			
 		}
 		if (m > nr_dir_entries) /* all entries have been iterated */
 			break;
 	}
-	p_file = 0;
+	
+	//获取文件大小
+	p_file = file_list; //重置p_file到开头
+	m=0;
+	for (i = 0; i < nr_dir_blks; i++) {
+		for (j = 0; j < SECTOR_SIZE / DIR_ENTRY_SIZE; j++,pde++) {
+			if (++m > nr_dir_entries)
+				break;
+			struct inode *tmp_inode = get_inode(dev,p_file->size); //这时p_file->inode_nr
+													//get_inode需要读取扇区，会覆盖fsbuf,因此需要和上面获取文件名的循环独立开
+			p_file->size = tmp_inode->i_size;
+			debug("filename = [%s], filesize = [%d]",p_file->name,p_file->size);
+			p_file++;
+			
+			
+		}
+		if (m > nr_dir_entries) /* all entries have been iterated */
+			break;
+	}
+	p_file -> size = -1;
 	return file_list;
 }
 

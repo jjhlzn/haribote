@@ -143,26 +143,9 @@ void hd_open(int device)
 		}
 		else {
 			if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT)){
-				//panic("hd writing error.");
-				//sprintf(strbuf,"hd writing error.");
-				//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 500+16+16, 500+8*50, 500+16+16+16);
-				//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 500+16+16, COL8_000000, strbuf);
-				return;
+				panic("hd writing error.");
 			}
-			//sprintf(strbuf,"before write: bytes_left = %d", bytes_left);
-			//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 500+16+16, 500+8*50, 500+16+16+16);
-			//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 500+16+16, COL8_000000, strbuf);
-			
-			sprintf(strbuf,"");
-			int i=0; 
-			u8 *buf = (u8 *)la;
-			for(i =0; i<16; i++){
-				sprintf(strbuf+strlen(strbuf),"%x ",buf[i]);
-			}
-			boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 700+16+16, 700+8*50, 700+16+16+16);
-			putfonts8_asc(binfo->vram, binfo->scrnx, 10, 700+16+16, COL8_000000, strbuf);
 		
-			
 			port_write(REG_DATA, la, bytes);
 			interrupt_wait();
 			
@@ -170,7 +153,6 @@ void hd_open(int device)
 		
 		bytes_left -= SECTOR_SIZE;
 		la += SECTOR_SIZE;
-
 	}
 }	
 
