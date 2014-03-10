@@ -90,7 +90,6 @@ void HariMain(void)
 	init_keyboard(&fifo, 256);
 	enable_mouse(&fifo, 512, &mdec);
 	io_out8(PIC0_IMR, 0xf8); /* PIT偲PIC1偲僉乕儃乕僪傪嫋壜(11111000) */
-	//io_out8(PIC1_IMR, 0xef); /* 儅僂僗傪嫋壜(11101111)  */
 	io_out8(PIC1_IMR, 0xaf); /* 儅僂僗傪嫋壜(10101111), 同时打开硬盘中断  */ 
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 
@@ -174,10 +173,6 @@ void HariMain(void)
 	//sheet_slide(sht_back,  0,  0); //刷新壁纸
 	init_hd(&fifo);
 	init_fs();
-
-	
-	sprintf(strbuf,"hd and fs initialized!");
-	print_on_screen(strbuf);
 
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {
@@ -484,14 +479,15 @@ struct TASK *open_constask(struct SHEET *sht, unsigned int memtotal)
 	return task;
 }
 
+
 struct SHEET *open_console(struct SHTCTL *shtctl, unsigned int memtotal)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct SHEET *sht = sheet_alloc(shtctl);
-	unsigned char *buf = (unsigned char *) memman_alloc_4k(memman, 256 * 165);
-	sheet_setbuf(sht, buf, 256, 165, -1); /* 摟柧怓側偟 */
-	make_window8(buf, 256, 165, "console", 0);
-	make_textbox8(sht, 8, 28, 240, 128, COL8_000000);
+	unsigned char *buf = (unsigned char *) memman_alloc_4k(memman, CONSOLE_WIDTH * CONSOLE_HEIGHT); //长、宽都扩大一倍
+	sheet_setbuf(sht, buf, CONSOLE_WIDTH, CONSOLE_HEIGHT, -1); /* 摟柧怓側偟 */
+	make_window8(buf, CONSOLE_WIDTH, CONSOLE_HEIGHT, "console", 0);
+	make_textbox8(sht, 8, 28, CONSOLE_CONTENT_WIDTH, CONSOLE_CONENT_HEIGHT, COL8_000000);
 	sht->task = open_constask(sht, memtotal);
 	sht->flags |= 0x20;	/* 僇乕僜儖偁傝 */
 	return sht;
