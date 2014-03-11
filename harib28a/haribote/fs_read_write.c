@@ -25,8 +25,6 @@ extern u8 *		fsbuf;
  *****************************************************************************/
 PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 {
-	char str[200];
-	
 	MESSAGE fs_msg = *msg;
 	int fd = msg->FD;	/**< file descriptor. */
 	void * buf = fs_msg.BUF;/**< r/w buffer */

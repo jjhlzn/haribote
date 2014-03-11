@@ -6,22 +6,22 @@
 extern u8 *fsbuf;
 void	port_read(u16 port, void* buf, int n);
 int waitfor(int mask, int val, int timeout);
+void hd_cmd_out(struct hd_cmd* cmd);
+void interrupt_wait();
 
 struct FIFO32 *hdfifo;
 int hasInterrupt = 0;
 u8	hdbuf[SECTOR_SIZE * 2];
 
-static struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 static struct hd_info	hd_info[1];
-PRIVATE struct part_ent PARTITION_ENTRY;
 #define	DRV_OF_DEV(dev) (dev <= MAX_PRIM ? \
 							dev / NR_PRIM_PER_DRIVE : \
 						   (dev - MINOR_hd1a) / NR_SUB_PER_DRIVE)
-static char strbuf[50];
-static int hd_interrupt_count = 0;
+
 void inthandler2e(int *esp)
 {
-	unsigned char hd_status = io_in8(REG_STATUS);
+	//unsigned char hd_status = io_in8(REG_STATUS);
+	io_in8(REG_STATUS);
 	io_out8(PIC1_OCW2, 0x66);	/* 通知PIC1 IRQ-14的受理已经完成  */
 	io_out8(PIC0_OCW2, 0x62);	/* 通知PIC0 IRQ-02的受理已经完成  */
 	//fifo32_put(hdfifo,3000);
@@ -36,8 +36,8 @@ void init_hd(struct FIFO32 * fifo)
 	
 	/* Get the number of drives from the BIOS data area */
 	unsigned char * pNrDrives = (unsigned char *)(0x475);
-	//assert(*pNrDrives);
-	char strbuf[50];	
+	assert(*pNrDrives);
+	
 }
 
 
@@ -94,11 +94,10 @@ void hd_open(int device)
  *****************************************************************************/
  void hd_rdwt(MESSAGE * p)
 {
-	char strbuf[200];
 	int drive = DRV_OF_DEV(p->DEVICE);
 
 	u64 pos = p->POSITION;
-	//assert((pos >> SECTOR_SIZE_SHIFT) < (1 << 31));
+	assert((pos >> SECTOR_SIZE_SHIFT) < (1 << 31));
 
 	/**
 	 * We only allow to R/W from a SECTOR boundary:
@@ -126,12 +125,10 @@ void hd_open(int device)
 	hd_cmd_out(&cmd);
 
 	int bytes_left = p->CNT;
-	int i = 0;
 	
 	//void * la = (void*)va2la(p->PROC_NR, p->BUF);
 	void * la = (void *)fsbuf;
-	
-	int loopcount = 0;
+
 	while (bytes_left) {
 		int bytes = min(SECTOR_SIZE, bytes_left);
 		
@@ -164,8 +161,7 @@ u8* hd_identify(int drive)
 	hd_cmd_out(&cmd);
 	interrupt_wait();
 	
-	char strbuf[100];
-	
+
 	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 	
 	u16* hdinfo = (u16*)hdbuf;
@@ -179,25 +175,9 @@ u8* hd_identify(int drive)
 }
 
 void interrupt_wait(){
-	char strbuf[100];
-	static int waitcount = 0;
-	
-	//sprintf(strbuf,"waiting for hd interrupt, hasInterrupt = %d", hasInterrupt);
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 400+16+16 + waitcount*16, 400+8*50+ waitcount*16, 400+16+16+16+ waitcount*16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 400+16+16+ waitcount*16, COL8_000000, strbuf);
-	int loopcount = 0;
 	while(!hasInterrupt){
-		//sprintf(strbuf,"interrupt_wait: loopcount = %d", loopcount++);
-		//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 660+16+16+ (waitcount+1)*16, 660+8*50+ (waitcount+1)*16, 660+16+16+16+ (waitcount+1)*16);
-		//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 660+16+16+ (waitcount+1)*16, COL8_000000, strbuf);
 	}
 	hasInterrupt = 0;
-	
-	//sprintf(strbuf,"interrupt_wait: get hd interrupt");
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 600+16+16, 600+8*50, 600+16+16+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 600+16+16, COL8_000000, strbuf);
-	
-	//waitcount++;
 }
 
 void hd_cmd_out(struct hd_cmd* cmd)
@@ -233,14 +213,9 @@ int waitfor(int mask, int val, int timeout)
 	//int t = get_ticks();
 
 	//while(((get_ticks() - t) * 1000 / HZ) < timeout)
-	int loopcount = 0;
 	while(1){   //简单处理，先不实现get_ticks()
 		if ((io_in8(REG_STATUS) & mask) == val)
 			return 1;
-		//char strbuf[100];
-		//sprintf(strbuf,"waite for hd status, loopcount = %d", loopcount++);
-		//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 620+16+16, 620+8*50, 620+16+16+16);
-		//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 620+16+16, COL8_000000, strbuf);
 	}
 	return 0;
 }

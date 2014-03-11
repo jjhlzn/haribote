@@ -275,4 +275,12 @@ struct hd_info
 #define	CASCADE_IRQ	2	/* cascade enable for 2nd AT controller */
 #define	AT_WINI_IRQ	14	/* at winchester */
 
+
+void partition(int device, int style);
+void print_hdinfo(char * str);
+void hd_open(int device);
+void hd_ioctl(MESSAGE * p);
+void hd_rdwt(MESSAGE * p);
+void init_hd(struct FIFO32 * fifo);
+
 #endif 

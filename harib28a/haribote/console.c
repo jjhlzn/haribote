@@ -5,8 +5,10 @@
 #include <stdio.h>
 #include <string.h>
 #include "hd.h"
+#include "fs.h"
 
 int do_rdwt(MESSAGE * msg,struct TASK *pcaller);
+void print_identify_info(u16* hdinfo, char* str);
 
 void log_task(struct SHEET *sheet, int memtotal)
 {
@@ -305,7 +307,7 @@ void cmd_ls(struct CONSOLE *cons){
 	//获取文件列表
 	int dev = ROOT_DEV;
 	debug("dev = %d",dev);
-	struct FILEINFO *p_file = get_all_files(dev);
+	struct FILEINFO *p_file = (struct FILEINFO*)get_all_files(dev);
 	char str[100];
 	int size = 0;
 	while(p_file -> size != -1){
@@ -316,7 +318,7 @@ void cmd_ls(struct CONSOLE *cons){
 	}
 	//释放p_file
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-	memman_free(memman,p_file,(size+1) * sizeof(struct FILEINFO));
+	memman_free(memman,(unsigned int)p_file,(size+1) * sizeof(struct FILEINFO));
 }
 
 
@@ -324,7 +326,7 @@ void cmd_hd(struct CONSOLE *cons)
 {
 	u8* hdinfo = hd_identify(0);
 	char str[200];
-	print_identify_info(hdinfo,str);
+	print_identify_info((u16*)hdinfo,str);
 	cons_putstr0(cons, str);
 }
 
@@ -564,7 +566,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 {
 	struct TASK *task = task_now();
 	int ds_base = task->ds_base;
-	int cs_base = task->cs_base;
+	//int cs_base = task->cs_base;
 	struct CONSOLE *cons = task->cons;
 	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 	struct SHEET *sht;
@@ -782,7 +784,6 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		struct MOUSE_INFO * minfo = (struct MOUSE_INFO*)(ebp + ds_base);
 		sht = (struct SHEET *) (ebx & 0xfffffffe);
 		
-		char strbuf[50];
 		debug("invoke 28 minfo->flag = %d", minfo->flag);
 		
 		for (;;) {
@@ -824,7 +825,6 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		reg[7] = fd;
 	} else if(edx == 30){
 		int fd = eax;
-		char str[100];
 		debug("close fd(%d)",fd);
 		do_close(fd,task);
 	} else if(edx == 31){

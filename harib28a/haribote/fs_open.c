@@ -349,7 +349,7 @@ PRIVATE void new_dir_entry(struct inode *dir_inode,int inode_nr,char *filename)
 						     * is still there)
 						     */
 	int m = 0;
-	struct dir_entry * pde;
+	struct dir_entry * pde = 0;
 	struct dir_entry * new_de = 0;
 
 	int i, j;

@@ -165,7 +165,23 @@ extern struct file_desc	f_desc_table[NR_FILE_DESC];
 extern struct inode		inode_table[NR_INODE];
 extern struct super_block	super_block[NR_SUPER_BLOCK];
 
+/* fs.c */
+struct FILEINFO* get_all_files(int dev);
+struct super_block * get_super_block(int dev);
+struct inode * get_inode(int dev, int num);
+int rw_sector(int io_type, int dev, u32 pos, int bytes, int proc_nr, void* buf);
+void put_inode(struct inode * pinode);
+void sync_inode(struct inode * p);
+struct FILEINFO* get_all_files(int dev);
 
+/* fs_open.c */
+int search_file(char * path);
+int do_open(char *pathname, int flags, struct TASK *pcaller);
+int do_close(int fd, struct TASK *pcaller);
+
+/* fs_misc.c */
+int strip_path(char * filename, const char * pathname,
+			   struct inode** ppinode);
 
 #define	MAX_PATH	128
 

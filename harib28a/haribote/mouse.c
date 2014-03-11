@@ -5,9 +5,6 @@
 struct FIFO32 *mousefifo;
 int mousedata0;
 
-static struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-static char strbuf[200];
-static long i = 0;
 void inthandler2c(int *esp)
 /* PS/2É}ÉEÉXÇ©ÇÁÇÃäÑÇËçûÇ› */
 {

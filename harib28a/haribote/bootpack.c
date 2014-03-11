@@ -3,7 +3,8 @@
 #include "bootpack.h"
 #include "keyboard.h"
 #include "keymap.h"
-
+#include "hd.h"
+#include <string.h>
 #include <stdio.h>
 
 #define KEYCMD_LED		0xed
@@ -12,7 +13,8 @@ void keywin_off(struct SHEET *key_win);
 void keywin_on(struct SHEET *key_win);
 void close_console(struct SHEET *sht);
 void close_constask(struct TASK *task);
-
+struct SHEET *open_log_console(struct SHTCTL *shtctl, unsigned int memtotal);
+ 
 struct DLL_STRPICENV {	/* 64KB */
 	int work[64 * 1024 / 4];
 };
@@ -33,7 +35,7 @@ unsigned char rgb2pal(int r, int g, int b, int x, int y);
 
 void load_background_pic(char* back_buf, int *fat);
 static struct BOOTINFO *bootinfo = (struct BOOTINFO *) ADR_BOOTINFO;
-static struct SHEET  *log_win = -1;
+static struct SHEET  *log_win = 0;
 void HariMain(void)
 {
 	
@@ -76,8 +78,6 @@ void HariMain(void)
 	unsigned char *nihongo;
 	struct FILEINFO *finfo;
 	extern char hankaku[4096];
-
-	char strbuf[50];
 	
 	init_gdtidt();
 	init_pic();
@@ -300,7 +300,6 @@ void HariMain(void)
 						keywin_off(key_win);
 					}
 					key_win = open_console(shtctl, memtotal);
-					log_win = key_win;
 					sheet_slide(key_win, 32, 4);
 					sheet_updown(key_win, shtctl->top);
 					keywin_on(key_win);
@@ -363,12 +362,13 @@ void HariMain(void)
 											/* 乽亊乿儃僞儞僋儕僢僋 */
 											if ((sht->flags & 0x10) != 0) {		/* 傾僾儕偑嶌偭偨僂傿儞僪僂偐丠 */
 												task = sht->task;
-												cons_putstr0(task->cons, "\nBreak(mouse) :\n");
+												
 												io_cli();	/* 嫮惂廔椆張棟拞偵僞僗僋偑曄傢傞偲崲傞偐傜 */
 												task->tss.eax = (int) &(task->tss.esp0);
 												task->tss.eip = (int) asm_end_app;
 												io_sti();
 												task_run(task, -1, 0);
+												
 											} else {	/* 僐儞僜乕儖 */
 												task = sht->task;
 												sheet_updown(sht, -1); /* 偲傝偁偊偢旕昞帵偵偟偰偍偔 */
@@ -572,7 +572,7 @@ void load_background_pic(char* buf_back, int *fat)
 	sprintf(filename, "night.bmp");
 	p = filename;
 	
-	int win, i, j, fsize, xsize, info[8];
+	int  i, j, fsize, info[8];
 	struct RGB picbuf[300*300], *q;	 //这里的空间不能太大，否则内核的栈不够用了
 	//picbuf = memman_alloc((struct MEMMAN *) MEMMAN_ADDR, 1024 * 768 * sizeof(struct RGB));
 	if(picbuf == 0)
@@ -606,7 +606,7 @@ void load_background_pic(char* buf_back, int *fat)
 			/*  不是JPEG */
 			//api_putstr0("file type unknown.\n");
 			//api_end();
-			memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, filebuf, fsize);
+			memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, (int)filebuf, fsize);
 			return;
 		}
 	}
@@ -622,7 +622,7 @@ void load_background_pic(char* buf_back, int *fat)
 
 	if (info[2] > 500 || info[3] > 400) {
 		//error("picture too large.\n");
-		memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, filebuf, fsize);
+		memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, (int)filebuf, fsize);
 		return;
 	}
 
@@ -638,11 +638,9 @@ void load_background_pic(char* buf_back, int *fat)
 
 	if (i != 0) {
 		//error("decode error.\n");
-		memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, filebuf, fsize);
+		memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, (int)filebuf, fsize);
 		return;
 	}
-	
-		
 	
 	buf_back = buf_back + binfo->scrnx * ( (binfo->scrny - 24) / 2 - info[3] / 2);
 
@@ -654,7 +652,7 @@ void load_background_pic(char* buf_back, int *fat)
 		}
 	}
 	
-	memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, filebuf, fsize);
+	memman_free_4k((struct MEMMAN *) MEMMAN_ADDR, (int)filebuf, fsize);
 }
 
 void print_on_screen2(char *msg, int x, int y){
@@ -681,8 +679,10 @@ void debug(const char *fmt, ...){
 	
 	char buf2[1025];
 	sprintf(buf2,"%s\n",buf);
-	if(log_win != -1)
+	if(log_win != 0){
+		//print_on_screen("print to console");
 		cons_putstr0(log_win->task->cons,buf2);
+	}
 	
 	//cons_putstr0(log_win,buf);
 	//print_on_screen(buf);
@@ -731,7 +731,7 @@ PUBLIC void spin(char * func_name)
 	while (1) {}
 }
 
-PUBLIC char * string_memory(u8 *mem, int size, char *buf){
+PUBLIC void string_memory(u8 *mem, int size, char *buf){
 	int i = 0;
 	for(i = 0; i < size; i++){
 		sprintf(buf+strlen(buf),"%x ",mem[i]);

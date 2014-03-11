@@ -2,21 +2,23 @@
 #include "hd.h"
 #include "fs.h"
 #include <string.h>
+#include <stdio.h>
 
 void init_fs();
 PRIVATE void mkfs();
+PRIVATE void read_super_block(int dev);
 /**
  * 6MB~7MB: buffer for FS
  */
 PUBLIC	u8 *		fsbuf;
 PUBLIC	const int	FSBUF_SIZE	= 0x100000;
 
-static struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-
 struct file_desc	f_desc_table[NR_FILE_DESC];
 struct inode		inode_table[NR_INODE];
 struct super_block	super_block[NR_SUPER_BLOCK];
 struct inode *		root_inode;
+
+
 
 /*****************************************************************************
  *                                init_fs
@@ -76,7 +78,7 @@ PRIVATE void mkfs()
 	int bits_per_sect = SECTOR_SIZE * 8; /* 8 bits per byte */
 	
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-	fsbuf = memman_alloc(memman,FSBUF_SIZE);
+	fsbuf = (u8 *)memman_alloc(memman,FSBUF_SIZE);
 
 	/* get the geometry of ROOTDEV */
 	struct part_info geo;
@@ -243,7 +245,7 @@ PUBLIC int rw_sector(int io_type, int dev, u32 pos, int bytes, int proc_nr,
 	hd_rdwt(&driver_msg);
 	return 0;
 }
-
+ 
 /*****************************************************************************
  *                                read_super_block
  *****************************************************************************/
@@ -343,7 +345,7 @@ PUBLIC struct FILEINFO* get_all_files(int dev){
 	
 	int m = 0;
 	struct dir_entry * pde;
-	struct FILEINFO * p_file = memman_alloc(memman, (nr_dir_entries+1) * sizeof(struct FILEINFO));
+	struct FILEINFO * p_file = (struct FILEINFO * )memman_alloc(memman, (nr_dir_entries+1) * sizeof(struct FILEINFO));
 	struct FILEINFO * file_list = p_file;
 	//获取文件名
 	for (i = 0; i < nr_dir_blks; i++) {
@@ -401,7 +403,7 @@ PUBLIC struct FILEINFO* get_all_files(int dev){
  *****************************************************************************/
 PUBLIC struct inode * get_inode(int dev, int num)
 {
-	if (num == 0)
+	if (num == 0) 
 		return 0;
 
 	struct inode * p;

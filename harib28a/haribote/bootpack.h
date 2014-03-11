@@ -51,6 +51,7 @@ void farcall(int eip, int cs);
 void asm_hrb_api(void);
 void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 void asm_end_app(void);
+void ud2();
 
 /* fifo.c */
 struct FIFO32 {
@@ -230,7 +231,7 @@ struct TSS32 {
 	int es, cs, ss, ds, fs, gs;
 	int ldtr, iomap;
 };
-#define	NR_FILES	10
+#define	NR_FILES	64
 struct TASK {
 	int pid;
 	int sel, flags; /* sel´ú±íTSSµÄGDT±àºÅ */
@@ -282,7 +283,7 @@ struct CONSOLE {
 	struct SHEET *sht;
 	int cur_x, cur_y, cur_c;
 	struct TIMER *timer;
-};
+}; 
 struct FILEHANDLE {
 	char *buf;
 	int size;
@@ -302,6 +303,9 @@ void cmd_exit(struct CONSOLE *cons, int *fat);
 void cmd_start(struct CONSOLE *cons, char *cmdline, int memtotal);
 void cmd_ncst(struct CONSOLE *cons, char *cmdline, int memtotal);
 void cmd_langmode(struct CONSOLE *cons, char *cmdline);
+void cmd_hd(struct CONSOLE *cons);
+void cmd_partition(struct CONSOLE *cons);
+void cmd_ls(struct CONSOLE *cons);
 int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline);
 int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
 int *inthandler0d(int *esp);
@@ -434,7 +438,7 @@ enum msgtype {
 /* max() & min() */
 #define	max(a,b)	((a) > (b) ? (a) : (b))
 #define	min(a,b)	((a) < (b) ? (a) : (b))
-
+      
 PUBLIC	void*	memcpy1(void* p_dst, void* p_src, int size);
 PUBLIC	void	memset1(void* p_dst, char ch, int size);
 
@@ -447,7 +451,7 @@ PUBLIC void print_on_screen(char *msg);
 PUBLIC void debug(const char *fmt, ...);
 void panic(const char *fmt, ...);
 
-#define	NR_FILES	64
+//#define	NR_FILES	64
 #define	NR_FILE_DESC	64	/* FIXME */
 #define	NR_INODE	64	/* FIXME */
 #define	NR_SUPER_BLOCK	8
