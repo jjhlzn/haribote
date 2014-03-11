@@ -47,7 +47,12 @@ void init_fs()
 	/* open the device: hard disk */
 	hd_open(MINOR(ROOT_DEV));
 
-	mkfs();
+	RD_SECT(ROOT_DEV,1);
+	sb = (struct super_block *)fsbuf;
+	if(sb->magic != MAGIC_V1){
+		debug("mkfs");
+		mkfs();
+	}
 	
 	/* load super block of ROOT */
 	read_super_block(ROOT_DEV);

@@ -44,13 +44,12 @@ void init_hd(struct FIFO32 * fifo)
 void hd_open(int device)
 {
 	int drive = DRV_OF_DEV(device);
-	//assert(drive == 0);	/* only one drive */
+	assert(drive == 0);	/* only one drive */
 
 	hd_identify(drive);
 
 	if (hd_info[drive].open_cnt++ == 0) {
 		partition(drive * (NR_PART_PER_DRIVE + 1), P_PRIMARY);
-		//print_hdinfo(&hd_info[drive]);
 	}
 }
 
