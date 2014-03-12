@@ -67,6 +67,8 @@ void console_task(struct SHEET *sheet, int memtotal)
 	struct CONSOLE cons;
 	struct FILEHANDLE fhandle[8];
 	char cmdline[CONSOLE_WIDTH_COLS];
+	char last_cmdline[CONSOLE_WIDTH_COLS];
+	sprintf(last_cmdline,"");
 	unsigned char *nihongo = (char *) *((int *) 0x0fe8);
 
 	cons.sht = sheet;
@@ -133,6 +135,13 @@ void console_task(struct SHEET *sheet, int memtotal)
 				cmd_exit(&cons, fat);
 			}
 			if (256 <= i && i <= 511) { /* 键盘数据 */
+				//debug("i = %d",i);
+				if (i ==  56  + 256 ) {//向上方向键
+					cons.cur_x = 16;
+					sprintf(cmdline,last_cmdline);
+					cons_putstr0(&cons,cmdline);
+					continue;
+				}
 				if (i == 8 + 256) {  //backsapce
 					if (cons.cur_x > 16) {
 						/* 将当前的字符变为空格 */
@@ -144,6 +153,7 @@ void console_task(struct SHEET *sheet, int memtotal)
 					cmdline[cons.cur_x / 8 - 2] = 0;
 					cons_newline(&cons);
 					cons_runcmd(cmdline, &cons, fat, memtotal);	/* 僐儅儞僪幚峴 */
+					sprintf(last_cmdline,cmdline);
 					if (cons.sht == 0) {
 						cmd_exit(&cons, fat);
 					}
@@ -858,7 +868,10 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		reg[7] = do_rdwt(&msg,task);
 		
 		debug("write contets(%s) to fd(%d)",buf, fd);
-
+	} else if(edx == 33){
+		int fd = eax;
+		reg[7] = task->filp[fd]->fd_inode->i_size;
+		debug("filesize of fd[%d] = %d",fd,reg[7]);
 	}
 	return 0;
 }

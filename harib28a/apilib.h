@@ -40,4 +40,5 @@ int api_open(const char *pathname, int flags);
 int api_close(const int fd);
 int api_read(const int fd, const char * buf, const int len);
 int api_write(const int fd, const char * buf, const int len); 
+int api_filesize(const int fd);
 #endif

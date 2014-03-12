@@ -1,8 +1,6 @@
 /* bootpackÇÃÉÅÉCÉì */
 
 #include "bootpack.h"
-#include "keyboard.h"
-#include "keymap.h"
 #include "hd.h"
 #include <string.h>
 #include <stdio.h>
@@ -725,9 +723,7 @@ void print_on_screen(char *msg){
 
 PUBLIC void spin(char * func_name)
 {
-	char str[100];
-	sprintf(str,"\nspinning in %s ...\n", func_name);
-	print_on_screen(str);
+	debug("\nspinning in %s ...\n", func_name);
 	while (1) {}
 }
 
@@ -740,11 +736,9 @@ PUBLIC void string_memory(u8 *mem, int size, char *buf){
 
 PUBLIC void assertion_failure(char *exp, char *file, char *base_file, int line)
 {
-	char str[200];
-	sprintf(str,"%c  assert(%s) failed: file: %s, base_file: %s, ln%d",
+	debug("%c  assert(%s) failed: file: %s, base_file: %s, ln%d",
 	       MAG_CH_ASSERT,
 	       exp, file, base_file, line);
-	print_on_screen(str);
 
 	/**
 	 * If assertion fails in a TASK, the system will halt before
