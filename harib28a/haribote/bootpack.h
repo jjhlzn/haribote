@@ -228,7 +228,7 @@ void timer_cancelall(struct FIFO32 *fifo);
 #define TASK_GDT0		3		/* TSS‚ðGDT‚Ì‰½”Ô‚©‚çŠ„‚è“–‚Ä‚é‚Ì‚© */
 #define MAX_TASKS_LV	100
 #define MAX_TASKLEVELS	10
-struct TSS32 {00.
+struct TSS32 {
 	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
 	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
 	int es, cs, ss, ds, fs, gs;
