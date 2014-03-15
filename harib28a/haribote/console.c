@@ -872,6 +872,12 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		int fd = eax;
 		reg[7] = task->filp[fd]->fd_inode->i_size;
 		debug("filesize of fd[%d] = %d",fd,reg[7]);
+	} else if(edx == 34){
+		struct TASK * new_task = do_fork(task);
+		debug("child_pid = %d",new_task->pid);
+		reg[7] = new_task->pid;
+		
+		//
 	}
 	return 0;
 }

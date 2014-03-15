@@ -22,7 +22,7 @@ PRIVATE void cleanup(struct proc * proc);
  * 
  * @return  Zero if success, otherwise -1.
  *****************************************************************************/
-PUBLIC int do_fork(TASK *task_parent)
+PUBLIC TASK* do_fork(TASK *task_parent)
 {
 	/* find a free slot in proc_table */
 	//struct proc* p = proc_table;
@@ -32,6 +32,8 @@ PUBLIC int do_fork(TASK *task_parent)
 	//		break;
 	//创建一个新任务
 	struct TASK *new_task = task_alloc();
+	
+	
 
 	if (new_task == 0) {/* no free slot */
 		debug("no free task struct");
@@ -47,6 +49,13 @@ PUBLIC int do_fork(TASK *task_parent)
 	//p->ldt_sel = child_ldt_sel;
 	//p->p_parent = pid;
 	//sprintf(p->name, "%s_%d", proc_table[pid].name, child_pid);
+	new_task->tss = task_parent->tss;
+	new_task->level = task_parent->level;
+	new_task->priority = task_parent->priority;
+	new_task->fhandle = task_parent->fhandle;
+	new_task->fat = task_parent->fat;
+	//使用和task_parnent同一个控制台
+	new_task->cons = task_parent->cons;
 
 	/* duplicate the process: T, D & S */
 	//struct descriptor * ppd;
@@ -57,6 +66,7 @@ PUBLIC int do_fork(TASK *task_parent)
 	u8 * code_seg = (u8 *)memman_alloc_4k(memman, DESCRIPTOR_LIMIT(pldt[0]));
 	set_segmdesc(new_task->ldt + 0, DESCRIPTOR_LIMIT(pldt[0]) - 1, (int) code_seg, AR_CODE32_ER + 0x60);
 	phys_copy(code_seg,SESCRIPTOR_BASE(pldt[0]),DESCRIPTOR_LIMIT(pldt[0]));
+	new_task->cs_base = code_seg;
 					
 	/* base of T-seg, in bytes */
 	//int caller_T_base  = reassembly(ppd->base_high, 24,
@@ -77,6 +87,7 @@ PUBLIC int do_fork(TASK *task_parent)
 	u8 *data_seg = (u8 *)memman_alloc_4k(memman, DESCRIPTOR_LIMIT(pldt[1]));
 	set_segmdesc(new_task->ldt + 1, DESCRIPTOR_LIMIT(pldt[1]) - 1, (int) code_seg, AR_DATA32_RW + 0x60);
 	phys_copy(code_seg,SESCRIPTOR_BASE(pldt[1]),DESCRIPTOR_LIMIT(pldt[1]));
+	new_task->ds_base = data_seg;
 	/* base of D&S-seg, in bytes */
 	//int caller_D_S_base  = reassembly(ppd->base_high, 24,
 	//				  ppd->base_mid,  16,
@@ -116,22 +127,23 @@ PUBLIC int do_fork(TASK *task_parent)
 	//	  DA_LIMIT_4K | DA_32 | DA_DRW | PRIVILEGE_USER << 5);
 
 	/* tell FS, see fs_fork() */
-	MESSAGE msg2fs;
-	msg2fs.type = FORK;
-	msg2fs.PID = child_pid;
-	send_recv(BOTH, TASK_FS, &msg2fs);
+	//MESSAGE msg2fs;
+	//msg2fs.type = FORK;
+	//msg2fs.PID = child_pid;
+	//send_recv(BOTH, TASK_FS, &msg2fs);
 	
+	struct file_desc **filp_parent = task_parent->filp, filp_new = new_task->filp;
 	int i;
-	struct proc* child = &proc_table[fs_msg.PID];
 	for (i = 0; i < NR_FILES; i++) {
-		if (child->filp[i]) {
-			child->filp[i]->fd_cnt++;
-			child->filp[i]->fd_inode->i_cnt++;
+		filp_new[i] = filp_parent[i];
+		if (filp_new[i]) {
+			filp_new[i]->fd_cnt++;
+			filp_new[i]->fd_inode->i_cnt++;
 		}
 	}
 
 	/* child PID will be returned to the parent proc */
-	mm_msg.PID = child_pid;
+	//mm_msg.PID = child_pid;
 
 	/* birth of the child */
 	MESSAGE m;
@@ -140,7 +152,7 @@ PUBLIC int do_fork(TASK *task_parent)
 	m.PID = 0;
 	send_recv(SEND, child_pid, &m);
 
-	return 0;
+	return new_task;
 }
 
 /*****************************************************************************
