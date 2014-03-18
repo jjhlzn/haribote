@@ -540,6 +540,10 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			task->cs_base = (int) p;
 			set_segmdesc(task->ldt + 0, appsiz - 1, (int) p, AR_CODE32_ER + 0x60);
 			set_segmdesc(task->ldt + 1, segsiz - 1, (int) q, AR_DATA32_RW + 0x60);
+			debug("code segment:");
+			debug("size = %d, add = %d",appsiz,(int)p);
+			debug("data segment:");
+			debug("size = %d, add = %d",segsiz,(int)q);
 			for (i = 0; i < datsiz; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
@@ -876,8 +880,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		struct TASK * new_task = do_fork(task);
 		debug("child_pid = %d",new_task->pid);
 		reg[7] = new_task->pid;
-		
-		//
+		task_add(new_task);
 	}
 	return 0;
 }

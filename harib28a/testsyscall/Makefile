@@ -1,4 +1,4 @@
-APP      = testsyscall
+APP      = testfork
 STACK    = 132k
 MALLOC   = 64k
 
