@@ -80,8 +80,8 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent)
 	new_task->fhandle = task_parent->fhandle;
 	new_task->fat = task_parent->fat;
 	//使用和task_parnent同一个控制台
-	//new_task->cons  = -1;
-	new_task->cons = task_parent->cons;
+	new_task->cons  = -1;
+	//new_task->cons = task_parent->cons;
 
 	/* duplicate the process: T, D & S */
 	//struct descriptor * ppd;
@@ -96,12 +96,16 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent)
 	//int tmp = pldt[0].limit_high;
 	//debug("DESCRIPTOR_LIMIT(pldt[0]) = %d",    ((((int)pldt[0].limit_high & 0x0F) << 16 ) + pldt[0].limit_low)   );
 	
-	u8 * code_seg = (u8 *)memman_alloc_4k(memman, DESCRIPTOR_LIMIT(pldt[0]));
-	set_segmdesc(new_task->ldt + 0, DESCRIPTOR_LIMIT(pldt[0]) - 1, (int) code_seg, AR_CODE32_ER + 0x60);
-	phys_copy(code_seg,DESCRIPTOR_BASE(pldt[0]),DESCRIPTOR_LIMIT(pldt[0]));
+	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
+	u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
+	set_segmdesc(new_task->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
+	phys_copy(code_seg,codeBase,codeLimit);
+	u8 *baseAdd = (int *)codeBase;
+	//debug("src data[0] = %d,src data[1] = %d,src data[2] = %d,src data[3] = %d",baseAdd[0],baseAdd[1],baseAdd[2],baseAdd[3]);
+	//debug("dst data[0] = %d,dst data[0] = %d,dst data[0] = %d,dst data[0] = %d",code_seg[0],code_seg[1],code_seg[2],code_seg[3]);
 	new_task->cs_base = code_seg;
 	
-	return new_task;
+	
 					
 	/* base of T-seg, in bytes */
 	//int caller_T_base  = reassembly(ppd->base_high, 24,
@@ -120,10 +124,11 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent)
 	/* Data & Stack segments */
 	//ppd = &proc_table[pid].ldts[INDEX_LDT_RW];
 	
-	u8 *data_seg = (u8 *)memman_alloc_4k(memman, DESCRIPTOR_LIMIT(pldt[1]));
-	debug("data segment size = %d, src base add = %d",DESCRIPTOR_LIMIT(pldt[1]),DESCRIPTOR_BASE(pldt[1]));
-	set_segmdesc(new_task->ldt + 1, DESCRIPTOR_LIMIT(pldt[1]) - 1, (int) code_seg, AR_DATA32_RW + 0x60);
-	phys_copy(code_seg,DESCRIPTOR_BASE(pldt[1]),DESCRIPTOR_LIMIT(pldt[1]));
+	int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
+	u8 *data_seg = (u8 *)memman_alloc_4k(memman, dataLimit);
+	debug("data segment size = %d, src base add = %d",dataLimit,dataBase);
+	set_segmdesc(new_task->ldt + 1, dataLimit - 1, (int) data_seg, AR_DATA32_RW + 0x60);
+	phys_copy(code_seg,dataBase,dataLimit);
 	new_task->ds_base = data_seg;
 	
 	

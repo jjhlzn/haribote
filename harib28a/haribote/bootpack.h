@@ -105,8 +105,8 @@ struct GATE_DESCRIPTOR {
 void init_gdtidt(void);
 void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar);
 void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
-#define DESCRIPTOR_LIMIT(sd) ( (((int)sd.limit_high & 0x0F) << 16) + sd.limit_low + 1)
-#define DESCRIPTOR_BASE(sd)  ( ((int)sd.base_high << 24) + ((int)sd.base_mid << 16) + sd.base_low)
+#define DESCRIPTOR_LIMIT(sd) ( (((unsigned int)sd.limit_high & 0x0F) << 16) + sd.limit_low + 1)
+#define DESCRIPTOR_BASE(sd)  ( ((unsigned int)sd.base_high << 24) + ((unsigned int)sd.base_mid << 16) + (unsigned short)sd.base_low )
 
 #define ADR_IDT			0x0026f800
 #define LIMIT_IDT		0x000007ff

@@ -6,9 +6,13 @@
 void HariMain(void){
 	//int fd_stdin  = api_open("/test.c", O_RDWR);
 	//int fd_stdout = open("/test.c", O_RDWR);
-
-	int pid = fork();
 	char str[100];
+	//short i = -32768;
+	//sprintf(str,"i = %u\n", (unsigned short)i);
+	//api_putstr0(str);
+	
+	int pid = fork();
+	
 	if (pid != 0) { /* parent process */
 		sprintf(str,"parent is running, child pid:%d\n", pid);
 		api_putstr0(str);

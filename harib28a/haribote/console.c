@@ -880,7 +880,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		struct TASK * new_task = do_fork(task);
 		debug("child_pid = %d",new_task->pid);
 		reg[7] = new_task->pid;
-		task_add(new_task);
+		//task_add(new_task);
 	}
 	return 0;
 }
