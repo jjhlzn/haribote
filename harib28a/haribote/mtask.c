@@ -84,11 +84,12 @@ struct TASK *task_init(struct MEMMAN *memman)
 	//事先将全部的TASK结构的TSS和LDT、文件描述符都设置好
 	for (i = 0; i < MAX_TASKS; i++) {
 		taskctl->tasks0[i].pid = i;
+		strcpy(taskctl->tasks0[i].name,"anony");
 		taskctl->tasks0[i].flags = 0; //标志未使用
-		taskctl->tasks0[i].sel = (TASK_GDT0 + i) * 8; //设置TSS的seletor
+		taskctl->tasks0[i].sel = (TASK_GDT0 + i) * 8; //设置TSS的seletor, 当进行任务切换的时候，是跳转到这个段上的。
 		taskctl->tasks0[i].tss.ldtr = (TASK_GDT0 + MAX_TASKS + i) * 8; 
-		set_segmdesc(gdt + TASK_GDT0 + i, 103, (int) &taskctl->tasks0[i].tss, AR_TSS32);
-		set_segmdesc(gdt + TASK_GDT0 + MAX_TASKS + i, 15, (int) taskctl->tasks0[i].ldt, AR_LDT);
+		set_segmdesc(gdt + TASK_GDT0 + i, 103, (int) &taskctl->tasks0[i].tss, AR_TSS32);  //TSS段 
+		set_segmdesc(gdt + TASK_GDT0 + MAX_TASKS + i, 15, (int) taskctl->tasks0[i].ldt, AR_LDT); //LDT段
 		//设置任务的文件描述符
 		for(j=0; j<NR_FILES; j++){
 			taskctl->tasks0[i].filp[j] = 0;
@@ -118,6 +119,7 @@ struct TASK *task_init(struct MEMMAN *memman)
 	idle->tss.ds = 1 * 8;
 	idle->tss.fs = 1 * 8;
 	idle->tss.gs = 1 * 8;
+	strcpy(idle->name,"idle");
 	task_run(idle, MAX_TASKLEVELS - 1, 1);
 
 	return task;
@@ -184,6 +186,7 @@ void task_sleep(struct TASK *task)
 			/* 如果是让自己休眠，则需要进行任务切换 */
 			task_switchsub();
 			now_task = task_now(); /* 在设定后获取当前任务的值 */
+			//debug("process[%d,%s] go to sleep, process[%d,%s] is running",task->pid,task->name,now_task->pid,now_task->name);
 			farjmp(0, now_task->sel);
 		}
 	}
@@ -205,6 +208,7 @@ void task_switch(void)
 	new_task = tl->tasks[tl->now];
 	timer_settime(task_timer, new_task->priority);
 	if (new_task != now_task) {
+		//debug("switch from process[%d,%s] to process[%d,%s]",now_task->pid,now_task->name,new_task->pid,new_task->name);
 		farjmp(0, new_task->sel);
 	}
 	return;

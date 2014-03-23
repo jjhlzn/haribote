@@ -460,9 +460,21 @@ _farcall:		; void farcall(int eip, int cs);
 
 _asm_hrb_api:
 		STI
+		PUSHAD		; 用于保存寄存器值得PUSH
+		;将ss,esp,eflags,cs,eip这些作为参数，传给hrb_api
+		
+		PUSH [ESP+52] ;SS
+		PUSH [ESP+52] ;ESP
+		PUSH [ESP+52] ;EFLAGS
+		PUSH [ESP+52] ;CS
+		PUSH [ESP+52] ;EIP
+		
+		
 		PUSH	DS
 		PUSH	ES
-		PUSHAD		; 用于保存寄存器值得PUSH
+		PUSH    GS
+		PUSH    FS
+		
 		PUSHAD		; 用于向hrb_api传值得PUSH
 		MOV		AX,SS
 		MOV		DS,AX		; 将操作系统用段地址存入DS和ES
@@ -471,9 +483,15 @@ _asm_hrb_api:
 		CMP		EAX,0		; 当EAX不为0时程序结束
 		JNE		_asm_end_app
 		ADD		ESP,32
-		POPAD
+		
+		POP     FS
+		POP     GS
 		POP		ES
 		POP		DS
+		
+		ADD ESP,20 
+		
+		POPAD
 		IRETD
 _asm_end_app:
 ;	EAX偼tss.esp0偺斣抧

@@ -540,6 +540,10 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			task->cs_base = (int) p;
 			set_segmdesc(task->ldt + 0, appsiz - 1, (int) p, AR_CODE32_ER + 0x60);
 			set_segmdesc(task->ldt + 1, segsiz - 1, (int) q, AR_DATA32_RW + 0x60);
+			
+			//set_segmdesc(task->ldt + 0, segsiz - 1, (int) q, AR_DATA32_RW + 0x60);
+			//set_segmdesc(task->ldt + 1, appsiz - 1, (int) p, AR_CODE32_ER + 0x60);
+			
 			debug("code segment:");
 			debug("size = %d, add = %d",appsiz,(int)p);
 			debug("data segment:");
@@ -547,7 +551,8 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			for (i = 0; i < datsiz; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
-			start_app(0x1b, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0));
+			start_app(0x1b, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
+			//start_app(0x1b, 1 * 8 + 4, esp, 0 * 8 + 4, &(task->tss.esp0)); 
 			shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 			for (i = 0; i < MAX_SHEETS; i++) {
 				sht = &(shtctl->sheets0[i]);
@@ -576,16 +581,25 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	return 0;
 }
 
-int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax)
+int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
+			 int fs, int gs,
+			 int es, int ds,
+			 int eip, int cs, int eflags, int esp0, int ss0)
 {
+	debug("eip = %d, cs = %d", eip, cs & 0xffff);
+	debug("eflags = %d, esp0 = %d, ss0 = %d", eflags, esp0, ss0 & 0xffff);
+	debug("es = %d, ds = %d", es & 0xffff, ds & 0xffff);
+	debug("fs = %d, gs = %d", fs & 0xffff, gs & 0xffff);
+	
 	struct TASK *task = task_now();
+	debug("edx = %d, pid = %d", edx, task->pid);
 	int ds_base = task->ds_base;
 	//int cs_base = task->cs_base;
 	struct CONSOLE *cons = task->cons;
 	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 	struct SHEET *sht;
 	struct FIFO32 *sys_fifo = (struct FIFO32 *) *((int *) 0x0fec);
-	int *reg = &eax + 1;	/* eax偺師偺斣抧 */
+	int *reg = &eax + 1 + 9;	/* eax偺師偺斣抧 */
 		/* 曐懚偺偨傔偺PUSHAD傪嫮堷偵彂偒姺偊傞 */
 		/* reg[0] : EDI,   reg[1] : ESI,   reg[2] : EBP,   reg[3] : ESP */
 		/* reg[4] : EBX,   reg[5] : EDX,   reg[6] : ECX,   reg[7] : EAX */
@@ -877,10 +891,48 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		reg[7] = task->filp[fd]->fd_inode->i_size;
 		debug("filesize of fd[%d] = %d",fd,reg[7]);
 	} else if(edx == 34){
-		struct TASK * new_task = do_fork(task);
+		//struct TSS32 {
+		//	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3; //esp0和ss0为操作系统的栈段号和栈顶指针
+		//	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
+		//	int es, cs, ss, ds, fs, gs;
+		//	int ldtr, iomap;
+		//};
+		struct TSS32 tss;
+		tss.backlink = 0;
+		tss.esp0 = esp0;
+		tss.ss0 = ss0;
+		tss.esp1 = 0;
+		tss.ss1 = 0;
+		tss.esp2 = 0;
+		tss.ss2 = 0;
+		tss.cr3 = task->tss.cr3;
+		tss.eip = eip;
+		tss.eflags = eflags;
+		tss.eax = eax;
+		tss.ecx = ecx;
+		tss.edx = edx;
+		tss.ebx = ebx;
+		tss.esp = esp;
+		tss.ebp = ebp;
+		tss.esi = esi;
+		tss.edi = edi;
+		tss.es = es;
+		tss.cs = 4;
+		tss.ss = 12;
+		tss.ds = ds;
+		tss.fs = fs;
+		tss.gs = gs;
+		
+		//printTSSInfo(&(task->tss));
+		struct TASK * new_task = do_fork(task, &tss);
+		//printTSSInfo(&(new_task->tss));
 		debug("child_pid = %d",new_task->pid);
 		reg[7] = new_task->pid;
-		//task_add(new_task);
+		task_add(new_task);
+		//task_run(new_task,new_task->level,new_task->priority);
+	} else if(edx == 35){
+		reg[7] = task->pid;
+		debug("pid = %d",reg[7]);
 	}
 	return 0;
 }

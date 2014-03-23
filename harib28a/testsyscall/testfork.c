@@ -12,10 +12,11 @@ void HariMain(void){
 	//api_putstr0(str);
 	
 	int pid = fork();
-	
+	getpid();
 	if (pid != 0) { /* parent process */
 		sprintf(str,"parent is running, child pid:%d\n", pid);
 		api_putstr0(str);
+		
 		//spin("parent");
 		while(1);
 	}

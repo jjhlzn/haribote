@@ -44,5 +44,8 @@ void HariMain(){
 	api_close(fd_read);
 	api_close(fd_write);
 	
+	
+	//while(1);
+	
 	api_end();
 }

@@ -229,7 +229,7 @@ void timer_cancelall(struct FIFO32 *fifo);
 #define MAX_TASKS_LV	100
 #define MAX_TASKLEVELS	10
 struct TSS32 {
-	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
+	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3; //esp0和ss0为操作系统的栈段号和栈顶指针
 	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
 	int es, cs, ss, ds, fs, gs;
 	int ldtr, iomap;
@@ -237,6 +237,7 @@ struct TSS32 {
 #define	NR_FILES	64
 struct TASK {
 	int pid;
+	char name[20];
 	int sel, flags; /* sel代表TSS的GDT编号 */
 	int level, priority;
 	struct FIFO32 fifo;
@@ -285,7 +286,7 @@ void change_wtitle8(struct SHEET *sht, char act);
 struct CONSOLE {
 	struct SHEET *sht;
 	int cur_x, cur_y, cur_c;
-	struct TIMER *timer;
+	struct TIMER *timer; //这个timer是用作什么的？？？
 }; 
 struct FILEHANDLE {
 	char *buf;
@@ -310,7 +311,10 @@ void cmd_hd(struct CONSOLE *cons);
 void cmd_partition(struct CONSOLE *cons);
 void cmd_ls(struct CONSOLE *cons);
 int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline);
-int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
+int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
+			 int fs, int gs,
+			 int es, int ds,
+			 int eip, int cs, int eflags, int esp0, int ss0);
 int *inthandler0d(int *esp);
 int *inthandler0c(int *esp);
 void hrb_api_linewin(struct SHEET *sht, int x0, int y0, int x1, int y1, int col);

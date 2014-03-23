@@ -36,7 +36,7 @@ void init_gdtidt(void)
 
 void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar)
 {
-	debug("limit = %u, base = %d, ar = %d",limit,base,ar);
+	//debug("limit = %u, base = %d, ar = %d",limit,base,ar);
 	if (limit > 0xfffff) {
 		ar |= 0x8000; /* G_bit = 1 */
 		limit /= 0x1000;
@@ -47,7 +47,7 @@ void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, i
 	sd->access_right = ar & 0xff;
 	sd->limit_high   = ((limit >> 16) & 0x0f) | ((ar >> 8) & 0xf0);
 	sd->base_high    = (base >> 24) & 0xff;
-	debug("base_high = %u, base_mid = %u, base_low = %u", sd->base_high, sd->base_mid, base & 0xffff);
+	//debug("base_high = %u, base_mid = %u, base_low = %u", sd->base_high, sd->base_mid, base & 0xffff);
 	return;
 }
 

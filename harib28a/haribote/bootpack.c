@@ -100,8 +100,9 @@ void HariMain(void)
 
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
-	task_a = task_init(memman);
+	task_a = task_init(memman); //task_a是干什么用的？？？
 	fifo.task = task_a;
+	strcpy(task_a->name,"task_a");
 	task_run(task_a, 1, 2);
 	*((int *) 0x0fe4) = (int) shtctl;
 	task_a->langmode = 0;
@@ -219,8 +220,6 @@ void HariMain(void)
 				}
 			}
 			if (256 <= i && i <= 511) { /* 键盘数据 */
-				//sprintf(strbuf,"%d",i);
-				//print_on_screen(strbuf);
 				
 				if (i < 0x80 + 256) { /* 常规字符 */
 					if (key_shift == 0) {
@@ -491,6 +490,7 @@ struct TASK *open_log_task(struct SHEET *sht, unsigned int memtotal)
 	task->tss.gs = 1 * 8;
 	*((int *) (task->tss.esp + 4)) = (int) sht;
 	*((int *) (task->tss.esp + 8)) = memtotal;
+	strcpy(task->name,"log");
 	task_run(task, 2, 2); /* level=2, priority=2 */
 	fifo32_init(&task->fifo, 128, cons_fifo, task);
 	return task;
@@ -703,6 +703,19 @@ PUBLIC void panic(const char *fmt, ...)
 
 	/* should never arrive here */
 	ud2();
+}
+
+
+PUBLIC void printTSSInfo(struct TSS32 *src)
+{
+	debug("es = %d, cs = %d", src->es, src->cs);
+	debug("ss = %d, ds = %d", src->ss, src->ds);
+	debug("fs = %d, gs = %d", src->fs, src->gs);
+	debug("backlink = %d",src->backlink);
+	debug("esp0 = %d, ss0 = %d", src->esp0, src->ss0);
+	debug("esp1 = %d, ss1 = %d", src->esp1, src->ss1);
+	debug("esp2 = %d, ss2 = %d", src->esp2, src->ss2);
+	debug("cr3 = %d",src->cr3);
 }
 
 
