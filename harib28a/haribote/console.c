@@ -901,7 +901,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		struct TSS32 tss;
 		tss.backlink = 0;
 		tss.esp0 = task->tss.esp0;  
-		tss.ss0 = 2 * 8;   //内核栈选择子
+		tss.ss0 = 1 * 8;   //内核栈选择子
 		tss.esp1 = 0;
 		tss.ss1 = 0;
 		tss.esp2 = 0;

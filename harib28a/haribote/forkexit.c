@@ -41,9 +41,6 @@ PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
 	dst->ds = src->ds;
 	dst->fs = src->fs;
 	dst->gs = src->gs;
-
-	
-	
 	
 }
 
@@ -74,8 +71,8 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 
 	/* duplicate the process table */
 	copyTSS(&(new_task->tss),tss);
-	new_task->tss.ss0 = task_parent->tss.ss0;
-	new_task->tss.esp0 = task_parent->tss.esp0;
+	//new_task->tss.ss0 = task_parent->tss.ss0;
+	//new_task->tss.esp0 = task_parent->tss.esp0;
 	
 	new_task->level = task_parent->level;
 	new_task->priority = task_parent->priority;
