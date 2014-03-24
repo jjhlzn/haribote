@@ -54,13 +54,9 @@ PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
  *****************************************************************************/
 PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 {
-	//printTSSInfo(&(task_parent->tss));
-	debug("task_parent->pid = %d",task_parent->pid);
 	/* find a free slot in proc_table */
 	//创建一个新任务
 	struct TASK *new_task = task_alloc();
-	
-	
 	
 	if (new_task == 0) {/* no free slot */
 		debug("no free task struct");
@@ -71,17 +67,21 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 
 	/* duplicate the process table */
 	copyTSS(&(new_task->tss),tss);
-	//new_task->tss.ss0 = task_parent->tss.ss0;
-	//new_task->tss.esp0 = task_parent->tss.esp0;
+	
+	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
+	new_task->cons_stack = memman_alloc_4k(memman, 64 * 1024);
+	new_task->tss.esp0 = new_task->cons_stack + 64 * 1024 - 12;
+
+	*((int *) (new_task->tss.esp0 + 4)) = (int) task_parent->cons->sht;
+	*((int *) (new_task->tss.esp0 + 8)) = 32 * 1024 * 1024;
+	fifo32_init(&new_task->fifo, 128, cons_fifo, new_task);
 	
 	new_task->level = task_parent->level;
 	new_task->priority = task_parent->priority;
 	new_task->fhandle = task_parent->fhandle;
 	new_task->fat = task_parent->fat;
 	//使用和task_parnent同一个控制台
-	//new_task->cons  = -1;
 	new_task->cons = task_parent->cons;
-	//struct CONSOLE *new_console = (struct CONSOLE *)memman_alloc(memman,sizeof(struct CONSOLE));
 
 	/* duplicate the process: T, D & S */
 	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task_parent->ldt;
