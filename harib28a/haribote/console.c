@@ -541,13 +541,9 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			set_segmdesc(task->ldt + 0, appsiz - 1, (int) p, AR_CODE32_ER + 0x60);
 			set_segmdesc(task->ldt + 1, segsiz - 1, (int) q, AR_DATA32_RW + 0x60);
 			
-			//set_segmdesc(task->ldt + 0, segsiz - 1, (int) q, AR_DATA32_RW + 0x60);
-			//set_segmdesc(task->ldt + 1, appsiz - 1, (int) p, AR_CODE32_ER + 0x60);
-			
-			debug("code segment:");
-			debug("size = %d, add = %d",appsiz,(int)p);
-			debug("data segment:");
-			debug("size = %d, add = %d",segsiz,(int)q);
+			debug("load app data");
+			debug("code segment: size = %d, add = %d",appsiz,(int)p);
+			debug("data segment: size = %d, add = %d",segsiz,(int)q);
 			for (i = 0; i < datsiz; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
@@ -584,12 +580,13 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
 			 int fs, int gs,
 			 int es, int ds,
-			 int eip, int cs, int eflags, int esp0, int ss0)
+			 int eip, int cs, int eflags, int user_esp, int user_ss)
 {
 	debug("eip = %d, cs = %d", eip, cs & 0xffff);
-	debug("eflags = %d, esp0 = %d, ss0 = %d", eflags, esp0, ss0 & 0xffff);
+	debug("eflags = %d, user_esp = %d, user_ss = %d", eflags, user_esp, user_ss & 0xffff);
 	debug("es = %d, ds = %d", es & 0xffff, ds & 0xffff);
 	debug("fs = %d, gs = %d", fs & 0xffff, gs & 0xffff);
+	
 	
 	struct TASK *task = task_now();
 	debug("edx = %d, pid = %d", edx, task->pid);
@@ -899,8 +896,8 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		//};
 		struct TSS32 tss;
 		tss.backlink = 0;
-		tss.esp0 = esp0;
-		tss.ss0 = ss0;
+		tss.esp0 = task->tss.esp0;  
+		tss.ss0 = 2 * 8;   //ÄÚºËÕ»Ñ¡Ôñ×Ó
 		tss.esp1 = 0;
 		tss.ss1 = 0;
 		tss.esp2 = 0;
@@ -912,13 +909,13 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		tss.ecx = ecx;
 		tss.edx = edx;
 		tss.ebx = ebx;
-		tss.esp = esp;
+		tss.esp = user_esp;
 		tss.ebp = ebp;
 		tss.esi = esi;
 		tss.edi = edi;
 		tss.es = es;
-		tss.cs = 4;
-		tss.ss = 12;
+		tss.cs = cs;
+		tss.ss = user_ss;
 		tss.ds = ds;
 		tss.fs = fs;
 		tss.gs = gs;

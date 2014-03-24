@@ -15,6 +15,7 @@ PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src);
 //PRIVATE void cleanup(struct proc * proc);
 
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
+	
 	dst->backlink = src->backlink;
     dst->esp0 = src->esp0;
 	dst->ss0 = src->ss0;
@@ -41,9 +42,6 @@ PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
 	dst->ds = src->ds;
 	dst->fs = src->fs;
 	dst->gs = src->gs;
-
-	
-	
 	
 }
 
@@ -62,27 +60,37 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	/* find a free slot in proc_table */
 	//创建一个新任务
 	struct TASK *new_task = task_alloc();
-	
 	if (new_task == 0) {/* no free slot */
 		debug("no free task struct");
 		return 0;
 	}
 	
-	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-
 	/* duplicate the process table */
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	
 	copyTSS(&(new_task->tss),tss);
-	new_task->tss.ss0 = task_parent->tss.ss0;
-	new_task->tss.esp0 = task_parent->tss.esp0;
+	new_task->tss.eax = 0; //设置为子进程的标志
+	//new_task->tss.esp0 = task_parent->tss.esp0;
+	//new_task->tss.ss0 = task_parent->tss.ss0;
+	
+	new_task->cons_stack = memman_alloc_4k(memman, 64 * 1024); //分配新任务的内核栈
+	debug("new_task->cons_stack = %d",new_task->cons_stack);
+	new_task->tss.esp0 = new_task->cons_stack + 64 * 1024 - 12;  //设置任务的内核栈
+    //int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);  //分配新任务的FIFO
+	
+	//*((int *) (new_task->tss.esp0 + 4)) = task_parent->cons->sht; //设置任务的esp0
+	//*((int *) (new_task->tss.esp0 + 8)) = 32 * 1024 * 1024; //TODO: 内存量写死
+
+	printTSSInfo(&(new_task->tss));
+	//fifo32_init(&new_task->fifo, 128, cons_fifo, new_task);
+	
+	//使用和task_parnent同一个控制台
+	new_task->cons = task_parent->cons;
 	
 	new_task->level = task_parent->level;
 	new_task->priority = task_parent->priority;
 	new_task->fhandle = task_parent->fhandle;
 	new_task->fat = task_parent->fat;
-	//使用和task_parnent同一个控制台
-	//new_task->cons  = -1;
-	new_task->cons = task_parent->cons;
-	//struct CONSOLE *new_console = (struct CONSOLE *)memman_alloc(memman,sizeof(struct CONSOLE));
 
 	/* duplicate the process: T, D & S */
 	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task_parent->ldt;
@@ -92,16 +100,16 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
 	debug("text segment size = %d, add = %d",codeLimit, codeBase);
 	set_segmdesc(new_task->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
-	phys_copy(code_seg,codeBase,codeLimit);
-	new_task->cs_base = code_seg;
+	phys_copy((void *)code_seg,(void *)codeBase,codeLimit);
+	new_task->cs_base = (int)code_seg;
 	
 	/* Data segment */
 	int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
 	u8 *data_seg = (u8 *)memman_alloc_4k(memman, dataLimit);
 	debug("data segment size = %d, src base add = %d",dataLimit,dataBase);
 	set_segmdesc(new_task->ldt + 1, dataLimit - 1, (int) data_seg, AR_DATA32_RW + 0x60);
-	phys_copy(data_seg,dataBase,dataLimit);
-	new_task->ds_base = data_seg;
+	phys_copy((void *)data_seg,(void *)dataBase,dataLimit);
+	new_task->ds_base = (int)data_seg;
 	
 	
 	//struct file_desc **filp_parent = task_parent->filp, **filp_new = new_task->filp;

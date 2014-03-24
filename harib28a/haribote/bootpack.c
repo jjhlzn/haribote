@@ -100,7 +100,7 @@ void HariMain(void)
 
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
-	task_a = task_init(memman); //task_a是干什么用的？？？
+	task_a = task_init(memman); //task_a是干什么用的？？？ task_a是不是代表内核所在的任务
 	fifo.task = task_a;
 	strcpy(task_a->name,"task_a");
 	task_run(task_a, 1, 2);
@@ -708,6 +708,7 @@ PUBLIC void panic(const char *fmt, ...)
 
 PUBLIC void printTSSInfo(struct TSS32 *src)
 {
+	debug("----------------TSS begin---------------------------");
 	debug("es = %d, cs = %d", src->es, src->cs);
 	debug("ss = %d, ds = %d", src->ss, src->ds);
 	debug("fs = %d, gs = %d", src->fs, src->gs);
@@ -715,7 +716,9 @@ PUBLIC void printTSSInfo(struct TSS32 *src)
 	debug("esp0 = %d, ss0 = %d", src->esp0, src->ss0);
 	debug("esp1 = %d, ss1 = %d", src->esp1, src->ss1);
 	debug("esp2 = %d, ss2 = %d", src->esp2, src->ss2);
+	debug("eip = %d, esp= %d", src->eip, src->esp);
 	debug("cr3 = %d",src->cr3);
+	debug("----------------TSS end  ---------------------------");
 }
 
 

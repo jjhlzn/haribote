@@ -463,25 +463,28 @@ _asm_hrb_api:
 		PUSHAD		; 用于保存寄存器值得PUSH
 		;将ss,esp,eflags,cs,eip这些作为参数，传给hrb_api
 		
-		PUSH [ESP+52] ;SS
-		PUSH [ESP+52] ;ESP
-		PUSH [ESP+52] ;EFLAGS
-		PUSH [ESP+52] ;CS
-		PUSH [ESP+52] ;EIP
+		PUSH [ESP+48] ;SS
+		PUSH [ESP+48] ;ESP
+		PUSH [ESP+48] ;EFLAGS
+		PUSH [ESP+48] ;CS
+		PUSH [ESP+48] ;EIP
 		
 		
 		PUSH	DS
 		PUSH	ES
 		PUSH    GS
 		PUSH    FS
+	
 		
 		PUSHAD		; 用于向hrb_api传值得PUSH
+		
 		MOV		AX,SS
 		MOV		DS,AX		; 将操作系统用段地址存入DS和ES
 		MOV		ES,AX
 		CALL	_hrb_api
 		CMP		EAX,0		; 当EAX不为0时程序结束
 		JNE		_asm_end_app
+		
 		ADD		ESP,32
 		
 		POP     FS

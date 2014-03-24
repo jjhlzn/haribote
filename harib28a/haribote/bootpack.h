@@ -312,7 +312,7 @@ void cmd_partition(struct CONSOLE *cons);
 void cmd_ls(struct CONSOLE *cons);
 int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline);
 int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
-			 int fs, int gs,
+			  int fs, int gs,
 			 int es, int ds,
 			 int eip, int cs, int eflags, int esp0, int ss0);
 int *inthandler0d(int *esp);
