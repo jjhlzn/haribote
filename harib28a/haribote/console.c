@@ -293,6 +293,8 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 		cmd_partition(cons);
 	} else if(strcmp(cmdline, "ls") == 0){
 		cmd_ls(cons);
+	} else if(strcmp(cmdline, "ps") == 0) {
+		cmd_ps(cons);
 	} else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
 			/* コマンドではなく、アプリでもなく、さらに空行でもない */
@@ -489,6 +491,10 @@ void cmd_langmode(struct CONSOLE *cons, char *cmdline)
 	}
 	cons_newline(cons);
 	return;
+}
+
+int cmd_ps(struct CONSOLE *cons){
+	
 }
 
 int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
