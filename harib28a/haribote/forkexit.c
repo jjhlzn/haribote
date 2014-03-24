@@ -15,7 +15,6 @@ PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src);
 //PRIVATE void cleanup(struct proc * proc);
 
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
-	
 	dst->backlink = src->backlink;
     dst->esp0 = src->esp0;
 	dst->ss0 = src->ss0;
@@ -42,6 +41,9 @@ PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
 	dst->ds = src->ds;
 	dst->fs = src->fs;
 	dst->gs = src->gs;
+
+	
+	
 	
 }
 
@@ -60,37 +62,29 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	/* find a free slot in proc_table */
 	//创建一个新任务
 	struct TASK *new_task = task_alloc();
+	
+	
+	
 	if (new_task == 0) {/* no free slot */
 		debug("no free task struct");
 		return 0;
 	}
 	
-	/* duplicate the process table */
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-	
-	copyTSS(&(new_task->tss),tss);
-	new_task->tss.eax = 0; //设置为子进程的标志
-	//new_task->tss.esp0 = task_parent->tss.esp0;
-	//new_task->tss.ss0 = task_parent->tss.ss0;
-	
-	new_task->cons_stack = memman_alloc_4k(memman, 64 * 1024); //分配新任务的内核栈
-	debug("new_task->cons_stack = %d",new_task->cons_stack);
-	new_task->tss.esp0 = new_task->cons_stack + 64 * 1024 - 12;  //设置任务的内核栈
-    //int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);  //分配新任务的FIFO
-	
-	//*((int *) (new_task->tss.esp0 + 4)) = task_parent->cons->sht; //设置任务的esp0
-	//*((int *) (new_task->tss.esp0 + 8)) = 32 * 1024 * 1024; //TODO: 内存量写死
 
-	printTSSInfo(&(new_task->tss));
-	//fifo32_init(&new_task->fifo, 128, cons_fifo, new_task);
-	
-	//使用和task_parnent同一个控制台
-	new_task->cons = task_parent->cons;
+	/* duplicate the process table */
+	copyTSS(&(new_task->tss),tss);
+	new_task->tss.ss0 = task_parent->tss.ss0;
+	new_task->tss.esp0 = task_parent->tss.esp0;
 	
 	new_task->level = task_parent->level;
 	new_task->priority = task_parent->priority;
 	new_task->fhandle = task_parent->fhandle;
 	new_task->fat = task_parent->fat;
+	//使用和task_parnent同一个控制台
+	//new_task->cons  = -1;
+	new_task->cons = task_parent->cons;
+	//struct CONSOLE *new_console = (struct CONSOLE *)memman_alloc(memman,sizeof(struct CONSOLE));
 
 	/* duplicate the process: T, D & S */
 	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task_parent->ldt;

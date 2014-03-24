@@ -15,7 +15,7 @@ void HariMain(void){
 	sprintf(str,"add of str = %d\n",(int)str);
 	api_putstr0(str);
     pid = fork();
-	getpid();
+	
 	if (pid != 0) { /* parent process */
 		sprintf(str,"parent is running, child pid:%d\n", pid);
 		api_putstr0(str);
@@ -24,7 +24,8 @@ void HariMain(void){
 		while(1);
 	}
 	else {	/* child process */
-		sprintf(str,"child is running, pid:%d\n", 0);
+		pid = getpid();
+		sprintf(str,"child is running, pid:%d\n", pid);
 		api_putstr0(str);
 		//spin("child");
 		while(1);
