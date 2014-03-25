@@ -498,8 +498,8 @@ _asm_hrb_api:
 		IRETD
 _asm_end_app:
 ;	EAX偼tss.esp0偺斣抧
-		MOV		ESP,[EAX]
-		MOV		DWORD [EAX+4],0
+		MOV		ESP,[EAX]  ;ESP = tss.esp0
+		MOV		DWORD [EAX+4],0 ;tss.ss0 = 0
 		POPAD
 		RET					; cmd_app傊婣傞
 
@@ -510,15 +510,15 @@ _start_app:		; void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 		MOV		EDX,[ESP+44]	; 应用程序用ESP
 		MOV		EBX,[ESP+48]	; 应用程序用DS/SS
 		MOV		EBP,[ESP+52]	; tss.esp0的地址
-		MOV		[EBP  ],ESP		; 保存操作系统用ESP
-		MOV		[EBP+4],SS		; 保存操作系统用SS
+		MOV		[EBP  ],ESP		; 保存操作系统用ESP, 保存在tss.esp0中
+		MOV		[EBP+4],SS		; 保存操作系统用SS, 保存在tss.ss0中
 		MOV		ES,BX
 		MOV		DS,BX
 		MOV		FS,BX
 		MOV		GS,BX
-;	下面调整栈，已免用RETF跳转到应用程序
-		OR		ECX,3			; 将应用程序用段号和3进行OR运算
-		OR		EBX,3			; 将应用程序用段号和3进行OR运算
+;	下面调整栈，已免用RETF跳转到应用程序。RETF将会将CS和EIP设置成应用程序的CS和EIP。但是，栈是如何进行切换的？ 我怀疑是编译器生成HRB可执行文件的时候，会首先做这个SS和ESP的设置。
+		OR		ECX,3			; 将应用程序用段号和3进行OR运算, 将应用程序的段选择子+3, 即CS+3
+		OR		EBX,3			; 将应用程序用段号和3进行OR运算, 将应用程序的段选择子+3, 即SS+3
 		PUSH	EBX				; 应用程序的SS
 		PUSH	EDX				; 应用程序的ESP
 		PUSH	ECX				; 应用程序的CS

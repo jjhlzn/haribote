@@ -62,6 +62,7 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 		debug("no free task struct");
 		return 0;
 	}
+	new_task->forked = 1;
 	
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 
@@ -103,15 +104,15 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	new_task->ds_base = (int)data_seg;
 	
 	
-	//struct file_desc **filp_parent = task_parent->filp, **filp_new = new_task->filp;
-	//int i;
-	//for (i = 0; i < NR_FILES; i++) {
-	//	filp_new[i] = filp_parent[i];
-	//	if (filp_new[i]) {
-	//		filp_new[i]->fd_cnt++;
-	//		filp_new[i]->fd_inode->i_cnt++;
-	//	}
-	//}
+	struct file_desc **filp_parent = task_parent->filp, **filp_new = new_task->filp;
+	int i;
+	for (i = 0; i < NR_FILES; i++) {
+		filp_new[i] = filp_parent[i];
+		if (filp_new[i]) {
+			filp_new[i]->fd_cnt++;
+			filp_new[i]->fd_inode->i_cnt++;
+		}
+	}
 
 	return new_task;
 }
