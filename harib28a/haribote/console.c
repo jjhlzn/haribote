@@ -572,6 +572,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			for (i = 0; i < datsiz; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
+			debug("tss.esp0 = %d", task->tss.esp0);
 			start_app(0x1b, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
 
 			shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
@@ -637,7 +638,14 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	} else if (edx == 3) {
 		cons_putstr1(cons, (char *) ebx + ds_base, ecx);
 	} else if (edx == 4) {
-		return &(task->tss.esp0);
+		//假如当前进程是通过fork调用创建的，那么可以直接结束这个任务
+		if(task->forked == 1){
+			debug("pocess[%d, forked] die!", task->pid);
+			task_remove(task);
+			task_switch();
+		}else{
+			return &(task->tss.esp0);
+		}
 	} else if (edx == 5) {
 		sht = sheet_alloc(shtctl);
 		sht->task = task;
@@ -943,7 +951,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		tss.ds = ds;
 		tss.fs = fs;
 		tss.gs = gs;
-		
+		debug("ss = %d", task->tss.ss);
 		struct TASK * new_task = do_fork(task, &tss);
 		debug("has create child process[%d]",new_task->pid);
 		reg[7] = new_task->pid;

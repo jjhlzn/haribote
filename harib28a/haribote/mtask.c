@@ -85,6 +85,7 @@ struct TASK *task_init(struct MEMMAN *memman)
 	//事先将全部的TASK结构的TSS和LDT、文件描述符都设置好
 	for (i = 0; i < MAX_TASKS; i++) {
 		taskctl->tasks0[i].pid = i;
+		taskctl->tasks0[i].forked = 0;
 		strcpy(taskctl->tasks0[i].name,"anony");
 		taskctl->tasks0[i].flags = 0; //标志未使用
 		taskctl->tasks0[i].sel = (TASK_GDT0 + i) * 8; //设置TSS的seletor, 当进行任务切换的时候，是跳转到这个段上的。
@@ -148,6 +149,7 @@ struct TASK *task_alloc(void)
 			task->tss.gs = 0;
 			task->tss.iomap = 0x40000000;
 			task->tss.ss0 = 0;
+			task->forked = 0; //重置是否是fork创建的标志
 			return task;
 		}
 	}

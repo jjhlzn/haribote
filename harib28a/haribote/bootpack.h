@@ -240,6 +240,7 @@ struct TSS32 {
 struct TASK {
 	int pid;
 	char name[20];
+	char forked;
 	int sel, flags; /* sel´ú±íTSSµÄGDT±àºÅ */
 	int level, priority;
 	struct FIFO32 fifo;
