@@ -6,6 +6,7 @@
 #include <string.h>
 #include "hd.h"
 #include "fs.h"
+#include "linkedlist.h"
 
 int do_rdwt(MESSAGE * msg,struct TASK *pcaller);
 void print_identify_info(u16* hdinfo, char* str);
@@ -297,7 +298,7 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 		cmd_ps(cons);
 	} else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
-			/* 僐儅儞僪偱偼側偔丄傾僾儕偱傕側偔丄偝傜偵嬻峴偱傕側偄 */
+			/* 无法找到该命令和文件 */
 			cons_putstr0(cons, "Bad command.\n\n");
 		}
 	}
@@ -493,8 +494,26 @@ void cmd_langmode(struct CONSOLE *cons, char *cmdline)
 	return;
 }
 
-int cmd_ps(struct CONSOLE *cons){
+void cmd_ps(struct CONSOLE *cons){
+	char msg[200];
 	
+	sprintf(msg,"%s    %s\n", "PID", "NAME");
+	cons_putstr0(cons, msg);
+	
+	struct Node *head = get_all_running_tasks();
+	struct Node *tmp = NULL;
+	struct TASK *task = NULL;
+	while(head != NULL){
+		task = (struct TASK *)(head->data);
+		sprintf(msg, "%d    %s\n", task->pid, task->name);
+		cons_putstr0(cons,msg);
+		tmp = head;
+		head = head->next;
+		
+		//释放内存
+		FreeNode(tmp);
+	}
+	cons_newline(cons);
 }
 
 int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
@@ -547,18 +566,14 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			set_segmdesc(task->ldt + 0, appsiz - 1, (int) p, AR_CODE32_ER + 0x60);
 			set_segmdesc(task->ldt + 1, segsiz - 1, (int) q, AR_DATA32_RW + 0x60);
 			
-			//set_segmdesc(task->ldt + 0, segsiz - 1, (int) q, AR_DATA32_RW + 0x60);
-			//set_segmdesc(task->ldt + 1, appsiz - 1, (int) p, AR_CODE32_ER + 0x60);
-			
-			debug("code segment:");
-			debug("size = %d, add = %d",appsiz,(int)p);
-			debug("data segment:");
-			debug("size = %d, add = %d",segsiz,(int)q);
+			debug("start app: %s",name);
+			debug("code segment: size = %d, add = %d",appsiz,(int)p);
+			debug("data segment: size = %d, add = %d",segsiz,(int)q);
 			for (i = 0; i < datsiz; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
 			start_app(0x1b, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
-			//start_app(0x1b, 1 * 8 + 4, esp, 0 * 8 + 4, &(task->tss.esp0)); 
+
 			shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 			for (i = 0; i < MAX_SHEETS; i++) {
 				sht = &(shtctl->sheets0[i]);
@@ -592,14 +607,14 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 			 int es, int ds,
 			 int eip, int cs, int eflags, int user_esp, int user_ss)
 {
-	debug("eip = %d, cs = %d", eip, cs & 0xffff);
-	debug("eflags = %d, user_esp = %d, user_ss = %d", eflags, user_esp, user_ss & 0xffff);
-	debug("es = %d, ds = %d", es & 0xffff, ds & 0xffff);
-	debug("fs = %d, gs = %d", fs & 0xffff, gs & 0xffff);
+	//debug("eip = %d, cs = %d", eip, cs & 0xffff);
+	//debug("eflags = %d, user_esp = %d, user_ss = %d", eflags, user_esp, user_ss & 0xffff);
+	//debug("es = %d, ds = %d", es & 0xffff, ds & 0xffff);
+	//debug("fs = %d, gs = %d", fs & 0xffff, gs & 0xffff);
 	
 	
 	struct TASK *task = task_now();
-	debug("edx = %d, pid = %d", edx, task->pid);
+	debug("invoke system API: edx = %d, pid = %d", edx, task->pid);
 	int ds_base = task->ds_base;
 	//int cs_base = task->cs_base;
 	struct CONSOLE *cons = task->cons;
@@ -848,7 +863,6 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 				minfo->flag = 1;
 				task->sendMouse = 0;
 				break;
-					
 			}
 		}
 	} else if (edx == 29) { //api_open
@@ -906,7 +920,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		//};
 		struct TSS32 tss;
 		tss.backlink = 0;
-		tss.esp0 = task->tss.esp0;  
+		//tss.esp0 = task->tss.esp0;  
 		tss.ss0 = 1 * 8;   //内核栈选择子
 		tss.esp1 = 0;
 		tss.ss1 = 0;
@@ -930,16 +944,14 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		tss.fs = fs;
 		tss.gs = gs;
 		
-		//printTSSInfo(&(task->tss));
 		struct TASK * new_task = do_fork(task, &tss);
-		//printTSSInfo(&(new_task->tss));
-		debug("child_pid = %d",new_task->pid);
+		debug("has create child process[%d]",new_task->pid);
 		reg[7] = new_task->pid;
 		task_add(new_task);
 		//task_run(new_task,new_task->level,new_task->priority);
 	} else if(edx == 35){
 		reg[7] = task->pid;
-		debug("pid = %d",reg[7]);
+		//debug("pid = %d",reg[7]);
 	}
 	return 0;
 }

@@ -1,6 +1,7 @@
 /* マルチタスク関係 */
 
 #include "bootpack.h"
+#include "linkedlist.h"
 #include "fs.h"
 
 struct TASKCTL *taskctl;
@@ -212,4 +213,24 @@ void task_switch(void)
 		farjmp(0, new_task->sel);
 	}
 	return;
+}
+
+/*  ｻ｡ﾋﾐｿﾉﾔﾋﾐﾐｵﾄｽﾌ */
+struct Node* get_all_running_tasks(){
+	int i, j;
+	struct Node *head = NULL;
+	//ｵ�ｴ愑ｿｸ羮ｶｵﾄｿﾉﾔﾋﾐﾐｵﾄｽﾌ
+	for(i=0; i<MAX_TASKLEVELS; i++){
+		struct TASKLEVEL level = taskctl->level[i];
+		for(j=0; j<level.running; j++){
+			struct TASK *task = level.tasks[j];
+			struct Node *node = CreateNode(task);
+			if(head == NULL){
+				head = node;
+			}else{
+				Append(head,node);
+			}
+		}
+	}
+	return head;
 }

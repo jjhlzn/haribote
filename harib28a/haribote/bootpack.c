@@ -663,9 +663,9 @@ void debug(const char *fmt, ...){
 	static int invoke_level = 0;
 	invoke_level++;
 	
-	if(invoke_level > 1){
-		panic("debug nested call happen");
-	}
+	//if(invoke_level > 1){
+	//	panic("debug nested call happen");
+	//}
 	int i;
 	char buf[1024];
 	

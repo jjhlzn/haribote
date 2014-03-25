@@ -1,6 +1,8 @@
 #ifndef	_BOOTPACK_H
 #define	_BOOTPACK_H
 
+#define NULL		0
+
 /* asmhead.nas */
 struct hd_i_struct {
 	int head; //磁头数
@@ -226,8 +228,8 @@ void timer_cancelall(struct FIFO32 *fifo);
 /* mtask.c */
 #define MAX_TASKS		1000	/* 嵟戝僞僗僋悢 */
 #define TASK_GDT0		3		/* TSS傪GDT偺壗斣偐傜妱傝摉偰傞偺偐 */
-#define MAX_TASKS_LV	100
-#define MAX_TASKLEVELS	10
+#define MAX_TASKS_LV	100   /*        每层最多容纳的进程         */
+#define MAX_TASKLEVELS	10    /*  进程管理的最多层级 */
 struct TSS32 {
 	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3; //esp0和ss0为操作系统的栈段号和栈顶指针
 	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
@@ -274,6 +276,7 @@ struct TASK *task_alloc(void);
 void task_run(struct TASK *task, int level, int priority);
 void task_switch(void);
 void task_sleep(struct TASK *task);
+struct Node* get_all_running_tasks();
 
 /* window.c */
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char act);
@@ -310,6 +313,7 @@ void cmd_langmode(struct CONSOLE *cons, char *cmdline);
 void cmd_hd(struct CONSOLE *cons);
 void cmd_partition(struct CONSOLE *cons);
 void cmd_ls(struct CONSOLE *cons);
+void cmd_ps(struct CONSOLE *cons);
 int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline);
 int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
 			  int fs, int gs,

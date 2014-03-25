@@ -1,7 +1,8 @@
 OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj \
 		int.obj fifo.obj keyboard.obj mouse.obj memory.obj sheet.obj timer.obj \
 		mtask.obj window.obj console.obj file.obj tek.obj bmp.obj jpeg.obj hd.obj \
-		proc.obj fs_misc.obj fs_open.obj fs_read_write.obj fs.obj forkexit.obj   ../apilib/alloca.obj
+		proc.obj fs_misc.obj fs_open.obj fs_read_write.obj fs.obj forkexit.obj linkedlist.obj \
+		../apilib/alloca.obj
 
 TOOLPATH = ../../../tolset/z_tools/
 INCPATH  = ../../../tolset/z_tools/haribote/
