@@ -356,11 +356,11 @@ void HariMain(void)
 											new_wy = sht->vy0;
 										}
 										if (sht->bxsize - 21 <= x && x < sht->bxsize - 5 && 5 <= y && y < 19) {
-											/* 乽亊乿儃僞儞僋儕僢僋 */
-											if ((sht->flags & 0x10) != 0) {		/* 傾僾儕偑嶌偭偨僂傿儞僪僂偐丠 */
+											/* 点击"x"按钮 */
+											if ((sht->flags & 0x10) != 0) {		/* 该窗口是否为应用程序窗口？ */
 												task = sht->task;
 												
-												io_cli();	/* 嫮惂廔椆張棟拞偵僞僗僋偑曄傢傞偲崲傞偐傜 */
+												io_cli();	/* 强制结束处理中禁止切换任务 */
 												task->tss.eax = (int) &(task->tss.esp0);
 												task->tss.eip = (int) asm_end_app;
 												io_sti();

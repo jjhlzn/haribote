@@ -4,8 +4,6 @@
 #define O_RDWR 2
 
 void HariMain(void){
-	//int fd_stdin  = api_open("/test.c", O_RDWR);
-	//int fd_stdout = open("/test.c", O_RDWR);
 	int pid;
 	char str[100];
 	
@@ -16,9 +14,6 @@ void HariMain(void){
 		fd = api_open(pathname, O_RDWR);
 	}
 	
-	//short i = -32768;
-	//sprintf(str,"i = %u\n", (unsigned short)i);
-	//api_putstr0(str);
 	sprintf(str,"add of str = %d\n",(int)str);
 	api_putstr0(str);
     pid = fork();

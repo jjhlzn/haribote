@@ -641,8 +641,9 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		//假如当前进程是通过fork调用创建的，那么可以直接结束这个任务
 		if(task->forked == 1){
 			debug("pocess[%d, forked] die!", task->pid);
-			task_remove(task);
-			task_switch();
+			for (;;) {  //为什么要一个无限循环
+				task_sleep(task);
+			}
 		}else{
 			return &(task->tss.esp0);
 		}
