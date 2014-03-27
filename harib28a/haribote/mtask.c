@@ -22,6 +22,12 @@ void task_add(struct TASK *task)
 	return;
 }
 
+
+struct TASK * get_task(int pid)
+{
+	return taskctl->tasks0[pid];
+}
+
 void task_remove(struct TASK *task)
 {
 	int i;
@@ -123,6 +129,11 @@ struct TASK *task_init(struct MEMMAN *memman)
 	idle->tss.gs = 1 * 8;
 	strcpy(idle->name,"idle");
 	task_run(idle, MAX_TASKLEVELS - 1, 1);
+	
+	//默认情况下，所有进程的父进程都是idle，包括task_a和idle自己。
+	for (i = 0; i < MAX_TASKS; i++) {
+		taskctl->tasks0[0].parent_pid = idle->pid;
+	}
 
 	return task;
 }
@@ -194,6 +205,14 @@ void task_sleep(struct TASK *task)
 		}
 	}
 	return;
+}
+
+void task_exit(struct TASK *task)
+{
+}
+
+void task_hang(struct TASK *task)
+{
 }
 
 void task_switch(void)

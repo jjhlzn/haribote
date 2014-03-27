@@ -239,6 +239,8 @@ struct TSS32 {
 #define	NR_FILES	64
 struct TASK {
 	int pid;
+	int parent_pid; //父进程pid, 如果该进程是通过fork创建的，那么parent_pid是调用fork系统调用的进程。否者，父进程就是idle。
+	int exit_status; //保存该进程退出时的参数，例如调用exit(1)时，exit_status的值就是1
 	char name[20];
 	char forked;
 	int sel, flags; /* sel代表TSS的GDT编号 */
@@ -258,6 +260,15 @@ struct TASK {
 	//任务的文件描述符
 	struct file_desc *filp[NR_FILES];
 };
+
+enum TASK_STATUS {
+	TASK_STATUS_UNUSED = 0,  //该struct TASK未被使用
+	TASK_STATUS_SLEEP = 1,   //该进程已经睡眠了，或者该进程在创建中，但还不可以运行
+	TASK_STATUS_RUNNING = 2, //该进程可以运行
+	TASK_STATUS_HANGING = 3, //该进程是僵尸进程，等待父进程调用wait()系统调用
+	TASK_STATUS_WAITING = 4   //该进程在等待子进程结束
+}
+
 struct TASKLEVEL {
 	int running; /* 正在运行的任务数量 */
 	int now; /* 这个变量用来记录当前正在运行的是哪个任务 */
