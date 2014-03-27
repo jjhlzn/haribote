@@ -91,7 +91,7 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	/* Text segment */
 	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
 	u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
-	debug("text segment size = %d, add = %d",codeLimit, codeBase);
+	debug("text segment size = %d, addr of src = %d, add of dest = %d",codeLimit, codeBase, (int)code_seg);
 	set_segmdesc(new_task->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
 	phys_copy((void *)code_seg,(void *)codeBase,codeLimit);
 	new_task->cs_base = (int)code_seg;
@@ -99,7 +99,7 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	/* Data segment */
 	int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
 	u8 *data_seg = (u8 *)memman_alloc_4k(memman, dataLimit);
-	debug("data segment size = %d, src base add = %d",dataLimit,dataBase);
+	debug("data segment size = %d, addr of src = %d, add of dest = %d",dataLimit,dataBase, (int)data_seg);
 	set_segmdesc(new_task->ldt + 1, dataLimit - 1, (int) data_seg, AR_DATA32_RW + 0x60);
 	phys_copy((void *)data_seg,(void *)dataBase,dataLimit);
 	new_task->ds_base = (int)data_seg;
@@ -166,70 +166,143 @@ PUBLIC void do_exit(struct TASK *p, int status)
 	int pid = p->pid;
 	int parent_pid = p->parent_pid;
 
-	/* 释放该进程打开的文件 */
-	
+	/* 关闭该进程打开的文件 */
+	debug("close files");
+	struct file_desc **filp = p->filp;
+	for (i = 0; i < NR_FILES; i++) {
+		if (filp[i]) {
+			filp[i]->fd_cnt++;
+			filp[i]->fd_inode->i_cnt++;
+		}
+	}
 
 	/* 释放该进程的内存 */
-	free_mem(pid);
+	free_mem(p);
 
-	/* 保存该进程 */
+	/* 保存该进程的退出状态 */
 	p->exit_status = status;
- 
-	struct TASK  *parent_task = get_task(p->parent_pid);
-	if (parent_task.flags == TASK_STATUS_WAITING) { /* parent is waiting */
-		//proc_table[parent_pid].p_flags = TASK_STATUS_RUNNING;
-		
-		//移
-		task_remove(task);
-		
-		//父进程可以进入运行状态
-		task_add(parent_task);
-	}
-	else { /* parent is not waiting */
-		proc_table[pid].p_flags |= HANGING;
-	}
-
-	/* if the proc has any child, make INIT the new parent */
-	for (i = 0; i < NR_TASKS + NR_PROCS; i++) {
-		if (proc_table[i].p_parent == pid) { /* is a child */
-			proc_table[i].p_parent = INIT;
-			if ((proc_table[INIT].p_flags & WAITING) && (proc_table[i].p_flags & HANGING)) {
-				proc_table[INIT].p_flags &= ~WAITING;
-				cleanup(&proc_table[i]);
+	
+	/* 如果当前进程有任何子进程, 那么让该进程的父进程为idle*/
+	struct TASK *idle = get_task(1);
+	for (i = 0; i < MAX_TASKS; i++) {
+		struct TASK *tmp = get_task(i);
+		if (tmp->parent_pid == pid) { /* is a child */
+			tmp->parent_pid = 1;  //TODO, 把idle的进程号写死为1
+			if ( idle->flags == TASK_STATUS_WAITING && tmp->flags == TASK_STATUS_HANGING) {
+				idle->wait_return_task = tmp;
+				task_add(idle);
+				tmp->flags = TASK_STATUS_UNUSED;
 			}
 		}
 	}
-	
-	
-	//假如当前进程是通过fork调用创建的，那么可以直接结束这个任务
-	if(task->forked == 1){
-		debug("pocess[%d, forked] die!", task->pid);
-		for (;;) {  //为什么要一个无限循环
-			task_sleep(task);
-		}
-	}else{
-		return &(task->tss.esp0);
+ 
+	struct TASK  *parent_task = get_task(p->parent_pid);
+	if (parent_task->flags == TASK_STATUS_WAITING) { /* parent is waiting */
+		//父进程可以进入运行状态
+		parent_task->wait_return_task = p;
+		task_add(parent_task);
+		
+		task_exit(p, TASK_STATUS_UNUSED);
+		
+	}
+	else { /* parent is not waiting */
+		task_exit(p, TASK_STATUS_HANGING);
 	}
 }
 
+
+
+
 /*****************************************************************************
- *                                cleanup
+ *                                do_wait
  *****************************************************************************/
 /**
- * Do the last jobs to clean up a proc thoroughly:
- *     - Send proc's parent a message to unblock it, and
- *     - release proc's proc_table[] entry
- * 
- * @param proc  Process to clean up.
+ * Perform the wait() syscall.
+ *
+ * If proc P calls wait(), then MM will do the following in this routine:
+ *     <1> iterate proc_table[],
+ *         if proc A is found as P's child and it is HANGING
+ *           - reply to P (cleanup() will send P a messageto unblock it)
+ *           - release A's proc_table[] entry
+ *           - return (MM will go on with the next message loop)
+ *     <2> if no child of P is HANGING
+ *           - set P's WAITING bit
+ *     <3> if P has no child at all
+ *           - reply to P with error
+ *     <4> return (MM will go on with the next message loop)
+ *
  *****************************************************************************/
-PRIVATE void cleanup(struct proc * proc)
+PUBLIC int do_wait(struct TASK *task, int *status)
 {
-	MESSAGE msg2parent;
-	msg2parent.type = SYSCALL_RET;
-	msg2parent.PID = proc2pid(proc);
-	msg2parent.STATUS = proc->exit_status;
-	send_recv(SEND, proc->p_parent, &msg2parent);
+	int pid = task->pid;
+	
+	int i;
+	int children = 0;
+	//struct proc* p_proc = proc_table;
+	for (i = 0; i < MAX_TASKS; i++,p_proc++) {
+		struct TASK *tmp_task = get_task(i);
+		if (tmp_task->parent_pid == pid) {
+			children++;
+			if (tmp_task->flags == TASK_STATUS_HANGING) {
+				*status = tmp_task->exit_status;
+				tmp_task->flags = TASK_STATUS_UNUSED;
+				
+				return tmp_task->pid;
+			}
+		}
+	}
 
-	proc->p_flags = FREE_SLOT;
+	if (children) {
+		/* has children, but no child is HANGING */
+		task->p_flags = TASK_STATUS_WAITING;
+		task_wait(task);
+		
+		struct TASK *wait_return_task = task->wait_return_task;
+		*status = wait_return_task->exit_status;
+		return wait_return_task->pid;
+	}
+	else {
+		/* no child at all */
+		//MESSAGE msg;
+		//msg.type = SYSCALL_RET;
+		//msg.PID = NO_TASK;
+		//send_recv(SEND, pid, &msg);
+		panic("this task has no children!");
+		return -1;
+	}
 }
+
+
+
+PRIVATE void free_mem(struct TASK *task)
+{
+	debug("-----------free memory-------------------");
+	
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	
+	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task->ldt;
+	
+	/* Text segment */
+	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
+	memman_free_4k(memman, codeBase, codeLimit);
+	debug("free text segment: add = %d, size = %d", codeBase, codeLimit);
+	
+	/* Data segment */
+	int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
+	memman_free_4k(memman, dataLimit, dataLimit);
+	debug("free data segment: add = %d, size = %d", dataBase, dataLimit);
+	
+	/* stack */
+	memman_free_4k(memman, task->cons_stack, 64 * 1024);
+	debug("free console stack: add = %d, size = %d", task->cons_stack, 64 * 1024);
+	
+	/* cons fifo*/
+	memman_free_4k(memman, task->fifo.buf, 128*4);
+	debug("free FIFO buf: add = %d, size = %d", task->fifo.buf, 128 * 4);
+	
+	debug("-----------------------------------------");
+	
+	/* TODO: CONSOLE */
+}
+
 

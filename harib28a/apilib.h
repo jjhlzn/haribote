@@ -32,6 +32,7 @@ int api_cmdline(char *buf, int maxsize);
 int api_getlang(void);
 void api_getmouse(int mode,char *minfo);
 int fork(); 
+int wait(int *status);
 
 /*打开文件
 	@pathname 文件路径名

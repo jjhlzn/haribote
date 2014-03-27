@@ -25,10 +25,10 @@ void task_add(struct TASK *task)
 
 struct TASK * get_task(int pid)
 {
-	return taskctl->tasks0[pid];
+	return &taskctl->tasks0[pid];
 }
 
-void task_remove(struct TASK *task)
+void task_remove(struct TASK *task, enum TASK_STATUS task_status)
 {
 	int i;
 	struct TASKLEVEL *tl = &taskctl->level[task->level];
@@ -49,7 +49,8 @@ void task_remove(struct TASK *task)
 		/* 如果now的值出现异常，则进行修正 */
 		tl->now = 0;
 	}
-	task->flags = 1; /* 休眠中 */
+	//task->flags = 1; /* 休眠中 */
+	task->flags = task_status;
 
 	/* 移动 */
 	for (; i < tl->running; i++) {
@@ -177,7 +178,7 @@ void task_run(struct TASK *task, int level, int priority)
 	}
 
 	if (task->flags == 2 && task->level != level) { /* 改变活动中的LEVEL */
-		task_remove(task); /* 这里执行之后flag的值会变为1，于是下面的if语句也会被执行 */
+		task_remove(task, TASK_STATUS_SLEEP); /* 这里执行之后flag的值会变为1，于是下面的if语句也会被执行 */
 	}
 	if (task->flags != 2) {
 		/* 从休眠状态唤醒的情形 */
@@ -195,7 +196,7 @@ void task_sleep(struct TASK *task)
 	if (task->flags == 2) {
 		/* 如果处于活动状态 */
 		now_task = task_now();
-		task_remove(task); /* 执行此语句的话flags将变为1 */
+		task_remove(task,TASK_STATUS_SLEEP); /* 执行此语句的话flags将变为1 */
 		if (task == now_task) {
 			/* 如果是让自己休眠，则需要进行任务切换 */
 			task_switchsub();
@@ -207,8 +208,41 @@ void task_sleep(struct TASK *task)
 	return;
 }
 
-void task_exit(struct TASK *task)
+void task_wait(struct TASK *task)
 {
+	struct TASK *now_task;
+	if (task->flags == 2) {
+		/* 如果处于活动状态 */
+		now_task = task_now();
+		task_remove(task,TASK_STATUS_WAITING); /* 执行此语句的话flags将变为1 */
+		if (task == now_task) {
+			/* 如果是让自己休眠，则需要进行任务切换 */
+			task_switchsub();
+			now_task = task_now(); /* 在设定后获取当前任务的值 */
+			//debug("process[%d,%s] go to sleep, process[%d,%s] is running",task->pid,task->name,now_task->pid,now_task->name);
+			farjmp(0, now_task->sel);
+		}
+	}
+	return;
+}
+
+
+void task_exit(struct TASK *task, enum TASK_STATUS task_status)
+{
+	struct TASK *now_task;
+	if (task->flags == 2) {
+		/* 如果处于活动状态 */
+		now_task = task_now();
+		task_remove(task, task_status); 
+		if (task == now_task) {
+			/* 如果是让自己休眠，则需要进行任务切换 */
+			task_switchsub();
+			now_task = task_now(); /* 在设定后获取当前任务的值 */
+			//debug("process[%d,%s] go to sleep, process[%d,%s] is running",task->pid,task->name,now_task->pid,now_task->name);
+			farjmp(0, now_task->sel);
+		}
+	}
+	return;
 }
 
 void task_hang(struct TASK *task)
@@ -240,11 +274,11 @@ void task_switch(void)
 struct Node* get_all_running_tasks(){
 	int i, j;
 	struct Node *head = NULL;
-	//迭代每个层级的可运行的进程
-	for(i=0; i<MAX_TASKLEVELS; i++){
-		struct TASKLEVEL level = taskctl->level[i];
-		for(j=0; j<level.running; j++){
-			struct TASK *task = level.tasks[j];
+	
+	for(i = 0; i<MAX_TASKS; i++){
+		struct TASK *task = &taskctl->tasks0[i];
+		if(task->flags == TASK_STATUS_SLEEP || task->flags == TASK_STATUS_RUNNING || task->flags == TASK_STATUS_WAITING)
+		{
 			struct Node *node = CreateNode(task);
 			if(head == NULL){
 				head = node;
@@ -253,5 +287,7 @@ struct Node* get_all_running_tasks(){
 			}
 		}
 	}
+	
 	return head;
 }
+

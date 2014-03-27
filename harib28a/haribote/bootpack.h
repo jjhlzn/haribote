@@ -251,6 +251,7 @@ struct TASK {
 	struct TSS32 tss;
 	struct SEGMENT_DESCRIPTOR ldt[2];
 	struct CONSOLE *cons;
+	struct TASK *wait_return_task; //一个进程调用wait()系统调用后，让wait()返回的进程会设置到这个参数中
 	int ds_base, cons_stack;
 	int cs_base;
 	struct FILEHANDLE *fhandle;
@@ -267,7 +268,7 @@ enum TASK_STATUS {
 	TASK_STATUS_RUNNING = 2, //该进程可以运行
 	TASK_STATUS_HANGING = 3, //该进程是僵尸进程，等待父进程调用wait()系统调用
 	TASK_STATUS_WAITING = 4   //该进程在等待子进程结束
-}
+};
 
 struct TASKLEVEL {
 	int running; /* 正在运行的任务数量 */
