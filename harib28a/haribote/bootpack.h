@@ -364,6 +364,9 @@ PUBLIC	void*	va2la(int pid, void* va);
 /*  fs.c */
 void init_fs();
 
+/* exec.c */
+int do_exec(const char *name, char *argv[], int *fat, int *reg_push_by_interrupt);
+
 
 /* Hard Drive */
 #define SECTOR_SIZE		512

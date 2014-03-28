@@ -68,6 +68,22 @@ haribote.img : haribote/ipl09.bin haribote/haribote.sys Makefile \
 		copy from:pictdata/night.bmp to:@: \
 		copy from:nihongo/nihongo.fnt to:@: \
 		imgout:haribote.img
+		
+haribote2.img : haribote/ipl09.bin haribote/haribote.sys Makefile \
+		a/a.hrb hello3/hello3.hrb hello4/hello4.hrb hello5/hello5.hrb \
+	   testsyscall/testfork.hrb
+	$(EDIMG)   imgin:../../tolset/z_tools/fdimg0at.tek \
+		wbinimg src:haribote/ipl09.bin len:512 from:0 to:0 \
+		copy from:haribote/haribote.sys to:@: \
+		copy from:ipl09.nas to:@: \
+		copy from:make.bat to:@: \
+		copy from:a/a.hrb to:@: \
+		copy from:hello3/hello3.hrb to:@: \
+		copy from:hello4/hello4.hrb to:@: \
+		copy from:hello5/hello5.hrb to:@: \
+		copy from:testsyscall/testfork.hrb to:@: \
+		copy from:nihongo/nihongo.fnt to:@: \
+		imgout:haribote.img
 
 # ƒRƒ}ƒ“ƒh
 
@@ -114,9 +130,24 @@ full :
 	$(MAKE) -C gview
 	$(MAKE) -C minesweeper
 	$(MAKE) haribote.img
+	
+full2 :
+	$(MAKE) -C haribote
+	$(MAKE) -C apilib
+	$(MAKE) -C a
+	$(MAKE) -C hello3
+	$(MAKE) -C hello4
+	$(MAKE) -C hello5
+	${MAKE} -C testsyscall
+	$(MAKE) haribote2.img
 
 run_full :
 	$(MAKE) full
+	$(COPY) haribote.img ..\..\tolset\z_tools\qemu\fdimage0.bin
+	$(MAKE) -C ../../tolset/z_tools/qemu
+
+run_full2 :
+	$(MAKE) full2
 	$(COPY) haribote.img ..\..\tolset\z_tools\qemu\fdimage0.bin
 	$(MAKE) -C ../../tolset/z_tools/qemu
 

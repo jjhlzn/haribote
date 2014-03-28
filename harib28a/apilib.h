@@ -33,6 +33,7 @@ int api_getlang(void);
 void api_getmouse(int mode,char *minfo);
 int fork(); 
 int wait(int *status);
+int execv(const char *path, char *argv[]);
 
 /*打开文件
 	@pathname 文件路径名

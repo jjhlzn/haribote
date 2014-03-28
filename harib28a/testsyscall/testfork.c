@@ -48,6 +48,8 @@ void HariMain(void){
 		//api_putstr0("\n");
 		int i=1000000;
 		while(i--);
+		char ** argv = 0;
+		execv("hello4.hrb", argv);
 		api_end();
 	}
 }

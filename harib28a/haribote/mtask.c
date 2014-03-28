@@ -282,6 +282,7 @@ struct Node* get_all_running_tasks(){
 		if(task->flags == TASK_STATUS_SLEEP || task->flags == TASK_STATUS_RUNNING || task->flags == TASK_STATUS_WAITING)
 		{
 			struct Node *node = CreateNode(task);
+			debug("pid = %d, status = %d", task->pid, task->flags);
 			if(head == NULL){
 				head = node;
 			}else{

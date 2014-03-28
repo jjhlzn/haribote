@@ -11,12 +11,14 @@
 int do_rdwt(MESSAGE * msg,struct TASK *pcaller);
 void print_identify_info(u16* hdinfo, char* str);
 
+static int *fat;
+
 void log_task(struct SHEET *sheet, int memtotal)
 {
 	struct TASK *task = task_now();
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	unsigned int i;
-	int *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+	fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 	struct CONSOLE cons;
 	struct FILEHANDLE fhandle[8];
 	char cmdline[CONSOLE_WIDTH_COLS];
@@ -64,7 +66,7 @@ void console_task(struct SHEET *sheet, int memtotal)
 	struct TASK *task = task_now();
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	unsigned int i;
-	int *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+	fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 	struct CONSOLE cons;
 	struct FILEHANDLE fhandle[8];
 	char cmdline[CONSOLE_WIDTH_COLS];
@@ -503,9 +505,11 @@ void cmd_ps(struct CONSOLE *cons){
 	struct Node *head = get_all_running_tasks();
 	struct Node *tmp = NULL;
 	struct TASK *task = NULL;
+	
 	while(head != NULL){
 		task = (struct TASK *)(head->data);
 		sprintf(msg, "%d    %s\n", task->pid, task->name);
+		debug("pid = %d",task->pid);
 		cons_putstr0(cons,msg);
 		tmp = head;
 		head = head->next;
@@ -967,6 +971,13 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		int child_pid = do_wait(task, add_status);
 		debug("exit_status = %d", *add_status);
 		reg[7] = child_pid;
+	} else if(edx == 37){
+		char *path =  (char *)(ds_base + ebx); 
+		char **argv = (char *)(ds_base + ecx);
+		
+		debug("path = %s", path);
+		int *regs_push_by_interrupt = &user_ss + 1 + 8;
+		reg[7] = do_exec(path, argv, fat, regs_push_by_interrupt);
 	}
 	return 0;
 }
