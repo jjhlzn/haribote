@@ -617,7 +617,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	struct TASK *task = task_now();
 	debug("invoke system API: edx = %d, pid = %d", edx, task->pid);
 	int ds_base = task->ds_base;
-	//int cs_base = task->cs_base;
+	int cs_base = task->cs_base;
 	struct CONSOLE *cons = task->cons;
 	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 	struct SHEET *sht;
@@ -641,7 +641,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		//假如当前进程是通过fork调用创建的，那么可以直接结束这个任务
 		if(task->forked == 1){
 			debug("pocess[%d, forked] die!", task->pid);
-			do_exit(task);
+			do_exit(task,0);
 		}else{
 			return &(task->tss.esp0);
 		}
@@ -960,8 +960,12 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		reg[7] = task->pid;
 		//debug("pid = %d",reg[7]);
 	} else if(edx == 36){
+		debug("addr = %d",ebx);
 		int* add_status = (int *)(ds_base+ebx);
+		debug("ds_base = %d, add_status = %d", ds_base, (int)add_status);
+		
 		int child_pid = do_wait(task, add_status);
+		debug("exit_status = %d", *add_status);
 		reg[7] = child_pid;
 	}
 	return 0;

@@ -162,6 +162,7 @@ struct TASK *task_alloc(void)
 			task->tss.iomap = 0x40000000;
 			task->tss.ss0 = 0;
 			task->forked = 0; //重置是否是fork创建的标志
+			task->exit_status = -1000;
 			return task;
 		}
 	}
@@ -211,15 +212,16 @@ void task_sleep(struct TASK *task)
 void task_wait(struct TASK *task)
 {
 	struct TASK *now_task;
-	if (task->flags == 2) {
+	if (task->flags == TASK_STATUS_RUNNING) {
 		/* 如果处于活动状态 */
 		now_task = task_now();
+		debug("task->pid = %d, now_task->pid = %d",task->pid, now_task->pid);
 		task_remove(task,TASK_STATUS_WAITING); /* 执行此语句的话flags将变为1 */
 		if (task == now_task) {
 			/* 如果是让自己休眠，则需要进行任务切换 */
 			task_switchsub();
 			now_task = task_now(); /* 在设定后获取当前任务的值 */
-			//debug("process[%d,%s] go to sleep, process[%d,%s] is running",task->pid,task->name,now_task->pid,now_task->name);
+			debug("process[%d,%s] go to wait, process[%d,%s] is running",task->pid,task->name,now_task->pid,now_task->name);
 			farjmp(0, now_task->sel);
 		}
 	}

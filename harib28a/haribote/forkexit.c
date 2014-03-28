@@ -181,6 +181,7 @@ PUBLIC void do_exit(struct TASK *p, int status)
 
 	/* 保存该进程的退出状态 */
 	p->exit_status = status;
+	debug("set exit_status of process[%d] = %d",p->pid, status);
 	
 	/* 如果当前进程有任何子进程, 那么让该进程的父进程为idle*/
 	struct TASK *idle = get_task(1);
@@ -238,13 +239,14 @@ PUBLIC int do_wait(struct TASK *task, int *status)
 	
 	int i;
 	int children = 0;
-	//struct proc* p_proc = proc_table;
-	for (i = 0; i < MAX_TASKS; i++,p_proc++) {
+
+	for (i = 0; i < MAX_TASKS; i++) {
 		struct TASK *tmp_task = get_task(i);
 		if (tmp_task->parent_pid == pid) {
 			children++;
 			if (tmp_task->flags == TASK_STATUS_HANGING) {
 				*status = tmp_task->exit_status;
+				debug("tmp_task->exit_status = %d",tmp_task->exit_status);
 				tmp_task->flags = TASK_STATUS_UNUSED;
 				
 				return tmp_task->pid;
@@ -254,11 +256,13 @@ PUBLIC int do_wait(struct TASK *task, int *status)
 
 	if (children) {
 		/* has children, but no child is HANGING */
-		task->p_flags = TASK_STATUS_WAITING;
+		debug("process[%d] will go to wait status!",task->pid);
 		task_wait(task);
+		debug("process[%d] recover from wait status", task->pid);
 		
 		struct TASK *wait_return_task = task->wait_return_task;
 		*status = wait_return_task->exit_status;
+		debug("wait_return_task->exit_status = %d",wait_return_task->exit_status);
 		return wait_return_task->pid;
 	}
 	else {

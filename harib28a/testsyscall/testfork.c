@@ -29,7 +29,12 @@ void HariMain(void){
 		//spin("parent");
 		//while(1);
 		int s = -1;
-		int child_pid = wait(
+		sprintf(str,"addr = %d", &s);
+		api_putstr0(str);
+		int child_pid = wait(&s);
+		sprintf(str,"child_pid = %d, status = %d\n", child_pid, s);
+		api_putstr0(str);
+		api_end();
 	}
 	else {	/* child process */
 		pid = getpid();
@@ -41,8 +46,8 @@ void HariMain(void){
 		//api_putstr0("child said: ");
 		//api_putstr0(bufw);
 		//api_putstr0("\n");
-		//int i=1000000;
-		//while(i--);
+		int i=1000000;
+		while(i--);
 		api_end();
 	}
 }
