@@ -673,8 +673,6 @@ void debug(const char *fmt, ...){
 	
 	i = vsprintf(buf,fmt,arg);
 	
-	//print_on_screen(buf);
-	
 	char buf2[1025];
 	sprintf(buf2,"%s\n",buf);
 	if(log_win != 0){
@@ -682,8 +680,6 @@ void debug(const char *fmt, ...){
 		cons_putstr0(log_win->task->cons,buf2);
 	}
 	
-	//cons_putstr0(log_win,buf);
-	//print_on_screen(buf);
 	invoke_level--;
 	return;
 }

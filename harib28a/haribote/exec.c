@@ -77,7 +77,7 @@ PRIVATE void free_mem(struct TASK *task)
 	
 	/* Data segment */
 	int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
-	memman_free_4k(memman, dataLimit, dataLimit);
+	memman_free_4k(memman, dataBase, dataLimit);
 	debug("free data segment: add = %d, size = %d", dataBase, dataLimit);
 	
 	debug("-----------------------------------------");

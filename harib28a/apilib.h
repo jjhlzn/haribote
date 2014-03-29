@@ -1,7 +1,7 @@
 #ifndef    __APILIB_H__
 #define    __APILIB_H__
 
-
+#define printf api_putstr0
 
 void api_putchar(int c);
 void api_putstr0(char *s);
@@ -34,6 +34,7 @@ void api_getmouse(int mode,char *minfo);
 int fork(); 
 int wait(int *status);
 int execv(const char *path, char *argv[]);
+
 
 /*打开文件
 	@pathname 文件路径名
