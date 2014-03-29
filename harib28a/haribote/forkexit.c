@@ -176,8 +176,7 @@ PUBLIC void do_exit(struct TASK *p, int status)
 		}
 	}
 
-	/* 释放该进程的内存 */
-	free_mem(p);
+	
 
 	/* 保存该进程的退出状态 */
 	p->exit_status = status;
@@ -188,6 +187,7 @@ PUBLIC void do_exit(struct TASK *p, int status)
 	for (i = 0; i < MAX_TASKS; i++) {
 		struct TASK *tmp = get_task(i);
 		if (tmp->parent_pid == pid) { /* is a child */
+			debug("I entered!!!!!!!");
 			tmp->parent_pid = 1;  //TODO, 把idle的进程号写死为1
 			if ( idle->flags == TASK_STATUS_WAITING && tmp->flags == TASK_STATUS_HANGING) {
 				idle->wait_return_task = tmp;
@@ -199,14 +199,19 @@ PUBLIC void do_exit(struct TASK *p, int status)
  
 	struct TASK  *parent_task = get_task(p->parent_pid);
 	if (parent_task->flags == TASK_STATUS_WAITING) { /* parent is waiting */
+		debug("process[%d] will go to UNUSED status!", p->pid);
 		//父进程可以进入运行状态
 		parent_task->wait_return_task = p;
 		task_add(parent_task);
-		
+		/* 释放该进程的内存 */
+		free_mem(p);
 		task_exit(p, TASK_STATUS_UNUSED);
 		
 	}
 	else { /* parent is not waiting */
+		debug("process[%d] will go to HANGING status!", p->pid);
+		/* 释放该进程的内存 */
+		free_mem(p);
 		task_exit(p, TASK_STATUS_HANGING);
 	}
 }
@@ -266,11 +271,6 @@ PUBLIC int do_wait(struct TASK *task, int *status)
 		return wait_return_task->pid;
 	}
 	else {
-		/* no child at all */
-		//MESSAGE msg;
-		//msg.type = SYSCALL_RET;
-		//msg.PID = NO_TASK;
-		//send_recv(SEND, pid, &msg);
 		panic("this task has no children!");
 		return -1;
 	}
@@ -293,14 +293,14 @@ PRIVATE void free_mem(struct TASK *task)
 	
 	/* Data segment */
 	int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
-	memman_free_4k(memman, dataLimit, dataLimit);
+	memman_free_4k(memman, dataBase, dataLimit);
 	debug("free data segment: add = %d, size = %d", dataBase, dataLimit);
 	
-	/* stack */
+	/* stack: TODO 这时候还不能释放自己的栈 */
 	memman_free_4k(memman, task->cons_stack, 64 * 1024);
 	debug("free console stack: add = %d, size = %d", task->cons_stack, 64 * 1024);
 	
-	/* cons fifo*/
+	/* cons fifo：TODO 这时候能不能释放*/
 	memman_free_4k(memman, task->fifo.buf, 128*4);
 	debug("free FIFO buf: add = %d, size = %d", task->fifo.buf, 128 * 4);
 	

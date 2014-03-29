@@ -29,8 +29,8 @@ void HariMain(void){
 		//spin("parent");
 		//while(1);
 		int s = -1;
-		sprintf(str,"addr = %d", &s);
-		api_putstr0(str);
+		//sprintf(str,"addr = %d", &s);
+		//api_putstr0(str);
 		int child_pid = wait(&s);
 		sprintf(str,"child_pid = %d, status = %d\n", child_pid, s);
 		api_putstr0(str);
@@ -46,10 +46,11 @@ void HariMain(void){
 		//api_putstr0("child said: ");
 		//api_putstr0(bufw);
 		//api_putstr0("\n");
-		int i=1000000;
-		while(i--);
+		//int i=1000000;
+		//while(i--);
 		char ** argv = 0;
-		execv("hello4.hrb", argv);
+		//execv("hello4.hrb", argv);
+		//while(1);
 		api_end();
 	}
 }

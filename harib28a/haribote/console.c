@@ -509,7 +509,7 @@ void cmd_ps(struct CONSOLE *cons){
 	while(head != NULL){
 		task = (struct TASK *)(head->data);
 		sprintf(msg, "%d    %s\n", task->pid, task->name);
-		debug("pid = %d",task->pid);
+		//debug("pid = %d",task->pid);
 		cons_putstr0(cons,msg);
 		tmp = head;
 		head = head->next;
@@ -576,7 +576,6 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			for (i = 0; i < datsiz; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
-			debug("tss.esp0 = %d", task->tss.esp0);
 			start_app(0x1b, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
 
 			shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
@@ -616,7 +615,6 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	//debug("eflags = %d, user_esp = %d, user_ss = %d", eflags, user_esp, user_ss & 0xffff);
 	//debug("es = %d, ds = %d", es & 0xffff, ds & 0xffff);
 	//debug("fs = %d, gs = %d", fs & 0xffff, gs & 0xffff);
-	
 	
 	struct TASK *task = task_now();
 	debug("invoke system API: edx = %d, pid = %d", edx, task->pid);
