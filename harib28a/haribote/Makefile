@@ -1,9 +1,10 @@
-OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj \
-		int.obj fifo.obj keyboard.obj mouse.obj memory.obj sheet.obj timer.obj \
-		mtask.obj window.obj console.obj file.obj tek.obj bmp.obj jpeg.obj hd.obj \
-		proc.obj fs_misc.obj fs_open.obj fs_read_write.obj fs.obj forkexit.obj \
-		exec.obj linkedlist.obj \
-		../apilib/alloca.obj
+OBJS_BOOTPACK = kernel/bootpack.obj kernel/naskfunc.obj kernel/hankaku.obj kernel/dsctbl.obj kernel/int.obj kernel/fifo.obj \
+				kernel/keyboard.obj kernel/mouse.obj kernel/mtask.obj kernel/console.obj kernel/file.obj kernel/tek.obj \
+				kernel/bmp.obj kernel/jpeg.obj kernel/blk_drv/hd.obj kernel/proc.obj kernel/exec.obj kernel/linkedlist.obj kernel/timer.obj kernel/forkexit.obj \
+				window/graphic.obj  window/window.obj window/sheet.obj \
+				mm/memory.obj   \
+				fs/fs_misc.obj fs/fs_open.obj fs/fs_read_write.obj fs/fs.obj  \
+				../apilib/alloca.obj
 
 TOOLPATH = ../../../tolset/z_tools/
 INCPATH  = ../../../tolset/z_tools/haribote/
@@ -26,22 +27,12 @@ DEL      = del
 # デフォルト動作
 
 default :
-	$(MAKE) ipl09.bin
-	$(MAKE) haribote.sys
-
-# ファイル生成規則
-
-ipl09.bin : ipl09.nas Makefile
-	$(NASK) ipl09.nas ipl09.bin ipl09.lst
-
-asmhead.bin : asmhead.nas Makefile
-	$(NASK) asmhead.nas asmhead.bin asmhead.lst
-
-hankaku.bin : hankaku.txt Makefile
-	$(MAKEFONT) hankaku.txt hankaku.bin
-
-hankaku.obj : hankaku.bin Makefile
-	$(BIN2OBJ) hankaku.bin hankaku.obj _hankaku
+	$(MAKE) -C boot
+	$(MAKE) -C fs
+	$(MAKE) -C kernel
+	$(MAKE) -C mm
+	$(MAKE) -C window
+	$(MAKE) haribote.sys 
 
 bootpack.bim : $(OBJS_BOOTPACK)  Makefile
 	$(OBJ2BIM) @$(RULEFILE) out:bootpack.bim stack:3136k map:bootpack.map \
@@ -51,30 +42,19 @@ bootpack.bim : $(OBJS_BOOTPACK)  Makefile
 bootpack.hrb : bootpack.bim Makefile
 	$(BIM2HRB) bootpack.bim bootpack.hrb 0
 
-haribote.sys : asmhead.bin bootpack.hrb Makefile
-	copy /B asmhead.bin+bootpack.hrb haribote.sys
-
-# 一般規則
-
-%.gas : %.c bootpack.h Makefile
-	$(CC1) -o $*.gas $*.c
-
-%.nas : %.gas Makefile
-	$(GAS2NASK) $*.gas $*.nas
-
-%.obj : %.nas Makefile
-	$(NASK) $*.nas $*.obj $*.lst
-
-# コマンド
+haribote.sys : boot/asmhead.bin bootpack.hrb Makefile
+	copy /B C:\Users\jjh\Documents\GitHub\haribote\harib28a\haribote\boot\asmhead.bin+bootpack.hrb haribote.sys
 
 clean :
-	-$(DEL) asmhead.bin
-	-$(DEL) hankaku.bin
-	-$(DEL) *.lst
-	-$(DEL) *.obj
 	-$(DEL) *.map
 	-$(DEL) *.bim
 	-$(DEL) *.hrb
+	-$(DEL) haribote.sys
+	$(MAKE) -C boot clean
+	$(MAKE) -C fs clean
+	$(MAKE) -C kernel clean
+	$(MAKE) -C mm clean
+	$(MAKE) -C window clean
 
 src_only :
 	$(MAKE) clean

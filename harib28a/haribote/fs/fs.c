@@ -18,8 +18,6 @@ struct inode		inode_table[NR_INODE];
 struct super_block	super_block[NR_SUPER_BLOCK];
 struct inode *		root_inode;
 
-
-
 /*****************************************************************************
  *                                init_fs
  *****************************************************************************/
