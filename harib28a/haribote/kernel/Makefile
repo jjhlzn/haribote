@@ -24,6 +24,8 @@ default:
 	$(MAKE) $(OBJS)
 	$(MAKE) hankaku.obj
 	$(MAKE) -C blk_drv
+	copy /B bmp.src bmp.obj
+	copy /B jpeg.src jpeg.obj
 	
 hankaku.bin : hankaku.txt Makefile
 	$(MAKEFONT) hankaku.txt hankaku.bin
