@@ -186,11 +186,7 @@ void hd_cmd_out(struct hd_cmd* cmd)
 	 * and should proceed no further unless and until BSY=0
 	 */
 	if (!waitfor(STATUS_BSY, 0, HD_TIMEOUT)){
-		//panic("hd error.");
-		//char strbuf[100];
-		//sprintf(strbuf,"hd error");
-		//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 360+16+16, 360+8*50, 360+16+16+16);
-		//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 360+16+16, COL8_000000, strbuf);
+		panic("hd error.");
 		return;
 	}
 
