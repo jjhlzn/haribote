@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 extern struct SHEET  *log_win;
+extern struct FIFO32 *log_fifo_buffer;
 struct DLL_STRPICENV {	/* 64KB */
 	int work[64 * 1024 / 4];
 };
@@ -43,6 +44,8 @@ PUBLIC void printTSSInfo(struct TSS32 *src)
 	debug("----------------TSS end  ---------------------------");
 }
 
+//ÊÇ·ñÊÇÒì²½log
+int is_async_log = 1;
 void debug(const char *fmt, ...){
 	static int invoke_level = 0;
 	invoke_level++;
@@ -60,8 +63,23 @@ void debug(const char *fmt, ...){
 	char buf2[1025];
 	sprintf(buf2,"%s\n",buf);
 	if(log_win != 0){
-		//print_on_screen("print to console");
-		cons_putstr0(log_win->task->cons,buf2);
+		if(is_async_log && log_fifo_buffer != 0){
+			io_cli();
+			//print_on_screen("is_async_log");
+			for(i=0; i<300; i++){
+				if(buf2[i]){
+					//char msg[100];
+					//sprintf(msg,"utls: add log process[%d,%s]",log_fifo_buffer->task->pid,log_fifo_buffer->task->name);
+					//print_on_screen(msg);
+					fifo32_put(log_fifo_buffer,buf2[i]);
+				}else{
+					break;
+				}
+			}
+			io_sti();
+		}else{
+			cons_putstr0(log_win->task->cons,buf2);
+		}
 	}
 	
 	invoke_level--;

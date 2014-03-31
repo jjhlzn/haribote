@@ -26,6 +26,7 @@ default:
 	$(MAKE) -C blk_drv
 	copy /B bmp.src bmp.obj
 	copy /B jpeg.src jpeg.obj
+	$(MAKE) -C ../ haribote.sys 
 	
 hankaku.bin : hankaku.txt Makefile
 	$(MAKEFONT) hankaku.txt hankaku.bin

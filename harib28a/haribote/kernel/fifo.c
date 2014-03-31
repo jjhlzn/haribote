@@ -1,4 +1,4 @@
-/* FIFO儔僀僽儔儕 */
+/* FIFO队列 */
 
 #include "bootpack.h"
 
@@ -33,6 +33,9 @@ int fifo32_put(struct FIFO32 *fifo, int data)
 	fifo->free--;
 	if (fifo->task != 0) {
 		if (fifo->task->flags != 2) { /* 如果任务处于休眠状态 */
+			//char msg[100];
+			//sprintf(msg,"make process[%d,%s] awake",fifo->task->pid,fifo->task->name);
+			//print_on_screen(msg);
 			task_run(fifo->task, -1, 0); /* 将任务唤醒 */
 		}
 	}
@@ -40,11 +43,11 @@ int fifo32_put(struct FIFO32 *fifo, int data)
 }
 
 int fifo32_get(struct FIFO32 *fifo)
-/* FIFO偐傜僨乕僞傪堦偮偲偭偰偔傞 */
+/* 从FIFO中获取数据 */
 {
 	int data;
 	if (fifo->free == fifo->size) {
-		/* 僶僢僼傽偑嬻偭傐偺偲偒偼丄偲傝偁偊偢-1偑曉偝傟傞 */
+		/* FIFO为空 */
 		return -1;
 	}
 	data = fifo->buf[fifo->q];
@@ -56,8 +59,10 @@ int fifo32_get(struct FIFO32 *fifo)
 	return data;
 }
 
+
+
 int fifo32_status(struct FIFO32 *fifo)
-/* 偳偺偔傜偄僨乕僞偑棴傑偭偰偄傞偐傪曬崘偡傞 */
+/* 获取队列还有多少空间 */
 {
 	return fifo->size - fifo->free;
 }

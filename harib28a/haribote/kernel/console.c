@@ -12,6 +12,7 @@ int do_rdwt(MESSAGE * msg,struct TASK *pcaller);
 void print_identify_info(u16* hdinfo, char* str);
 
 static int *fat;
+struct FIFO32* log_fifo_buffer = 0;
 
 void log_task(struct SHEET *sheet, int memtotal)
 {
@@ -19,6 +20,7 @@ void log_task(struct SHEET *sheet, int memtotal)
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	unsigned int i;
 	fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+	log_fifo_buffer = (struct FIFO32 *)memman_alloc_4k(memman, sizeof(struct FIFO32));
 	struct CONSOLE cons;
 	struct FILEHANDLE fhandle[8];
 	char cmdline[CONSOLE_WIDTH_COLS];
@@ -31,11 +33,11 @@ void log_task(struct SHEET *sheet, int memtotal)
 	task->cons = &cons;
 	task->cmdline = cmdline;
 
-	if (cons.sht != 0) {
-		cons.timer = timer_alloc();
-		timer_init(cons.timer, &task->fifo, 1);
-		timer_settime(cons.timer, 50);
-	}
+	//if (cons.sht != 0) {
+	//	cons.timer = timer_alloc();
+	//	timer_init(cons.timer, &task->fifo, 1);
+	//	timer_settime(cons.timer, 50);
+	//}
 	file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
 	for (i = 0; i < 8; i++) {
 		fhandle[i].buf = 0;	/* –¢Žg—pƒ}[ƒN */
@@ -48,15 +50,27 @@ void log_task(struct SHEET *sheet, int memtotal)
 		task->langmode = 0;
 	}
 	task->langbyte1 = 0;
+	
+	
+	//³õÊ¼»¯log»º³åÇø
+	int char_count = 4096;
+	int *log_buffer = (int *)memman_alloc_4k(memman,4 * char_count);
+	fifo32_init(log_fifo_buffer,char_count,log_buffer, task);
 
 	for (;;) {
+		//print_on_screen("log");
 		io_cli();
-		if (fifo32_status(&task->fifo) == 0) {
+		
+		if (fifo32_status(log_fifo_buffer) == 0) {
+			//print_on_screen("go to sleep");
 			task_sleep(task);
 			io_sti();
 		} else{
-			i = fifo32_get(&task->fifo);
+			char ch;
+			ch = (char)fifo32_get(log_fifo_buffer);
 			io_sti();
+			
+			cons_putchar(&cons, ch, 1);
 		}
 	}
 }
