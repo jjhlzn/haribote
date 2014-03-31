@@ -20,13 +20,10 @@ static struct hd_info	hd_info[1];
 
 void inthandler2e(int *esp)
 {
-	//unsigned char hd_status = io_in8(REG_STATUS);
 	io_in8(REG_STATUS);
 	io_out8(PIC1_OCW2, 0x66);	/* 通知PIC1 IRQ-14的受理已经完成  */
 	io_out8(PIC0_OCW2, 0x62);	/* 通知PIC0 IRQ-02的受理已经完成  */
-	//fifo32_put(hdfifo,3000);
 	hasInterrupt = 1;
-	
 	return;
 }
 
@@ -45,9 +42,7 @@ void hd_open(int device)
 {
 	int drive = DRV_OF_DEV(device);
 	assert(drive == 0);	/* only one drive */
-
 	hd_identify(drive);
-
 	if (hd_info[drive].open_cnt++ == 0) {
 		partition(drive * (NR_PART_PER_DRIVE + 1), P_PRIMARY);
 	}
@@ -101,7 +96,7 @@ void hd_open(int device)
 	/**
 	 * We only allow to R/W from a SECTOR boundary:
 	 */
-	//assert((pos & 0x1FF) == 0);
+	assert((pos & 0x1FF) == 0);
 
 	u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT); /* pos / SECTOR_SIZE */
 	
@@ -135,16 +130,13 @@ void hd_open(int device)
 			interrupt_wait();
 			port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 			phys_copy(la, (void*)va2la(0, hdbuf), bytes);
-
 		}
 		else {
 			if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT)){
 				panic("hd writing error.");
 			}
-		
 			port_write(REG_DATA, la, bytes);
 			interrupt_wait();
-			
 		}
 		
 		bytes_left -= SECTOR_SIZE;
@@ -174,8 +166,7 @@ u8* hd_identify(int drive)
 }
 
 void interrupt_wait(){
-	while(!hasInterrupt){
-	}
+	while(!hasInterrupt);
 	hasInterrupt = 0;
 }
 

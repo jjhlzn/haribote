@@ -105,7 +105,7 @@ PRIVATE void mkfs()
 	sb.nr_imap_sects  = 1; //inode-map所占用的扇区数
 	sb.nr_smap_sects  = sb.nr_sects / bits_per_sect + 1; //secotr-map所占用的扇区数
 	sb.n_1st_sect	  = 1 + 1 +   /* boot sector & super block */
-	sb.nr_imap_sects + sb.nr_smap_sects + sb.nr_inode_sects; //数据区的第一个扇区编号
+						sb.nr_imap_sects + sb.nr_smap_sects + sb.nr_inode_sects; //数据区的第一个扇区编号
 	sb.root_inode	  = ROOT_INODE;  //root directory占用的inode编号
 	sb.inode_size	  = INODE_SIZE; 
 	struct inode x;
@@ -118,7 +118,6 @@ PRIVATE void mkfs()
 
 	memset1(fsbuf, 0x90, SECTOR_SIZE);
 	memcpy1(fsbuf, &sb,  SUPER_BLOCK_SIZE);
-	
 	
 	debug("sb.n_1st_sect = %d",sb.n_1st_sect);
 	
@@ -204,6 +203,7 @@ PRIVATE void mkfs()
 		pde->inode_nr = i + 2; /* dev_tty0's inode_nr is 2 */
 		
 		sprintf(pde->name, "dev_tty%d", i);
+		
 		debug("pde->inode_nr = %d",pde->inode_nr);
 		debug("pde->name = %s",pde->name);
 	}
@@ -237,11 +237,6 @@ PUBLIC int rw_sector(int io_type, int dev, u32 pos, int bytes, int proc_nr,
 	driver_msg.BUF		= buf;
 	driver_msg.CNT		= bytes;
 	driver_msg.PROC_NR	= proc_nr;
-	
-	//char strbuf[200];
-	//sprintf(strbuf,"address of buf = %x, pos = %d, bytes = %d",buf, pos,bytes);
-	//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 10, 660+16+16, 660+8*50, 660+16+16+16);
-	//putfonts8_asc(binfo->vram, binfo->scrnx, 10, 660+16+16, COL8_000000, strbuf);
 	
 	//assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
 	//send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
