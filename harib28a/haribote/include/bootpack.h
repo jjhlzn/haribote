@@ -508,6 +508,7 @@ void assertion_failure(char *exp, char *file, char *base_file, int line);
 #define CONSOLE_WIDTH (CONSOLE_WIDTH_COLS*8+16)
 #define CONSOLE_HEIGHT (CONSOLE_HEIGHT_LINES*16+37)
 
+#define	PROC_IMAGE_SIZE_DEFAULT	0x100000 /*  1 MB */
 
 
 #endif

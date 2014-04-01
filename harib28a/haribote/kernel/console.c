@@ -7,6 +7,7 @@
 #include "hd.h"
 #include "fs.h"
 #include "linkedlist.h"
+#include "elf.h"
 
 int do_rdwt(MESSAGE * msg,struct TASK *pcaller);
 void print_identify_info(u16* hdinfo, char* str);
@@ -563,7 +564,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 		name[i + 3] = 'B';
 		name[i + 4] = 0;
 		finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
-	}
+	} 
 	
 	if(finfo == 0){
 		debug("can't find file[%s]",name);
@@ -609,8 +610,28 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			timer_cancelall(&task->fifo);
 			memman_free_4k(memman, (int) q, segsiz);
 			task->langbyte1 = 0;
+		} else if (appsiz >= sizeof(Elf32_Ehdr) && strncmp(p + 1, "ELF", 3) == 0 && p[0] == 0x7F ) {
+			Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
+			debug_Elf32_Ehd(elf_hdr);
+			
+			int i;
+			for (i = 0; i < elf_hdr->e_phnum; i++) {
+				Elf32_Phdr* prog_hdr = (Elf32_Phdr*)(p + elf_hdr->e_phoff +
+													 (i * elf_hdr->e_phentsize));
+				if(prog_hdr->p_type == 1)
+					debug_Elf32_Phdr(prog_hdr);
+				//if (prog_hdr->p_type == PT_LOAD) {
+				//	assert(prog_hdr->p_vaddr + prog_hdr->p_memsz < PROC_IMAGE_SIZE_DEFAULT);
+				//	phys_copy((void*)va2la(0, (void*)prog_hdr->p_vaddr),
+				//			  (void*)va2la(0,  p + prog_hdr->p_offset),
+				//			  prog_hdr->p_filesz);
+				//}
+			}
+			
+			
+			
 		} else {
-			cons_putstr0(cons, ".hrb file format error.\n");
+			cons_putstr0(cons, ".hrb or .elf file format error.\n");
 		}
 		memman_free_4k(memman, (int) p, appsiz);
 		cons_newline(cons);
@@ -618,6 +639,38 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	}
 	/* ƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚ç‚È‚©‚Á‚½ê‡ */
 	return 0;
+}
+	   
+static void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr)
+{
+	debug("-------------------Elf32 header-------------------");
+	debug("e_ident = %s", elf_hdr->e_ident);
+	debug("e_type = %d",elf_hdr->e_type);
+	debug("e_machine = %d",elf_hdr->e_machine);
+	debug("e_version = %d",elf_hdr->e_version);
+	debug("e_entry = %d",elf_hdr->e_entry);
+	debug("e_phoff = %d",elf_hdr->e_phoff);
+	debug("e_flags = %d",elf_hdr->e_flags);
+	debug("e_ehsize = %d",elf_hdr->e_ehsize);
+	debug("e_phentsize = %d",elf_hdr->e_phentsize);
+	debug("e_phnum = %d",elf_hdr->e_phnum);
+	debug("e_shentsize = %d",elf_hdr->e_shentsize);
+	debug("e_shnum = %d",elf_hdr->e_shnum);
+	debug("e_shstrndx = %d",elf_hdr->e_shstrndx);
+	debug("--------------------------------------------------");
+}
+static void debug_Elf32_Phdr(Elf32_Phdr *phdr)
+{
+	debug("-----------------Program header-------------------");
+	debug("p_type = %d", phdr->p_type);
+	debug("p_offset = %d", phdr->p_offset);
+	debug("p_vaddr = %d", phdr->p_vaddr);
+	debug("p_paddr = %d", phdr->p_paddr);
+	debug("p_filesz = %d", phdr->p_filesz);
+	debug("p_memsz = %d", phdr->p_memsz);
+	debug("p_flags = %d", phdr->p_flags);
+	debug("p_align = %d", phdr->p_align);
+	debug("--------------------------------------------------");
 }
 
 int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,

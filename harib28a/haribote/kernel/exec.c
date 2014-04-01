@@ -1,5 +1,6 @@
 
 #include "bootpack.h"
+#include "elf.h"
 
 /**
  * Perform the exec() system call
@@ -52,8 +53,25 @@ int do_exec(const char *name, char *argv[], int *fat, int *regs_push_by_interrup
 			start_app(0x1b, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
 			
 			return 0;
+		} else if (appsiz >= sizeof(Elf32_Ehdr) && strncmp(p + 1, "ELF", 3) == 0 ) {
+			Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
+			//debug_Elf32_Ehd(elf_hdr);
+			
+			int i;
+			for (i = 0; i < elf_hdr->e_phnum; i++) {
+				Elf32_Phdr* prog_hdr = (Elf32_Phdr*)(p + elf_hdr->e_phoff +
+													 (i * elf_hdr->e_phentsize));
+				//debug_Elf32_Phdr(prog_hdr);
+				//if (prog_hdr->p_type == PT_LOAD) {
+				//	assert(prog_hdr->p_vaddr + prog_hdr->p_memsz < PROC_IMAGE_SIZE_DEFAULT);
+				//	phys_copy((void*)va2la(0, (void*)prog_hdr->p_vaddr),
+				//			  (void*)va2la(0,  p + prog_hdr->p_offset),
+				//			  prog_hdr->p_filesz);
+				//}
+			}
+			
 		} else {
-			debug(".hrb file format error.");
+			//cons_putstr0(cons, ".hrb or .elf file format error.\n");
 			return -1;
 		}
 	}

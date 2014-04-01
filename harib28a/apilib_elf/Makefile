@@ -13,6 +13,8 @@ MAKE     = $(TOOLPATH)make.exe -r
 NASK     = $(TOOLPATH)nask.exe
 CC1      = $(TOOLPATH)cc1.exe -I$(INCPATH) -Os -Wall -quiet
 GCC      = $(TOOLPATH)gcc.exe -I$(INCPATH) -Os -Wall -quiet
+AR       = $(TOOLPATH)ar.exe rs
+
 NASM      = $(TOOLPATH)nasm.exe -f elf
 GAS2NASK = $(TOOLPATH)gas2nask.exe -a
 OBJ2BIM  = $(TOOLPATH)obj2bim.exe
@@ -34,12 +36,12 @@ default :
 # ファイル生成規則
 
 apilib.lib : Makefile $(OBJS_API)
-	$(GOLIB) $(OBJS_API)  out:apilib.lib
+	$(AR) apilib.lib $(OBJS_API) 
 
 # 一般規則
 
 %.obj : %.nas Makefile
-	$(NASK) $*.nas $*.obj $*.lst
+	$(NASM) $*.nas -o $*.obj 
 
 # コマンド
 

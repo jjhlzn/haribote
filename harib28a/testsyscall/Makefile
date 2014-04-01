@@ -40,6 +40,9 @@ haribote.img : ../haribote/boot/ipl09.bin ../haribote/haribote.sys $(APP).hrb \
 		wbinimg src:../haribote/boot/ipl09.bin len:512 from:0 to:0 \
 		copy from:../haribote/haribote.sys to:@: \
 		copy from:$(APP).hrb to:@: \
+		copy from:hello to:@: \
+		copy from:hello2 to:@: \
+		copy from:a.out to:@: \
 		copy from:../nihongo/nihongo.fnt to:@: \
 		imgout:haribote.img
 
