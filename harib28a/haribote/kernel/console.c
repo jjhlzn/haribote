@@ -615,17 +615,27 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			debug_Elf32_Ehd(elf_hdr);
 			
 			int i;
-			for (i = 0; i < elf_hdr->e_phnum; i++) {
-				Elf32_Phdr* prog_hdr = (Elf32_Phdr*)(p + elf_hdr->e_phoff +
-													 (i * elf_hdr->e_phentsize));
-				if(prog_hdr->p_type == 1)
-					debug_Elf32_Phdr(prog_hdr);
-				//if (prog_hdr->p_type == PT_LOAD) {
-				//	assert(prog_hdr->p_vaddr + prog_hdr->p_memsz < PROC_IMAGE_SIZE_DEFAULT);
-				//	phys_copy((void*)va2la(0, (void*)prog_hdr->p_vaddr),
-				//			  (void*)va2la(0,  p + prog_hdr->p_offset),
-				//			  prog_hdr->p_filesz);
-				//}
+			//for (i = 0; i < elf_hdr->e_phnum; i++) {
+			//	Elf32_Phdr* prog_hdr = (Elf32_Phdr*)(p + elf_hdr->e_phoff +
+			//										 (i * elf_hdr->e_phentsize));
+			//	if(prog_hdr->p_type == 1)
+			//		debug_Elf32_Phdr(prog_hdr);
+			//	
+			//	//if (prog_hdr->p_type == PT_LOAD) {
+			//	//	assert(prog_hdr->p_vaddr + prog_hdr->p_memsz < PROC_IMAGE_SIZE_DEFAULT);
+			//	//	phys_copy((void*)va2la(0, (void*)prog_hdr->p_vaddr),
+			//	//			  (void*)va2la(0,  p + prog_hdr->p_offset),
+			//	//			  prog_hdr->p_filesz);
+			//	//}
+			//}
+			
+			
+			for (i = 0; i<elf_hdr->e_shentsize; i++) {
+				Elf32_Shdr *elf_shdr = (Elf32_Shdr*)(p + elf_hdr->e_shoff + i * elf_hdr->e_shentsize);
+				
+				debug("name = %s",elf_shdr->sh_name);
+				//if(strncmp(elf_shdr->sh_name,".text",5) == 0 || strncmp(elf_shdr->sh_name,".data",5) == 0 || strncmp(elf_shdr->sh_name,".bss",4) == 0)
+				//	debug_Elf32_Shdr(elf_shdr);
 			}
 			
 			
@@ -650,6 +660,7 @@ static void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr)
 	debug("e_version = %d",elf_hdr->e_version);
 	debug("e_entry = %d",elf_hdr->e_entry);
 	debug("e_phoff = %d",elf_hdr->e_phoff);
+	debug("e_shoff = %d",elf_hdr->e_shoff);
 	debug("e_flags = %d",elf_hdr->e_flags);
 	debug("e_ehsize = %d",elf_hdr->e_ehsize);
 	debug("e_phentsize = %d",elf_hdr->e_phentsize);
@@ -670,6 +681,22 @@ static void debug_Elf32_Phdr(Elf32_Phdr *phdr)
 	debug("p_memsz = %d", phdr->p_memsz);
 	debug("p_flags = %d", phdr->p_flags);
 	debug("p_align = %d", phdr->p_align);
+	debug("--------------------------------------------------");
+}
+
+static void debug_Elf32_Shdr(Elf32_Shdr *phdr)
+{
+	debug("-----------------Section header-------------------");
+	debug("sh_name = %s", phdr->sh_name);
+	debug("sh_type = %d", phdr->sh_type);
+	debug("sh_flags = %d", phdr->sh_flags);
+	debug("sh_addr = %d", phdr->sh_addr);
+	debug("sh_offset = %d", phdr->sh_offset);
+	debug("sh_size = %d", phdr->sh_size);
+	debug("sh_link = %d", phdr->sh_link);
+	debug("sh_info = %d", phdr->sh_info);
+	debug("sh_addralign = %d", phdr->sh_addralign);
+	debug("sh_entsize = %d", phdr->sh_entsize);
 	debug("--------------------------------------------------");
 }
 
