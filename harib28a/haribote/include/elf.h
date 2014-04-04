@@ -52,4 +52,27 @@ typedef struct {
 	Elf32_Word	sh_entsize;		/* Entry size if section holds table */
 } Elf32_Shdr;
 
+
+/* 段类型 */
+#define SHT_NULL      0   //无效段
+#define SHT_PROGBITS  1   //程序段。代码段、数据段都是这种类型
+#define SHT_SYMTAB    2	  //表示该段的内容为符号表
+#define SHT_STRTAB	  3   //表示该段的内容为字符串表
+#define SHT_RELA  	  4   //重定位表。该段包含了重定位信息
+#define SHT_HASH	  5   //符号表的哈希表
+#define SHT_DYNAMIC   6	  //动态链接信息
+#define SHT_NOTE      7   //提示性信息
+#define SHT_NOBITS    8   //表示该段在文件中没有内容，比如.bss
+#define SHT_REL       9   //该段包含了重定位信息
+#define SHT_SHLIB     10  //保留
+#define SHT_DNYSYM	  11  //动态链接的符号表
+
+
+/*  段的标志 */
+#define SHF_WRITE     1   //表示该段在进程空间中可写
+#define SHT_ALLOC	  2   //表示该段在进程空间中需要分配空间。有些包含指示或控制信息的段不需要在进程空间中被分配空间，他们一般不会有这个标志。像代码段、数据段和.bss段都会有这个标志
+#define SHT_EXECINSTR 4   //表示该段在进程空间可以被执行，一般指代码段
+
+
+
 #endif

@@ -611,32 +611,31 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			memman_free_4k(memman, (int) q, segsiz);
 			task->langbyte1 = 0;
 		} else if (appsiz >= sizeof(Elf32_Ehdr) && strncmp(p + 1, "ELF", 3) == 0 && p[0] == 0x7F ) {
+			
 			Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
 			debug_Elf32_Ehd(elf_hdr);
 			
 			int i;
-			//for (i = 0; i < elf_hdr->e_phnum; i++) {
-			//	Elf32_Phdr* prog_hdr = (Elf32_Phdr*)(p + elf_hdr->e_phoff +
-			//										 (i * elf_hdr->e_phentsize));
-			//	if(prog_hdr->p_type == 1)
-			//		debug_Elf32_Phdr(prog_hdr);
-			//	
-			//	//if (prog_hdr->p_type == PT_LOAD) {
-			//	//	assert(prog_hdr->p_vaddr + prog_hdr->p_memsz < PROC_IMAGE_SIZE_DEFAULT);
-			//	//	phys_copy((void*)va2la(0, (void*)prog_hdr->p_vaddr),
-			//	//			  (void*)va2la(0,  p + prog_hdr->p_offset),
-			//	//			  prog_hdr->p_filesz);
-			//	//}
-			//}
 			
+			//加载字符串表
+			Elf32_Shdr* str_section = (Elf32_Shdr*)(p + elf_hdr->e_shoff + elf_hdr->e_shstrndx * elf_hdr->e_shentsize);
+			char *str_contents = (char *)(p + str_section->sh_offset);
 			
-			for (i = 0; i<elf_hdr->e_shentsize; i++) {
+			for (i = 0; i<elf_hdr->e_shnum; i++) {
 				Elf32_Shdr *elf_shdr = (Elf32_Shdr*)(p + elf_hdr->e_shoff + i * elf_hdr->e_shentsize);
+				char *sh_name = str_contents+elf_shdr->sh_name;
 				
-				debug("name = %s",elf_shdr->sh_name);
-				//if(strncmp(elf_shdr->sh_name,".text",5) == 0 || strncmp(elf_shdr->sh_name,".data",5) == 0 || strncmp(elf_shdr->sh_name,".bss",4) == 0)
-				//	debug_Elf32_Shdr(elf_shdr);
+				if(strlen(sh_name) == 0)
+					continue;
+				
+				debug("name = %s",sh_name);
 			}
+			
+			
+			//查看数据段和代码段的内容
+			
+			//加载数据段、代码段
+			
 			
 			
 			
