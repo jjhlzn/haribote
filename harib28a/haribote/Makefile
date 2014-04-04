@@ -29,9 +29,9 @@ DEL      = del
 default :
 	$(MAKE) -C boot
 	$(MAKE) -C fs
-	$(MAKE) -C kernel
-	$(MAKE) -C mm
 	$(MAKE) -C window
+	$(MAKE) -C mm
+	$(MAKE) -C kernel
 	$(MAKE) haribote.sys 
 
 bootpack.bim : $(OBJS_BOOTPACK)  Makefile

@@ -633,6 +633,11 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			
 			
 			//查看数据段和代码段的内容
+			for (i=0; i<elf_hdr->e_phnum; i++){
+				Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
+				//debug("p_type = %d",elf_phdr->p_type);
+				debug_Elf32_Phdr(elf_phdr);
+			}
 			
 			//加载数据段、代码段
 			
