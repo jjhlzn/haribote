@@ -14,7 +14,7 @@ int do_exec(const char *name, char *argv[], int *fat, int *regs_push_by_interrup
 	struct TASK *task = task_now();
 	int i, segsiz, datsiz, esp, dathrb, appsiz;
 	struct SHTCTL *shtctl;
-	struct SHEET *sht;
+	struct SHEET  *sht;
 
 	/* 查找文件在磁盘中的信息 */
 	finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
@@ -50,25 +50,47 @@ int do_exec(const char *name, char *argv[], int *fat, int *regs_push_by_interrup
 				q[esp + i] = p[dathrb + i];
 			}
 		
+			//跳到用户态去执行用户程序, 
 			start_app(0x1b, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
 			
 			return 0;
 		} else if (appsiz >= sizeof(Elf32_Ehdr) && strncmp(p + 1, "ELF", 3) == 0 ) {
-			Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
+			//Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
 			//debug_Elf32_Ehd(elf_hdr);
 			
-			int i;
-			for (i = 0; i < elf_hdr->e_phnum; i++) {
-				Elf32_Phdr* prog_hdr = (Elf32_Phdr*)(p + elf_hdr->e_phoff +
-													 (i * elf_hdr->e_phentsize));
-				//debug_Elf32_Phdr(prog_hdr);
-				//if (prog_hdr->p_type == PT_LOAD) {
-				//	assert(prog_hdr->p_vaddr + prog_hdr->p_memsz < PROC_IMAGE_SIZE_DEFAULT);
-				//	phys_copy((void*)va2la(0, (void*)prog_hdr->p_vaddr),
-				//			  (void*)va2la(0,  p + prog_hdr->p_offset),
-				//			  prog_hdr->p_filesz);
-				//}
-			}
+			//int i;
+			
+			////加载字符串表
+			//Elf32_Shdr* str_section = (Elf32_Shdr*)(p + elf_hdr->e_shoff + elf_hdr->e_shstrndx * elf_hdr->e_shentsize);
+			//char *str_contents = (char *)(p + str_section->sh_offset);
+			
+			//for (i = 0; i<elf_hdr->e_shnum; i++) {
+			//	Elf32_Shdr *elf_shdr = (Elf32_Shdr*)(p + elf_hdr->e_shoff + i * elf_hdr->e_shentsize);
+			//	char *sh_name = str_contents+elf_shdr->sh_name;
+			//	if(strlen(sh_name) == 0)
+			//		continue;
+			//	debug("name = %s",sh_name);
+			//}
+			
+			//u8 *cod_seg, *data_seg;
+			//cod_seg  = (u8 *)memman_alloc_4k(memman, 1024*64); //64K
+			//data_seg = (u8 *)memman_alloc_4k(memman, 1024*64); //64K
+			////加载数据段、代码段
+			//for (i=0; i<elf_hdr->e_phnum; i++){
+			//	Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
+			//	//debug("p_type = %d",elf_phdr->p_type);
+			//	debug_Elf32_Phdr(elf_phdr);
+			//	
+			//	if(elf_phdr->p_type == PT_LOAD){
+			//		if ( elf_phdr->p_flags & 0x04 ){ //可以执行
+			//			phys_copy(cod_seg, p + elf_phdr->p_offset,elf_phdr->filesz);
+			//		}else{
+			//			phys_copy(data_seg, p + elf_phdr->p_offset, elf_phdr->filesz);
+			//		}
+			//	}
+			//}
+			
+			//start_app(elf_hdr->e_entry, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
 			
 		} else {
 			//cons_putstr0(cons, ".hrb or .elf file format error.\n");

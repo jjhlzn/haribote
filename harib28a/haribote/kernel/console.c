@@ -579,6 +579,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			esp    = *((int *) (p + 0x000c));
 			datsiz = *((int *) (p + 0x0010));
 			dathrb = *((int *) (p + 0x0014));
+			debug("esp = %d",esp);
 			q = (char *) memman_alloc_4k(memman, segsiz); //分配数据段
 			task->ds_base = (int) q;
 			task->cs_base = (int) p;
@@ -611,7 +612,6 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			memman_free_4k(memman, (int) q, segsiz);
 			task->langbyte1 = 0;
 		} else if (appsiz >= sizeof(Elf32_Ehdr) && strncmp(p + 1, "ELF", 3) == 0 && p[0] == 0x7F ) {
-			
 			Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
 			debug_Elf32_Ehd(elf_hdr);
 			
@@ -624,26 +624,48 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			for (i = 0; i<elf_hdr->e_shnum; i++) {
 				Elf32_Shdr *elf_shdr = (Elf32_Shdr*)(p + elf_hdr->e_shoff + i * elf_hdr->e_shentsize);
 				char *sh_name = str_contents+elf_shdr->sh_name;
-				
 				if(strlen(sh_name) == 0)
 					continue;
-				
 				debug("name = %s",sh_name);
 			}
 			
+			u8 *cod_seg, *data_seg;
+			cod_seg =  (u8 *)memman_alloc_4k(memman, 1024*64); //64K
+			data_seg = (u8 *)memman_alloc_4k(memman, 1024*64); //64K
+			task->ds_base = (int) data_seg;
+			task->cs_base = (int) cod_seg;
 			
-			//查看数据段和代码段的内容
+			esp = 1024 * 64 - 4;
+			debug("esp = %d",esp);
+				  
+			set_segmdesc(task->ldt + 0, 1024*64 - 1, (int) cod_seg, AR_CODE32_ER + 0x60);
+			set_segmdesc(task->ldt + 1, 1024*64 - 1, (int) data_seg, AR_DATA32_RW + 0x60);
+			//加载数据段、代码段
 			for (i=0; i<elf_hdr->e_phnum; i++){
 				Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
-				//debug("p_type = %d",elf_phdr->p_type);
-				debug_Elf32_Phdr(elf_phdr);
+				if(elf_phdr->p_type == PT_LOAD){
+					if (elf_phdr->p_flags & 0x04 ){ //可以执行
+						//debug_Elf32_Phdr(elf_phdr);
+						char msg[1024];
+						string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
+						debug(msg);
+						debug("load code(%d, %d, %d)",cod_seg +(int)elf_phdr->p_vaddr,p + elf_phdr->p_offset,elf_phdr->p_filesz);
+						phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
+						
+						sprintf(msg,"");
+						string_memory(cod_seg +(int)elf_phdr->p_vaddr,elf_phdr->p_filesz,msg);
+						debug(msg);
+					}else{
+						debug("load data");
+						phys_copy(data_seg+(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
+					}
+				}
 			}
 			
-			//加载数据段、代码段
 			
+			debug("%x %x %x",(unsigned char)cod_seg[0x1010],( unsigned char)cod_seg[0x1011],(unsigned char)cod_seg[0x1012]);
 			
-			
-			
+			start_app(0x1010, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
 		} else {
 			cons_putstr0(cons, ".hrb or .elf file format error.\n");
 		}
