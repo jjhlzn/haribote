@@ -630,15 +630,15 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			}
 			
 			u8 *cod_seg, *data_seg;
-			cod_seg =  (u8 *)memman_alloc_4k(memman, 1024*64); //64K
-			data_seg = (u8 *)memman_alloc_4k(memman, 1024*64); //64K
+			cod_seg =  (u8 *)memman_alloc_4k(memman, 1024*64); //TODO: 代码固定在64K
+			data_seg = (u8 *)memman_alloc_4k(memman, 1024*64); //TODO: 数据段固定在64K
 			task->ds_base = (int) data_seg;
 			task->cs_base = (int) cod_seg;
 			
 			esp = 1024 * 64 - 4;
 			debug("esp = %d",esp);
 				  
-			set_segmdesc(task->ldt + 0, 1024*64 - 1, (int) cod_seg, AR_CODE32_ER + 0x60);
+			set_segmdesc(task->ldt + 0, 1024*64 - 1, (int) cod_seg, AR_CODE32_ER + 0x60);  
 			set_segmdesc(task->ldt + 1, 1024*64 - 1, (int) data_seg, AR_DATA32_RW + 0x60);
 			//加载数据段、代码段
 			for (i=0; i<elf_hdr->e_phnum; i++){
@@ -665,7 +665,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			
 			//debug("%x %x %x",(unsigned char)cod_seg[0x1010],( unsigned char)cod_seg[0x1011],(unsigned char)cod_seg[0x1012]);
 			
-			start_app(0x1010, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
+			start_app(elf_hdr->e_entry, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
 		} else {
 			cons_putstr0(cons, ".hrb or .elf file format error.\n");
 		}
@@ -756,7 +756,10 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	if (edx == 1) {
 		cons_putchar(cons, eax & 0xff, 1);
 	} else if (edx == 2) {
-		cons_putstr0(cons, (char *) ebx + ds_base);
+		char * msg = (char *) ebx + cs_base;
+		debug("ebx = %d",ebx);
+		debug("dispay msg: [%s]",msg);
+		cons_putstr0(cons, msg);
 	} else if (edx == 3) {
 		cons_putstr1(cons, (char *) ebx + ds_base, ecx);
 	} else if (edx == 4) {

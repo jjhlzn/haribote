@@ -41,7 +41,7 @@ haribote.img : ../haribote/boot/ipl09.bin ../haribote/haribote.sys $(APP).hrb \
 		copy from:../haribote/haribote.sys to:@: \
 		copy from:$(APP).hrb to:@: \
 		copy from:fork to:@: \
-		copy from:a.out to:@: \
+		copy from:hello to:@: \
 		copy from:../nihongo/nihongo.fnt to:@: \
 		imgout:haribote.img
 
