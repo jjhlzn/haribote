@@ -47,6 +47,7 @@ void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, i
 	sd->access_right = ar & 0xff;
 	sd->limit_high   = ((limit >> 16) & 0x0f) | ((ar >> 8) & 0xf0);
 	sd->base_high    = (base >> 24) & 0xff;
+	//debug("limit_high = %u, limit_low = %u", (unsigned char)sd->limit_high & 0x0F, (unsigned short)sd->limit_low);
 	//debug("base_high = %u, base_mid = %u, base_low = %u", sd->base_high, sd->base_mid, base & 0xffff);
 	return;
 }

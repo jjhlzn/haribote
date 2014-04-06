@@ -646,15 +646,15 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				if(elf_phdr->p_type == PT_LOAD){
 					if (elf_phdr->p_flags & 0x04 ){ //¿ÉÒÔÖ´ĞĞ
 						//debug_Elf32_Phdr(elf_phdr);
-						char msg[1024];
-						string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
-						debug(msg);
-						debug("load code(%d, %d, %d)",cod_seg +(int)elf_phdr->p_vaddr,p + elf_phdr->p_offset,elf_phdr->p_filesz);
+						//char msg[1024];
+						//string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
+						//debug(msg);
+						//debug("load code(%d, %d, %d)",cod_seg +(int)elf_phdr->p_vaddr,p + elf_phdr->p_offset,elf_phdr->p_filesz);
 						phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
 						
-						sprintf(msg,"");
-						string_memory(cod_seg +(int)elf_phdr->p_vaddr,elf_phdr->p_filesz,msg);
-						debug(msg);
+						//sprintf(msg,"");
+						//string_memory(cod_seg +(int)elf_phdr->p_vaddr,elf_phdr->p_filesz,msg);
+						//debug(msg);
 					}else{
 						debug("load data");
 						phys_copy(data_seg+(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
@@ -663,7 +663,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			}
 			
 			
-			debug("%x %x %x",(unsigned char)cod_seg[0x1010],( unsigned char)cod_seg[0x1011],(unsigned char)cod_seg[0x1012]);
+			//debug("%x %x %x",(unsigned char)cod_seg[0x1010],( unsigned char)cod_seg[0x1011],(unsigned char)cod_seg[0x1012]);
 			
 			start_app(0x1010, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
 		} else {
