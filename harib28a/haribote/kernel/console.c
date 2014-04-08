@@ -669,7 +669,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				}
 			}
 			
-			//准备好argc,argv
+			//TODO: 参数是伪装的，准备好argc,argv
 			char* argv[4];
 			argv[0] = "hello";
 			argv[1] = "world";
@@ -720,21 +720,24 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			}
 			
 			stack = (u8 *)(cod_seg+esp);
-			string_memory(cod_seg+esp, stack_len, msg);
+			string_memory(cod_seg+esp-4, stack_len, msg);
 			debug(msg);
 			
 			//检查栈中的内容
 			argv_contents = (char *)(stack + (argc + 1) * 4);
 			for(i = 0; i<argc; i++){
-				debug("argv[%d] = %s",i,argv_contents);
-				debug("&argv[0] = %d", (int)argv_contents - (int)cod_seg);
-				debug("stack[0] = %d", *((int *)stack));
+				//debug("argv[%d] = %s",i,argv_contents);
+				//debug("&argv[0] = %d", (int)argv_contents - (int)cod_seg);
+				//debug("stack[0] = %d", *((int *)stack));
 				argv_contents += strlen(argv_contents) + 1;
 				stack += 4;
 			}
 			
 			debug("argc = %d, argv = %d", argc, esp);
-			start_app(elf_hdr->e_entry, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
+			char ** pp = (char **)(cod_seg+esp);
+			debug("argv[0] = %d", (int)(pp[0]));
+			debug("tt = %d",*((int *)esp));
+			start_app(elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
 		} else {
 			cons_putstr0(cons, ".hrb or .elf file format error.\n");
 		}
@@ -826,8 +829,15 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		cons_putchar(cons, eax & 0xff, 1);
 	} else if (edx == 2) {
 		char * msg = (char *) ebx + ds_base;
-		debug("ebx = %d",ebx);
+		debug("ebx = %d, ds_base =%d",ebx, ds_base);
 		debug("dispay msg: [%s]",msg);
+		
+		char msg1[500];
+		int i;
+		for(i=0; i<500; i++)
+			msg1[i] = 0;
+		string_memory(ebx + ds_base, 32, msg1);
+		debug(msg1);
 		cons_putstr0(cons, msg);
 	} else if (edx == 3) {
 		cons_putstr1(cons, (char *) ebx + ds_base, ecx);
