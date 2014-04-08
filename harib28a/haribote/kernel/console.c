@@ -592,7 +592,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			for (i = 0; i < datsiz; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
-			start_app(0x1b, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
+			start_app(0x1b, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0), 0, 0); 
 
 			shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 			for (i = 0; i < MAX_SHEETS; i++) {
@@ -635,24 +635,106 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
 			task->cs_base = (int) cod_seg;
 			
-			esp = 1024 * 64 - 4;
-			debug("esp = %d",esp);
-				  
+			esp = 1024 * 64 - 500;
+			char msg[200];
+			for(i=0; i<200; i++)
+				msg[i] = 0;
+			//string_memory(cod_seg+esp, 20, msg);
+			//debug(msg);
+			
 			set_segmdesc(task->ldt + 0, 1024*64 - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
 			set_segmdesc(task->ldt + 1, 1024*64 - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
 			//加载数据段、代码段
+			//debug("elf_hdr->e_phnum = %d",elf_hdr->e_phnum);
 			for (i=0; i<elf_hdr->e_phnum; i++){
 				Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
+				//debug("p_type = %d",elf_phdr->p_type);
 				if(elf_phdr->p_type == PT_LOAD){
-					//debug("see PT_LOAD section");
+					debug("see PT_LOAD section");
+					
+					//debug_Elf32_Phdr(elf_phdr);
+					char msg[1024];
+					int j=0;
+					for(j=0; j<1024; j++)
+						msg[j] = 0;
+					string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
+					debug(msg);
+					debug("\n");
+					
 					phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
+					
+					//sprintf(msg,"");
+					//string_memory(cod_seg +(int)elf_phdr->p_vaddr,elf_phdr->p_filesz,msg);
+					//debug(msg);
 				}
 			}
 			
+			//准备好argc,argv
+			char* argv[4];
+			argv[0] = "hello";
+			argv[1] = "world";
+			argv[2] = 0;
+			char **p_argv = argv;
 			
-			//debug("%x %x %x",(unsigned char)cod_seg[0x1010],( unsigned char)cod_seg[0x1011],(unsigned char)cod_seg[0x1012]);
+			int PROC_ORIGIN_STACK = 500;
+			char arg_stack[PROC_ORIGIN_STACK];
+
+			int stack_len = 0;
+			int argc = 0;
+			while(*p_argv++){
+				assert(stack_len + 2 * sizeof(char *) < PROC_ORIGIN_STACK);
+				stack_len += sizeof(char *);
+				argc++;
+			}
+			debug("argc = %d",argc);
 			
-			start_app(elf_hdr->e_entry, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0)); 
+			*((int *)(&arg_stack[stack_len])) = 0;
+			stack_len += sizeof(char *);
+			
+			for(p_argv = argv; *p_argv != 0; p_argv++){
+				
+				assert(stack_len + strlen(*p_argv) + 1 < PROC_ORIGIN_STACK);
+				
+				strcpy(&arg_stack[stack_len], *p_argv);
+				debug("*p_argv = %s",*p_argv);
+				stack_len += strlen(*p_argv);
+				arg_stack[stack_len] = 0;
+				stack_len++;
+			}
+			
+			esp = 1024 * 64 - PROC_ORIGIN_STACK;
+			debug("esp = %d",esp);
+
+			phys_copy(cod_seg+esp, arg_stack, stack_len);
+			
+			debug("stack_len = %d",stack_len);
+			
+		
+			u8 *stack = (u8 *)(cod_seg+esp);
+			char *argv_contents = (char *)(stack + (argc + 1) * 4);
+			for(i = 0; i<argc; i++){
+				debug("argv_contents = %d",argv_contents);
+				*((char **)stack) = (int)argv_contents - (int)cod_seg ;
+				argv_contents += strlen(argv_contents) + 1;
+				stack += 4;
+			}
+			
+			stack = (u8 *)(cod_seg+esp);
+			string_memory(cod_seg+esp, stack_len, msg);
+			debug(msg);
+			
+			//检查栈中的内容
+			argv_contents = (char *)(stack + (argc + 1) * 4);
+			for(i = 0; i<argc; i++){
+				debug("argv[%d] = %s",i,argv_contents);
+				debug("&argv[0] = %d", (int)argv_contents - (int)cod_seg);
+				debug("stack[0] = %d", *((int *)stack));
+				argv_contents += strlen(argv_contents) + 1;
+				stack += 4;
+			}
+			
+			debug("argc = %d, argv = %d", argc, esp);
+			start_app(elf_hdr->e_entry, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
 		} else {
 			cons_putstr0(cons, ".hrb or .elf file format error.\n");
 		}

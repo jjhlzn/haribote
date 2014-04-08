@@ -51,7 +51,7 @@ unsigned int memtest_sub(unsigned int start, unsigned int end);
 void farjmp(int eip, int cs);
 void farcall(int eip, int cs);
 void asm_hrb_api(void);
-void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
+void start_app(int eip, int cs, int esp, int ds, int *tss_esp0, int argc, int argv);
 void asm_end_app(void);
 void ud2(); 
 

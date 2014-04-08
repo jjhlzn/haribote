@@ -13,6 +13,8 @@ _start:
 	mov esp, eax
 	mov ax, 15
 	mov ss, ax
+	push ebx
+	push edx
 	call _main
 	
 	push eax
