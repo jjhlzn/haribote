@@ -629,36 +629,23 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				debug("name = %s",sh_name);
 			}
 			
-			u8 *cod_seg, *data_seg;
+			u8 *cod_seg;
 			cod_seg =  (u8 *)memman_alloc_4k(memman, 1024*64); //TODO: 代码固定在64K
-			data_seg = (u8 *)memman_alloc_4k(memman, 1024*64); //TODO: 数据段固定在64K
-			task->ds_base = (int) data_seg;
+			//data_seg = (u8 *)memman_alloc_4k(memman, 1024*64); //TODO: 数据段固定在64K
+			task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
 			task->cs_base = (int) cod_seg;
 			
 			esp = 1024 * 64 - 4;
 			debug("esp = %d",esp);
 				  
-			set_segmdesc(task->ldt + 0, 1024*64 - 1, (int) cod_seg, AR_CODE32_ER + 0x60);  
-			set_segmdesc(task->ldt + 1, 1024*64 - 1, (int) data_seg, AR_DATA32_RW + 0x60);
+			set_segmdesc(task->ldt + 0, 1024*64 - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
+			set_segmdesc(task->ldt + 1, 1024*64 - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
 			//加载数据段、代码段
 			for (i=0; i<elf_hdr->e_phnum; i++){
 				Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
 				if(elf_phdr->p_type == PT_LOAD){
-					if (elf_phdr->p_flags & 0x04 ){ //可以执行
-						//debug_Elf32_Phdr(elf_phdr);
-						//char msg[1024];
-						//string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
-						//debug(msg);
-						//debug("load code(%d, %d, %d)",cod_seg +(int)elf_phdr->p_vaddr,p + elf_phdr->p_offset,elf_phdr->p_filesz);
-						phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
-						
-						//sprintf(msg,"");
-						//string_memory(cod_seg +(int)elf_phdr->p_vaddr,elf_phdr->p_filesz,msg);
-						//debug(msg);
-					}else{
-						debug("load data");
-						phys_copy(data_seg+(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
-					}
+					//debug("see PT_LOAD section");
+					phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
 				}
 			}
 			
@@ -756,7 +743,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	if (edx == 1) {
 		cons_putchar(cons, eax & 0xff, 1);
 	} else if (edx == 2) {
-		char * msg = (char *) ebx + cs_base;
+		char * msg = (char *) ebx + ds_base;
 		debug("ebx = %d",ebx);
 		debug("dispay msg: [%s]",msg);
 		cons_putstr0(cons, msg);
