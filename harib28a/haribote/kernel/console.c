@@ -630,20 +630,23 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			}
 			
 			u8 *cod_seg;
-			cod_seg =  (u8 *)memman_alloc_4k(memman, 1024*64); //TODO: 代码固定在64K
+			
+			int data_limit = 1024 * 132;
+			
+			cod_seg =  (u8 *)memman_alloc_4k(memman, data_limit); //TODO: 代码固定在64K
 			//data_seg = (u8 *)memman_alloc_4k(memman, 1024*64); //TODO: 数据段固定在64K
 			task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
 			task->cs_base = (int) cod_seg;
 			
-			esp = 1024 * 64 - 500;
+			esp = data_limit - 500;
 			char msg[200];
 			for(i=0; i<200; i++)
 				msg[i] = 0;
 			//string_memory(cod_seg+esp, 20, msg);
 			//debug(msg);
 			
-			set_segmdesc(task->ldt + 0, 1024*64 - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
-			set_segmdesc(task->ldt + 1, 1024*64 - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
+			set_segmdesc(task->ldt + 0, data_limit - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
+			set_segmdesc(task->ldt + 1, data_limit - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
 			//加载数据段、代码段
 			//debug("elf_hdr->e_phnum = %d",elf_hdr->e_phnum);
 			for (i=0; i<elf_hdr->e_phnum; i++){
@@ -653,13 +656,13 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 					debug("see PT_LOAD section");
 					
 					//debug_Elf32_Phdr(elf_phdr);
-					char msg[1024];
-					int j=0;
-					for(j=0; j<1024; j++)
-						msg[j] = 0;
-					string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
-					debug(msg);
-					debug("\n");
+					//char msg[1024];
+					//int j=0;
+					//for(j=0; j<1024; j++)
+					//	msg[j] = 0;
+					//string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
+					//debug(msg);
+					//debug("\n");
 					
 					phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
 					
@@ -702,7 +705,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				stack_len++;
 			}
 			
-			esp = 1024 * 64 - PROC_ORIGIN_STACK;
+			esp = data_limit - PROC_ORIGIN_STACK;
 			debug("esp = %d",esp);
 
 			phys_copy(cod_seg+esp, arg_stack, stack_len);
