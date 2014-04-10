@@ -535,6 +535,31 @@ void cmd_ps(struct CONSOLE *cons){
 	cons_newline(cons);
 }
 
+char *get_next_arg(char *cmdline, int *skip){
+	//debug("1 = %s",cmdline);
+	int i=0;
+	while(cmdline[i] == ' ') i++;
+	//debug("2 = %s",cmdline+i);
+	
+	if(cmdline[i] != 0){ //不是结尾处
+		//移到结尾，或者移到下个参数前的空格处
+		struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+		char *arg = (char *)memman_alloc_4k(memman,1024);
+		int j = 0;
+		while(cmdline[i] != ' ' && cmdline[i] != 0){
+			arg[j] = cmdline[i];
+			++i;
+			++j;
+		}
+		arg[j] = 0;
+		//debug("3 = %s",cmdline+i);
+		*skip = i;
+		return arg;
+	}else{
+		return NULL;
+	}
+}
+
 int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
@@ -553,6 +578,28 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 		name[i] = cmdline[i];
 	}
 	name[i] = 0; 
+	
+	//提取参数，每个参数最多只能有1024长度。
+	struct Node *list = NULL;
+	int count = 0;
+	while(1){
+		int skip = 0;
+		char *arg = get_next_arg(cmdline, &skip);
+		if(arg == NULL)
+			break;
+		else{
+			struct Node *node = CreateNode(arg);
+			if(list == NULL){
+				list = node;
+			}else{
+				Append(list,node);
+			}
+			count++;
+			cmdline += skip;
+		}
+	}
+	
+	
 
 	/* 查找文件在磁盘中的信息 */
 	finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
@@ -613,7 +660,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			task->langbyte1 = 0;
 		} else if (appsiz >= sizeof(Elf32_Ehdr) && strncmp(p + 1, "ELF", 3) == 0 && p[0] == 0x7F ) {
 			Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
-			debug_Elf32_Ehd(elf_hdr);
+			//debug_Elf32_Ehd(elf_hdr);
 			
 			int i;
 			
@@ -626,7 +673,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				char *sh_name = str_contents+elf_shdr->sh_name;
 				if(strlen(sh_name) == 0)
 					continue;
-				debug("name = %s",sh_name);
+				//debug("name = %s",sh_name);
 			}
 			
 			u8 *cod_seg;
@@ -673,10 +720,22 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			}
 			
 			//TODO: 参数是伪装的，准备好argc,argv
-			char* argv[4];
-			argv[0] = "hello";
-			argv[1] = "world";
-			argv[2] = 0;
+			debug("count = %d", count);
+			
+			
+			//封装成argv
+			char **argv = (char **)memman_alloc(memman,sizeof(char **) * (count+1));
+			//参看参数
+			i = 0;
+			while(list != NULL){
+				debug("arg = %s",(char *)list->data);
+				argv[i] =  (char *)list->data;
+				list = list->next;
+				i++;
+			}
+			argv[i] = 0;
+			
+
 			char **p_argv = argv;
 			
 			int PROC_ORIGIN_STACK = 500;
