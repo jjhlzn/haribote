@@ -163,12 +163,13 @@ struct TASK *task_alloc(void)
 			task->tss.ss0 = 0;
 			task->forked = 0; //重置是否是fork创建的标志
 			task->exit_status = -1000;
+			
+			open_std_files(task);
 			return task;
 		}
 	}
 	return 0; /* 全部正在使用 */
 }
-
 void task_run(struct TASK *task, int level, int priority)
 {
 	if (level < 0) {

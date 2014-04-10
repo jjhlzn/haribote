@@ -570,6 +570,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	struct SHTCTL *shtctl;
 	struct SHEET *sht;
 
+
 	/* 获取程序文件名 */
 	for (i = 0; i < 13; i++) {
 		if (cmdline[i] <= ' ') {
@@ -599,8 +600,6 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 		}
 	}
 	
-	
-
 	/* 查找文件在磁盘中的信息 */
 	finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo == 0 && name[i - 1] != '.') {
@@ -722,7 +721,6 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			//TODO: 参数是伪装的，准备好argc,argv
 			debug("count = %d", count);
 			
-			
 			//封装成argv
 			char **argv = (char **)memman_alloc(memman,sizeof(char **) * (count+1));
 			//参看参数
@@ -734,7 +732,6 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				i++;
 			}
 			argv[i] = 0;
-			
 
 			char **p_argv = argv;
 			
@@ -763,6 +760,17 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				arg_stack[stack_len] = 0;
 				stack_len++;
 			}
+			
+			//释放准备参数时的内存
+			memman_free(memman, argv, sizeof(char **) * (count+1));
+			struct Node *tmp = NULL;
+			while(list != NULL){
+				tmp = list;
+				list = list->next;
+				memman_free_4k(memman, tmp->data, 1024);
+				FreeNode(list);
+			}
+			
 			
 			esp = data_limit - PROC_ORIGIN_STACK;
 			debug("esp = %d",esp);
@@ -1185,12 +1193,6 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		reg[7] = task->filp[fd]->fd_inode->i_size;
 		debug("filesize of fd[%d] = %d",fd,reg[7]);
 	} else if(edx == 34){
-		//struct TSS32 {
-		//	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3; //esp0和ss0为操作系统的栈段号和栈顶指针
-		//	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
-		//	int es, cs, ss, ds, fs, gs;
-		//	int ldtr, iomap;
-		//};
 		struct TSS32 tss;
 		tss.backlink = 0;
 		//tss.esp0 = task->tss.esp0;  
@@ -1221,7 +1223,6 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		debug("has create child process[%d]",new_task->pid);
 		reg[7] = new_task->pid;
 		task_add(new_task);
-		//task_run(new_task,new_task->level,new_task->priority);
 	} else if(edx == 35){
 		reg[7] = task->pid;
 		//debug("pid = %d",reg[7]);

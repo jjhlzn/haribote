@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#define STDIN 0
+#define STDOUT 1
+#define STDERR 2
+
 #define O_CREATE 1
 #define O_RDWR 2
 
@@ -41,6 +45,9 @@ void HariMain(){
 	printf("\n");
 	api_close(fd_read);
 	api_close(fd_write);
+	
+	sprintf(bufw,"stdout jinjunhang!");
+	api_write(STDOUT, "stdout jinjunhang", bufw);
 	
 	api_end();
 }

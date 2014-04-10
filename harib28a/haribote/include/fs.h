@@ -157,6 +157,8 @@ struct file_desc {
 
 #define	O_CREAT		1
 #define	O_RDWR		2
+#define O_RD	    3
+#define O_WR        4
 
 #define SEEK_SET	1
 #define SEEK_CUR	2
@@ -174,6 +176,7 @@ int rw_sector(int io_type, int dev, u32 pos, int bytes, int proc_nr, void* buf);
 void put_inode(struct inode * pinode);
 void sync_inode(struct inode * p);
 struct FILEINFO* get_all_files(int dev);
+void open_std_files(struct TASK *task);
 
 /* fs_open.c */
 int search_file(char * path);
@@ -185,5 +188,8 @@ int strip_path(char * filename, const char * pathname,
 			   struct inode** ppinode);
 
 #define	MAX_PATH	128
+#define STDIN   1
+#define STDOUT  2
+#define STDERR  3
 
 #endif /* _FS_H_ */

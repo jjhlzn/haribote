@@ -36,16 +36,17 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 	assert((pcaller->filp[fd] >= &f_desc_table[0]) &&
 	       (pcaller->filp[fd] < &f_desc_table[NR_FILE_DESC]));
 
-	if (!(pcaller->filp[fd]->fd_mode & O_RDWR))
-		return -1;
+	//if (!(pcaller->filp[fd]->fd_mode & O_RDWR))
+	//	return -1;
 
 	int pos = pcaller->filp[fd]->fd_pos;
 
 	struct inode * pin = pcaller->filp[fd]->fd_inode;
 
-	assert(pin >= &inode_table[0] && pin < &inode_table[NR_INODE]);
-
 	int imode = pin->i_mode & I_TYPE_MASK;
+	assert( (pin >= &inode_table[0] && pin < &inode_table[NR_INODE]) || imode == I_CHAR_SPECIAL );
+
+	
 	
 	if (imode == I_CHAR_SPECIAL) {
 		//int t = fs_msg.type == READ ? DEV_READ : DEV_WRITE;
@@ -62,8 +63,21 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 		////send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &fs_msg);
 		//hd_rdwt(&fs_msg);
 		//assert(fs_msg.CNT == len);
-
-		return fs_msg.CNT;
+		assert((fs_msg.type == READ) || (fs_msg.type == WRITE));
+		
+		struct CONSOLE *cons = pcaller->cons;
+		if(cons == NULL)
+			return 0;
+		struct SHEET *sht = cons->sht;
+		if(sht == NULL)
+			return 0;
+		
+		if(fs_msg.type == READ){
+			
+		}else{
+			cons_putstr0(cons, msg);
+		}
+		return strlen(msg);
 	}
 	else {
 		assert(pin->i_mode == I_REGULAR || pin->i_mode == I_DIRECTORY);

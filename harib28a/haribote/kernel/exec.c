@@ -55,6 +55,7 @@ int do_exec(const char *name, char *argv[], int *fat, int *regs_push_by_interrup
 			
 			return 0;
 		} else if (appsiz >= sizeof(Elf32_Ehdr) && strncmp(p + 1, "ELF", 3) == 0 ) {
+			
 			Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
 			debug_Elf32_Ehd(elf_hdr);
 			int i;
@@ -108,7 +109,6 @@ int do_exec(const char *name, char *argv[], int *fat, int *regs_push_by_interrup
 				arg_stack[stack_len] = 0;
 				stack_len++;
 			}
-			
 			
 			phys_copy(esp-stack_len, arg_stack0, stack_len);
 			esp = esp-stack_len;
