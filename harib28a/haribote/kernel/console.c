@@ -569,7 +569,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	int i, segsiz, datsiz, esp, dathrb, appsiz;
 	struct SHTCTL *shtctl;
 	struct SHEET *sht;
-
+	//open_std_files(task);
 
 	/* 获取程序文件名 */
 	for (i = 0; i < 13; i++) {
@@ -899,15 +899,15 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		cons_putchar(cons, eax & 0xff, 1);
 	} else if (edx == 2) {
 		char * msg = (char *) ebx + ds_base;
-		debug("ebx = %d, ds_base =%d",ebx, ds_base);
-		debug("dispay msg: [%s]",msg);
+		//debug("ebx = %d, ds_base =%d",ebx, ds_base);
+		//debug("dispay msg: [%s]",msg);
 		
-		char msg1[500];
-		int i;
-		for(i=0; i<500; i++)
-			msg1[i] = 0;
-		string_memory(ebx + ds_base, 32, msg1);
-		debug(msg1);
+		//char msg1[500];
+		//int i;
+		//for(i=0; i<500; i++)
+		//	msg1[i] = 0;
+		//string_memory(ebx + ds_base, 32, msg1);
+		//debug(msg1);
 		cons_putstr0(cons, msg);
 	} else if (edx == 3) {
 		cons_putstr1(cons, (char *) ebx + ds_base, ecx);

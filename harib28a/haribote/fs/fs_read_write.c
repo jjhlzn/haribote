@@ -42,13 +42,12 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 	int pos = pcaller->filp[fd]->fd_pos;
 
 	struct inode * pin = pcaller->filp[fd]->fd_inode;
-
-	int imode = pin->i_mode & I_TYPE_MASK;
-	assert( (pin >= &inode_table[0] && pin < &inode_table[NR_INODE]) || imode == I_CHAR_SPECIAL );
-
+	debug("pin->i_size = %d",pin->i_size);
+	//int imode = pin->i_mode & I_TYPE_MASK;
+	debug("imode = %d", pin->i_mode);
+	assert( (pin >= &inode_table[0] && pin < &inode_table[NR_INODE]) || pin->i_mode == I_CHAR_SPECIAL );
 	
-	
-	if (imode == I_CHAR_SPECIAL) {
+	if (pin->i_mode == I_CHAR_SPECIAL) {
 		//int t = fs_msg.type == READ ? DEV_READ : DEV_WRITE;
 		//fs_msg.type = t;
 
@@ -64,20 +63,21 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 		//hd_rdwt(&fs_msg);
 		//assert(fs_msg.CNT == len);
 		assert((fs_msg.type == READ) || (fs_msg.type == WRITE));
-		
+
 		struct CONSOLE *cons = pcaller->cons;
 		if(cons == NULL)
 			return 0;
+
 		struct SHEET *sht = cons->sht;
 		if(sht == NULL)
 			return 0;
-		
+
 		if(fs_msg.type == READ){
 			
 		}else{
-			cons_putstr0(cons, msg);
+			cons_putstr0(cons, buf);
 		}
-		return strlen(msg);
+		return strlen(buf);
 	}
 	else {
 		assert(pin->i_mode == I_REGULAR || pin->i_mode == I_DIRECTORY);

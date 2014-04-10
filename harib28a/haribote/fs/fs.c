@@ -504,7 +504,7 @@ PUBLIC void open_std_files(struct TASK *task)
 	task->filp[STDIN]->fd_cnt = 1;
 	struct inode* STDIN_node = (struct inode*)memman_alloc(memman, sizeof(struct inode));
 	STDIN_node->i_mode = I_CHAR_SPECIAL;
-	//STDIN_node->i_size = task->pid;
+	STDIN_node->i_size = task->pid;
 	task->filp[STDIN]->fd_inode = STDIN_node;
 	
 	for (i = 0; i < NR_FILE_DESC; i++)
@@ -515,11 +515,12 @@ PUBLIC void open_std_files(struct TASK *task)
 	task->filp[STDOUT] = &f_desc_table[i];
 	
 	task->filp[STDOUT]->fd_mode = O_WR;
-	task->filp[STDOUT]->fd_pos = 0;
+	task->filp[STDOUT]->fd_pos = 2;
 	task->filp[STDOUT]->fd_cnt = 1;
 	struct inode* STDOUT_node = (struct inode*)memman_alloc(memman, sizeof(struct inode));
 	STDOUT_node->i_mode = I_CHAR_SPECIAL;
-	//STDOUT_node->i_size = task->pid;
+	//debug("STDOUT_node->i_mode = %x", STDOUT_node->i_mode);
+	STDOUT_node->i_size = task->pid;
 	task->filp[STDOUT]->fd_inode = STDOUT_node;
 	
 	for (i = 0; i < NR_FILE_DESC; i++)
@@ -536,6 +537,8 @@ PUBLIC void open_std_files(struct TASK *task)
 	STDERR_node->i_mode = I_CHAR_SPECIAL;
 	//STDERR_node->i_size = task->pid;
 	task->filp[STDERR]->fd_inode = STDERR_node;
+	
+	//panic("open_std_files");
 }
 
 

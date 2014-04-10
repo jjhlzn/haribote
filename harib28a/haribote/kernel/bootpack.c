@@ -91,6 +91,12 @@ void HariMain(void)
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
 	memman_free(memman, 0x00400000, memtotal - 0x00400000);
 	
+	//初始化硬盘
+	init_hd(&fifo);
+	
+	//初始化文件系统
+	init_fs();
+	
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
 	task_a = task_init(memman); //task_a是干什么用的？？？ task_a是不是代表内核所在的任务
@@ -157,11 +163,7 @@ void HariMain(void)
 	//load_background_pic(buf_back, fat);
 	//sheet_slide(sht_back,  0,  0); //刷新壁纸
 	
-	//初始化硬盘
-	init_hd(&fifo);
 	
-	//初始化文件系统
-	init_fs();
 
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {

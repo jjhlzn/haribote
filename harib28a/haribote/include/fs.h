@@ -188,8 +188,8 @@ int strip_path(char * filename, const char * pathname,
 			   struct inode** ppinode);
 
 #define	MAX_PATH	128
-#define STDIN   1
-#define STDOUT  2
-#define STDERR  3
+#define STDIN   0
+#define STDOUT  1
+#define STDERR  2
 
 #endif /* _FS_H_ */
