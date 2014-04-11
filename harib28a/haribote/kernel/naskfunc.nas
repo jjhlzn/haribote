@@ -19,14 +19,14 @@
 		GLOBAL	_asm_inthandler0d, _asm_end_app
 		GLOBAL	_memtest_sub
 		GLOBAL	_farjmp, _farcall
-		GLOBAL	_asm_hrb_api, _start_app
+		GLOBAL	_asm_hrb_api, _start_app, _asm_linux_api
 		GLOBAL  _disable_irq, _enable_irq, _port_read,_port_write
 		GLOBAL  _memcpy1, _memset1,_ud2
 		EXTERN	_inthandler20, _inthandler21
 		EXTERN	_inthandler2c, _inthandler0d
 		EXTERN 	_inthandler2e
 		EXTERN	_inthandler0c
-		EXTERN	_hrb_api
+		EXTERN	_hrb_api, _linux_api
 
 [SECTION .text]
 
@@ -502,6 +502,47 @@ _asm_end_app:
 		MOV		DWORD [EAX+4],0 ;tss.ss0 = 0
 		POPAD
 		RET					; cmd_app傊婣傞
+		
+_asm_linux_api:
+		STI
+		PUSHAD		; 用于保存寄存器值得PUSH
+		;将ss,esp,eflags,cs,eip这些作为参数，传给hrb_api
+		
+		PUSH [ESP+48] ;SS
+		PUSH [ESP+48] ;ESP
+		PUSH [ESP+48] ;EFLAGS
+		PUSH [ESP+48] ;CS
+		PUSH [ESP+48] ;EIP
+		
+		
+		PUSH	DS
+		PUSH	ES
+		PUSH    GS
+		PUSH    FS
+	
+		
+		PUSHAD		; 用于向hrb_api传值得PUSH
+		
+		MOV		AX,SS
+		MOV		DS,AX		; 将操作系统用段地址存入DS和ES
+		MOV		ES,AX
+		CALL	_linux_api
+		CMP		EAX,0		; 当EAX不为0时程序结束
+		JNE		_asm_end_app
+		
+		ADD		ESP,32
+		
+		POP     FS
+		POP     GS
+		POP		ES
+		POP		DS
+		
+		ADD ESP,20 
+		
+		POPAD
+		IRETD
+		  
+
 
 _start_app:		; void start_app(int eip, int cs, int esp, int ds, int *tss_esp0, int argc, int argv);
 		PUSHAD		; 将32位寄存器的值全部保存下来

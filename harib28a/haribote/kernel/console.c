@@ -625,7 +625,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			esp    = *((int *) (p + 0x000c));
 			datsiz = *((int *) (p + 0x0010));
 			dathrb = *((int *) (p + 0x0014));
-			debug("esp = %d",esp);
+			//debug("esp = %d",esp);
 			q = (char *) memman_alloc_4k(memman, segsiz); //分配数据段
 			task->ds_base = (int) q;
 			task->cs_base = (int) p;
@@ -718,8 +718,8 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				}
 			}
 			
-			//TODO: 参数是伪装的，准备好argc,argv
-			debug("count = %d", count);
+
+			//debug("count = %d", count);
 			
 			//封装成argv
 			char **argv = (char **)memman_alloc(memman,sizeof(char **) * (count+1));
@@ -755,7 +755,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				assert(stack_len + strlen(*p_argv) + 1 < PROC_ORIGIN_STACK);
 				
 				strcpy(&arg_stack[stack_len], *p_argv);
-				debug("*p_argv = %s",*p_argv);
+				//debug("*p_argv = %s",*p_argv);
 				stack_len += strlen(*p_argv);
 				arg_stack[stack_len] = 0;
 				stack_len++;
@@ -773,17 +773,17 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			
 			
 			esp = data_limit - PROC_ORIGIN_STACK;
-			debug("esp = %d",esp);
+			//debug("esp = %d",esp);
 
 			phys_copy(cod_seg+esp, arg_stack, stack_len);
 			
-			debug("stack_len = %d",stack_len);
+			//debug("stack_len = %d",stack_len);
 			
 		
 			u8 *stack = (u8 *)(cod_seg+esp);
 			char *argv_contents = (char *)(stack + (argc + 1) * 4);
 			for(i = 0; i<argc; i++){
-				debug("argv_contents = %d",argv_contents);
+				//debug("argv_contents = %d",argv_contents);
 				*((char **)stack) = (int)argv_contents - (int)cod_seg ;
 				argv_contents += strlen(argv_contents) + 1;
 				stack += 4;
@@ -791,7 +791,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			
 			stack = (u8 *)(cod_seg+esp);
 			string_memory(cod_seg+esp-4, stack_len, msg);
-			debug(msg);
+			//debug(msg);
 			
 			//检查栈中的内容
 			argv_contents = (char *)(stack + (argc + 1) * 4);
@@ -803,10 +803,10 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				stack += 4;
 			}
 			
-			debug("argc = %d, argv = %d", argc, esp);
+			//debug("argc = %d, argv = %d", argc, esp);
 			char ** pp = (char **)(cod_seg+esp);
-			debug("argv[0] = %d", (int)(pp[0]));
-			debug("tt = %d",*((int *)esp));
+			//debug("argv[0] = %d", (int)(pp[0]));
+			//debug("tt = %d",*((int *)esp));
 			start_app(elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
 		} else {
 			cons_putstr0(cons, ".hrb or .elf file format error.\n");

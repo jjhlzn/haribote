@@ -51,6 +51,7 @@ unsigned int memtest_sub(unsigned int start, unsigned int end);
 void farjmp(int eip, int cs);
 void farcall(int eip, int cs);
 void asm_hrb_api(void);
+void asm_linux_api(void);
 void start_app(int eip, int cs, int esp, int ds, int *tss_esp0, int argc, int argv);
 void asm_end_app(void);
 void ud2(); 
@@ -332,6 +333,10 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 			  int fs, int gs,
 			 int es, int ds,
 			 int eip, int cs, int eflags, int esp0, int ss0);
+int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
+			   int fs, int gs,
+			   int es, int ds,
+			   int eip, int cs, int eflags, int user_esp, int user_ss);
 int *inthandler0d(int *esp);
 int *inthandler0c(int *esp);
 void hrb_api_linewin(struct SHEET *sht, int x0, int y0, int x1, int y1, int col);
