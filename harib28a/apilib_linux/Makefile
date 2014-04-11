@@ -1,4 +1,4 @@
-OBJS_API =	api001.obj api004.obj alloca.obj
+OBJS_API =	api001.obj api004.obj api005.obj alloca.obj
 
 TOOLPATH = ../../../tolset/z_tools/
 INCPATH  = ../../../tolset/z_tools/haribote/

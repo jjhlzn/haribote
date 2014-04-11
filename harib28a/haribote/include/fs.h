@@ -154,11 +154,11 @@ struct file_desc {
 
 #define	NR_DEFAULT_FILE_SECTS	2048 /* 2048 * 512 = 1MB */
 
+#define O_RD	    0
+#define O_WR        1
+#define	O_RDWR		4
+#define	O_CREAT		5
 
-#define	O_CREAT		1
-#define	O_RDWR		2
-#define O_RD	    3
-#define O_WR        4
 
 #define SEEK_SET	1
 #define SEEK_CUR	2

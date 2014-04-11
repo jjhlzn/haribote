@@ -33,7 +33,6 @@ extern	u8 *		fsbuf;
  *****************************************************************************/
 PUBLIC int do_open(char *pathname, int flags, struct TASK *pcaller)
 {
-	
 	int fd = -1;		/* return value */
 	
 	/* find a free slot in PROCESS::filp[] */

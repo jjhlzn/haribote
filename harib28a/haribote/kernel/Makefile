@@ -1,6 +1,6 @@
 OBJS =  bootpack.obj naskfunc.obj hankaku.obj dsctbl.obj int.obj fifo.obj \
 		keyboard.obj mouse.obj mtask.obj console.obj file.obj tek.obj \
-		proc.obj exec.obj linkedlist.obj timer.obj forkexit.obj utils.obj syscall.obj
+		exec.obj linkedlist.obj timer.obj forkexit.obj utils.obj syscall.obj
 
 TOOLPATH = ../../../../tolset/z_tools/
 INCPATH  = ../../../../tolset/z_tools/haribote/
