@@ -215,31 +215,28 @@ void HariMain(void)
 				}
 			}
 			if (256 <= i && i <= 511) { /* 键盘数据 */
-				
-				if (i < 0x80 + 256) { /* 常规字符 */
+				if (i < 0x80 + 256) { /* 将按键编码转换为字符编码 */
 					if (key_shift == 0) {
-						//s[0] = keymap[(i - 256)*MAP_COLS];
 						s[0] = keytable0[(i - 256)];
 					} else {
-						//s[0] = keymap[(i - 256)*MAP_COLS+1];
 						s[0] = keytable1[(i - 256)];
 					}
 				} else {
 					s[0] = 0;
 				} 
 				
-				if ('A' <= s[0] && s[0] <= 'Z') {	/* 擖椡暥帤偑傾儖僼傽儀僢僩 */
+				if ('A' <= s[0] && s[0] <= 'Z') {	/* 根据shift键和caps键, 进行小写转换(默认是大写的) */
 					if (((key_leds & 4) == 0 && key_shift == 0) ||
 							((key_leds & 4) != 0 && key_shift != 0)) {
-						s[0] += 0x20;	/* 戝暥帤傪彫暥帤偵曄姺 */
+						s[0] += 0x20;	/* 转化为小写 */
 					}
 				}
 				if (s[0] != 0 && key_win != 0) { /* 把字符发送给相应的任务 */
-					//sprintf(strbuf,"send to task [%d]",s[0] + 256);
-					//print_on_screen(strbuf);
 					fifo32_put(&key_win->task->fifo, s[0] + 256);
+					if(key_win->task->readKeyboard == 1)
+						fifo32_put2(&key_win->task->ch_buf, s[0] + 256);
 				}
-				if (i == 256 + 0x0f && key_win != 0) {	/* Tab */
+				if (i == 256 + 0x0f && key_win != 0) {	/* Tab键 */
 					keywin_off(key_win);
 					j = key_win->height - 1;
 					if (j == 0) {
@@ -248,16 +245,16 @@ void HariMain(void)
 					key_win = shtctl->sheets[j];
 					keywin_on(key_win);
 				}
-				if (i == 256 + 0x2a) {	/* 嵍僔僼僩 ON */
+				if (i == 256 + 0x2a) {	/* 左Shift ON */
 					key_shift |= 1;
 				}
-				if (i == 256 + 0x36) {	/* 塃僔僼僩 ON */
+				if (i == 256 + 0x36) {	/* 右Shift ON */
 					key_shift |= 2;
 				}
-				if (i == 256 + 0xaa) {	/* 嵍僔僼僩 OFF */
+				if (i == 256 + 0xaa) {	/* 左Shift OFF */
 					key_shift &= ~1;
 				}
-				if (i == 256 + 0xb6) {	/* 塃僔僼僩 OFF */
+				if (i == 256 + 0xb6) {	/* 右Shift OFF */
 					key_shift &= ~2;
 				}
 				if (i == 256 + 0x3a) {	/* CapsLock */
@@ -401,11 +398,6 @@ void HariMain(void)
 						y = my - temp_sheet2->vy0;
 						if (0 <= x && x < temp_sheet2->bxsize && 0 <= y && y < temp_sheet2->bysize) {
 							if(temp_sheet2->task !=0 && temp_sheet2->task != task_a && temp_sheet2->task->sendMouse){
-								//打印出当前
-								//sprintf(strbuf,"send mouse info to task [%d], top = %d", j, shtctl->top);
-								//boxfill8(binfo->vram,binfo->scrnx, COL8_848484, 200,200, 200+8*36, 200+16);
-								//putfonts8_asc(binfo->vram, binfo->scrnx, 200, 200, COL8_000000, strbuf);
-								
 								/*将鼠标的信息(x,y,btn)编码到32位的int中，其中，btn需要3位(其实只要3位），
 								  x为14位，y为14位, 最高位是鼠标信息的标志位 */
 								int x1 = x << 17;

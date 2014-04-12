@@ -42,3 +42,33 @@ void init_keyboard(struct FIFO32 *fifo, int data0)
 	io_out8(PORT_KEYDAT, KBC_MODE);
 	return;
 }
+
+int read_from_keyboard(struct TASK *task, int mode)
+{
+	task->readKeyboard = 1;
+	struct FIFO32 *sys_fifo = (struct FIFO32 *) *((int *) 0x0fec);
+	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
+	int i;
+	struct CONSOLE *cons = task->cons;
+	for (;;) {
+		io_cli();
+		if (fifo32_status(&task->ch_buf) == 0) {
+			if (mode != 0) {
+				task_sleep(task);	/* FIFO中没有内容，睡眠等待 */
+			} else {
+				io_sti();
+				return -1;
+			}
+		}
+		i = fifo32_get(&task->ch_buf);
+		io_sti();
+		if (i >= 256 && i<512) { /* 键盘按键 */
+			if (cons->cur_x < CONSOLE_CONTENT_WIDTH) {
+				/* 显示输入的字符 */
+				cons_putchar(cons, i - 256, 1);
+			}
+			task->readKeyboard = 0;
+			return i - 256;
+		}
+	}
+}

@@ -247,6 +247,8 @@ struct TASK {
 	int sel, flags; /* sel代表TSS的GDT编号 */
 	int level, priority;
 	struct FIFO32 fifo;
+	struct FIFO32 ch_buf;
+	int readKeyboard;
 	int sendMouse;  //为了鼠标api,当调用api_getMouse的时候，sendMouse被置为1。如果没有这个标志位，那么鼠标的信息就会
 	                //一直往fifo中填充，很快fifo就会被填满了
 	struct TSS32 tss;

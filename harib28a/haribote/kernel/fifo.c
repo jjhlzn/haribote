@@ -42,6 +42,29 @@ int fifo32_put(struct FIFO32 *fifo, int data)
 	return 0;
 }
 
+int fifo32_put2(struct FIFO32 *fifo, int data)
+/* 向FIFO写入数据并累积起来 */
+{
+	if (fifo->free == 0) {  //满了就重置 
+		fifo->p = 0; /* 写入位置 */
+		fifo->q = 0; /* 读取位置 */
+	}else{
+		fifo->buf[fifo->p] = data;
+		fifo->p++;
+		if (fifo->p == fifo->size) {
+			fifo->p = 0;
+		}
+		fifo->free--;
+	}
+	
+	if (fifo->task != 0) {
+		if (fifo->task->flags != 2) { /* 如果任务处于休眠状态 */
+			task_run(fifo->task, -1, 0); /* 将任务唤醒 */
+		}
+	}
+	return 0;
+}
+
 int fifo32_get(struct FIFO32 *fifo)
 /* 从FIFO中获取数据 */
 {

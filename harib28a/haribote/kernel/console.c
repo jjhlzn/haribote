@@ -116,7 +116,15 @@ void console_task(struct SHEET *sheet, int memtotal)
 
 	/* 僾儘儞僾僩昞帵 */
 	cons_putchar(&cons, '>', 1);
+	
+	console_loop(task,memtotal,last_cmdline);
+}
 
+
+void console_loop(struct TASK *task, int memtotal, char *last_cmdline){
+	struct CONSOLE *cons = task->cons;
+	char *cmdline = task->cmdline;
+	int i;
 	for (;;) {
 		io_cli();
 		if (fifo32_status(&task->fifo) == 0) {
@@ -125,64 +133,64 @@ void console_task(struct SHEET *sheet, int memtotal)
 		} else {
 			i = fifo32_get(&task->fifo);
 			io_sti();
-			if (i <= 1 && cons.sht != 0) { /* 僇乕僜儖梡僞僀儅 */
+			if (i <= 1 && cons->sht != 0) { /* 僇乕僜儖梡僞僀儅 */
 				if (i != 0) {
-					timer_init(cons.timer, &task->fifo, 0); /* 師偼0傪 */
-					if (cons.cur_c >= 0) {
-						cons.cur_c = COL8_FFFFFF;
+					timer_init(cons->timer, &task->fifo, 0); /* 師偼0傪 */
+					if (cons->cur_c >= 0) {
+						cons->cur_c = COL8_FFFFFF;
 					}
 				} else {
-					timer_init(cons.timer, &task->fifo, 1); /* 師偼1傪 */
-					if (cons.cur_c >= 0) {
-						cons.cur_c = COL8_000000;
+					timer_init(cons->timer, &task->fifo, 1); /* 師偼1傪 */
+					if (cons->cur_c >= 0) {
+						cons->cur_c = COL8_000000;
 					}
 				}
-				timer_settime(cons.timer, 50);
+				timer_settime(cons->timer, 50);
 			}
 			if (i == 2) {	/* 僇乕僜儖ON */
-				cons.cur_c = COL8_FFFFFF;
+				cons->cur_c = COL8_FFFFFF;
 			}
 			if (i == 3) {	/* 僇乕僜儖OFF */
-				if (cons.sht != 0) {
-					boxfill8(cons.sht->buf, cons.sht->bxsize, COL8_000000,
-						cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
+				if (cons->sht != 0) {
+					boxfill8(cons->sht->buf, cons->sht->bxsize, COL8_000000,
+							 cons->cur_x, cons->cur_y, cons->cur_x + 7, cons->cur_y + 15);
 				}
-				cons.cur_c = -1;
+				cons->cur_c = -1;
 			}
 			if (i == 4) {	/* 僐儞僜乕儖偺乽亊乿儃僞儞僋儕僢僋 */
-				cmd_exit(&cons, fat);
+				cmd_exit(cons, fat);
 			}
 			if (256 <= i && i <= 511) { /* 键盘数据 */
 				//debug("i = %d",i);
 				if (i ==  56  + 256 ) {//向上方向键
-					cons.cur_x = 16;
+					cons->cur_x = 16;
 					sprintf(cmdline,last_cmdline);
-					cons_putstr0(&cons,cmdline);
+					cons_putstr0(cons,cmdline);
 					continue;
 				}
 				if (i == 8 + 256) {  //backsapce
-					if (cons.cur_x > 16) {
+					if (cons->cur_x > 16) {
 						/* 将当前的字符变为空格 */
-						cons_putchar(&cons, ' ', 0);
-						cons.cur_x -= 8;
+						cons_putchar(cons, ' ', 0);
+						cons->cur_x -= 8;
 					}
-				} else if (i == 10 + 256) { 
-					cons_putchar(&cons, ' ', 0);
-					cmdline[cons.cur_x / 8 - 2] = 0;
-					cons_newline(&cons);
-					cons_runcmd(cmdline, &cons, fat, memtotal);	/* 僐儅儞僪幚峴 */
+				} else if (i == 10 + 256) {  //回车
+					cons_putchar(cons, ' ', 0);
+					cmdline[cons->cur_x / 8 - 2] = 0;
+					cons_newline(cons);
+					cons_runcmd(cmdline, cons, fat, memtotal);	/* 执行命令应用程序 */
 					sprintf(last_cmdline,cmdline);
-					if (cons.sht == 0) {
-						cmd_exit(&cons, fat);
+					if (cons->sht == 0) {
+						cmd_exit(cons, fat);
 					}
-					/* 僾儘儞僾僩昞帵 */
-					cons_putchar(&cons, '>', 1);
+					/* 打印提示符 */
+					cons_putchar(cons, '>', 1);
 				} else {
-					/* 堦斒暥帤 */
-					if (cons.cur_x < CONSOLE_CONTENT_WIDTH) {
-						/* 堦暥帤昞帵偟偰偐傜丄僇乕僜儖傪1偮恑傔傞 */
-						cmdline[cons.cur_x / 8 - 2] = i - 256;
-						cons_putchar(&cons, i - 256, 1);
+					/* 在没有到达边界之前 */
+					if (cons->cur_x < CONSOLE_CONTENT_WIDTH) {
+						/* 显示输入的字符 */
+						cmdline[cons->cur_x / 8 - 2] = i - 256;
+						cons_putchar(cons, i - 256, 1);
 					}
 				}
 			}
@@ -191,12 +199,12 @@ void console_task(struct SHEET *sheet, int memtotal)
 			}
 			
 			/* 僇乕僜儖嵞昞帵 */
-			if (cons.sht != 0) {
-				if (cons.cur_c >= 0) {
-					boxfill8(cons.sht->buf, cons.sht->bxsize, cons.cur_c, 
-						cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
+			if (cons->sht != 0) {
+				if (cons->cur_c >= 0) {
+					boxfill8(cons->sht->buf, cons->sht->bxsize, cons->cur_c, 
+							 cons->cur_x, cons->cur_y, cons->cur_x + 7, cons->cur_y + 15);
 				}
-				sheet_refresh(cons.sht, cons.cur_x, cons.cur_y, cons.cur_x + 8, cons.cur_y + 16);
+				sheet_refresh(cons->sht, cons->cur_x, cons->cur_y, cons->cur_x + 8, cons->cur_y + 16);
 			}
 		}
 	}

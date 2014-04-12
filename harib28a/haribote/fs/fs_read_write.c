@@ -48,20 +48,6 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 	assert( (pin >= &inode_table[0] && pin < &inode_table[NR_INODE]) || pin->i_mode == I_CHAR_SPECIAL );
 	
 	if (pin->i_mode == I_CHAR_SPECIAL) {
-		//int t = fs_msg.type == READ ? DEV_READ : DEV_WRITE;
-		//fs_msg.type = t;
-
-		//int dev = pin->i_start_sect;
-		//assert(MAJOR(dev) == 4);
-
-		//fs_msg.DEVICE	= MINOR(dev);
-		//fs_msg.BUF	= buf;
-		//fs_msg.CNT	= len;
-		//fs_msg.PROC_NR	= src;
-		////assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
-		////send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &fs_msg);
-		//hd_rdwt(&fs_msg);
-		//assert(fs_msg.CNT == len);
 		assert((fs_msg.type == READ) || (fs_msg.type == WRITE));
 
 		struct CONSOLE *cons = pcaller->cons;
@@ -73,9 +59,19 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 			return 0;
 
 		if(fs_msg.type == READ){
-			
+			char *charBuf = (char *)buf;
+			int ch = read_from_keyboard(pcaller, 1);
+			if( ch == -1){
+				charBuf[0] = 0;
+			}else{
+				charBuf[0] = ch;
+				charBuf[1] = 0;
+			}
 		}else{
-			cons_putstr0(cons, buf);
+			
+			char *msg = (char *)buf;
+			msg[len] = 0;
+			cons_putstr0(cons, msg);
 		}
 		return strlen(buf);
 	}
@@ -84,8 +80,9 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 		assert((fs_msg.type == READ) || (fs_msg.type == WRITE));
 
 		int pos_end;
-		if (fs_msg.type == READ)
+		if (fs_msg.type == READ){
 			pos_end = min(pos + len, pin->i_size);
+		}
 		else		/* WRITE */
 			pos_end = min(pos + len, pin->i_nr_sects * SECTOR_SIZE);
 
@@ -114,11 +111,9 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 				  fsbuf);
 
 			if (fs_msg.type == READ) {
-				//print_on_screen(str);
 				phys_copy((void*)va2la(src, buf + bytes_rw),
 					  (void*)va2la(-1, fsbuf + off),
 					  bytes);
-				//phys_copy(la, (void*)va2la(0, hdbuf), bytes);
 			}
 			else {	/* WRITE */
 				
@@ -132,8 +127,6 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 					  chunk * SECTOR_SIZE,
 					  -1,
 					  fsbuf);
-				//sprintf(str, "call hd driver to write %d bytes ", bytes);
-				//print_on_screen(str);
 			}
 			off = 0;
 			bytes_rw += bytes;

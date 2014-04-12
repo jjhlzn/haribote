@@ -103,6 +103,11 @@ struct TASK *task_init(struct MEMMAN *memman)
 		for(j=0; j<NR_FILES; j++){
 			taskctl->tasks0[i].filp[j] = 0;
 		}
+		
+		int bufCount = 100;
+		int *fifobuf = (int *)memman_alloc(memman,sizeof(int)*bufCount);
+		taskctl->tasks0[i].ch_buf.task = &taskctl->tasks0[i];
+		fifo32_init(&taskctl->tasks0[i].ch_buf, bufCount, fifobuf, 0);
 	}
 	for (i = 0; i < MAX_TASKLEVELS; i++) {
 		taskctl->level[i].running = 0;
@@ -164,6 +169,7 @@ struct TASK *task_alloc(void)
 			task->forked = 0; //重置是否是fork创建的标志
 			task->exit_status = -1000;
 			
+			task->readKeyboard = 0;
 			open_std_files(task);
 			return task;
 		}

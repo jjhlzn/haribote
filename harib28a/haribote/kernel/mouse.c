@@ -37,29 +37,29 @@ void enable_mouse(struct FIFO32 *fifo, int data0, struct MOUSE_DEC *mdec)
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat)
 {
 	if (mdec->phase == 0) {
-		/* 儅僂僗偺0xfa傪懸偭偰偄傞抜奒 */
+		/* 等待鼠标的0xfa的阶段 */
 		if (dat == 0xfa) {
 			mdec->phase = 1;
 		}
 		return 0;
 	}
 	if (mdec->phase == 1) {
-		/* 儅僂僗偺1僶僀僩栚傪懸偭偰偄傞抜奒 */
+		/* 等待鼠标第一字节的阶段 */
 		if ((dat & 0xc8) == 0x08) {
-			/* 惓偟偄1僶僀僩栚偩偭偨 */
+			/* 如果第一字节正确 */
 			mdec->buf[0] = dat;
 			mdec->phase = 2;
 		}
 		return 0;
 	}
 	if (mdec->phase == 2) {
-		/* 儅僂僗偺2僶僀僩栚傪懸偭偰偄傞抜奒 */
+		/* 等待鼠标第二字节的阶段 */
 		mdec->buf[1] = dat;
 		mdec->phase = 3;
 		return 0;
 	}
 	if (mdec->phase == 3) {
-		/* 儅僂僗偺3僶僀僩栚傪懸偭偰偄傞抜奒 */
+		/* 等待鼠标的第三字节的阶段 */
 		mdec->buf[2] = dat;
 		mdec->phase = 1;
 		mdec->btn = mdec->buf[0] & 0x07;
@@ -71,8 +71,8 @@ int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat)
 		if ((mdec->buf[0] & 0x20) != 0) {
 			mdec->y |= 0xffffff00;
 		}
-		mdec->y = - mdec->y; /* 儅僂僗偱偼y曽岦偺晞崋偑夋柺偲斀懳 */
+		mdec->y = - mdec->y; /* 鼠标的y方向与画面符号相反 */
 		return 1;
 	}
-	return -1; /* 偙偙偵棃傞偙偲偼側偄偼偢 */
+	return -1; /* 应该不可能到这里来 */
 }

@@ -15,7 +15,7 @@ void HariMain(void){
 		sprintf(str,"child_pid = %d, status = %d\n", child_pid, s);
 		printf(str);
 		api_end();
-	}
+	} 
 	else {	/* child process */
 		pid = getpid();
 		sprintf(str,"child is running, pid:%d\n", pid);

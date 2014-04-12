@@ -51,10 +51,11 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		msg.type = READ;
 		
 		reg[7] = do_rdwt(&msg,task);
-		buf[reg[7]] = 0; //设置结尾符
+		if(reg[7] != -1)
+			buf[reg[7]] = 0; //设置结尾符
 		
-		debug("read contents = [%s]",buf);
-	}else if (eax == 4) {
+		debug("read %d bytes [%s]", reg[7], buf);
+	}else if (eax == 4) {  //write file
 		int fd = ebx;
 		char *buf = (char *)(ecx+ds_base);
 		int len = edx;
@@ -69,8 +70,11 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		msg.type = WRITE;
 		
 		reg[7] = do_rdwt(&msg,task);
-		
-		debug("write contets(%s) to fd(%d)",buf, fd);
+		//int i;
+		//for(i=0; i<len; i++){
+		//	debug("%d",(char)buf[i]);
+		//}
+		debug("write %d bytes [%s] to fd(%d)",len,buf, fd);
 	}else if(eax == 5){
 		debug("ebx = %d, ecx = %d, edx = %d", ebx, ecx, edx);
 		char *pathname = (char *) ebx + ds_base;
@@ -199,42 +203,8 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	} else if (edx == 14) {
 		sheet_free((struct SHEET *) ebx);
 	} else if (edx == 15) {
-		for (;;) {
-			io_cli();
-			if (fifo32_status(&task->fifo) == 0) {
-				if (eax != 0) {
-					task_sleep(task);	/* FIFO偑嬻側偺偱怮偰懸偮 */
-				} else {
-					io_sti();
-					reg[7] = -1;
-					return 0;
-				}
-			}
-			i = fifo32_get(&task->fifo);
-			io_sti();
-			if (i <= 1 && cons->sht != 0) { /* 僇乕僜儖梡僞僀儅 */
-				/* 傾僾儕幚峴拞偼僇乕僜儖偑弌側偄偺偱丄偄偮傕師偼昞帵梡偺1傪拲暥偟偰偍偔 */
-				timer_init(cons->timer, &task->fifo, 1); /* 師偼1傪 */
-				timer_settime(cons->timer, 50);
-			}
-			if (i == 2) {	/* 僇乕僜儖ON */
-				cons->cur_c = COL8_FFFFFF;
-			}
-			if (i == 3) {	/* 僇乕僜儖OFF */
-				cons->cur_c = -1;
-			}
-			if (i == 4) {	/* 僐儞僜乕儖偩偗傪暵偠傞 */
-				timer_cancel(cons->timer);
-				io_cli();
-				fifo32_put(sys_fifo, cons->sht - shtctl->sheets0 + 2024);	/* 2024乣2279 */
-				cons->sht = 0;
-				io_sti();
-			}
-			if (i >= 256 && i<512) { /* 僉乕儃乕僪僨乕僞乮僞僗僋A宱桼乯側偳 */
-				reg[7] = i - 256;
-				return 0;
-			}
-		}
+		reg[7] = read_from_keyboard(task,eax);
+		return 0;
 	} else if (edx == 16) {
 		reg[7] = (int) timer_alloc();
 		((struct TIMER *) reg[7])->flags2 = 1;	/* 帺摦僉儍儞僙儖桳岠 */
