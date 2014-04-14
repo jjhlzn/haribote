@@ -60,15 +60,16 @@ PUBLIC int do_open(char *pathname, int flags, struct TASK *pcaller)
 	if (flags & O_CREATE) {
 		if (inode_nr) {
 			debug("file exists.\n");
-			return -1;
 		}
 		else {
+			debug("create file %s",pathname);
 			pin = create_file(pathname, flags);
+			inode_nr = search_file(pathname);
 		}
 	}
-	else {
-		//assert(flags & O_RDWR);
-
+	
+	if (flags == O_RDONLY || flags & O_WRONLY || flags & O_RDWR){
+		debug("try to find file [%s]",pathname);
 		char filename[MAX_PATH];
 		struct inode * dir_inode;
 		if (strip_path(filename, pathname, &dir_inode) != 0)
@@ -107,6 +108,9 @@ PUBLIC int do_open(char *pathname, int flags, struct TASK *pcaller)
 		}
 		else {
 			assert(pin->i_mode == I_REGULAR);
+			if( flags & O_TRUNC ){
+				pin->i_size = 0;
+			}
 		}
 	}
 	else {

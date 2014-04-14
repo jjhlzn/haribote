@@ -81,6 +81,8 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 
 		int pos_end;
 		if (fs_msg.type == READ){
+			if( pos == pin->i_size)
+				return -1;
 			pos_end = min(pos + len, pin->i_size);
 		}
 		else		/* WRITE */
