@@ -143,7 +143,8 @@ PUBLIC int do_rdwt(MESSAGE * msg,struct TASK *pcaller)
 			/* write the updated i-node back to disk */
 			sync_inode(pin);
 		}
-
+		
+		pcaller->filp[fd]->fd_pos += bytes_rw;
 		return bytes_rw;
 	}
 }

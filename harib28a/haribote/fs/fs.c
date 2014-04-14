@@ -499,7 +499,7 @@ PUBLIC void open_std_files(struct TASK *task)
 		panic("f_desc_table[] is full (PID:%d)", task->pid);
 	task->filp[STDIN] = &f_desc_table[i];
 	
-	task->filp[STDIN]->fd_mode = O_RD;
+	task->filp[STDIN]->fd_mode = O_RDONLY;
 	task->filp[STDIN]->fd_pos = 0;
 	task->filp[STDIN]->fd_cnt = 1;
 	struct inode* STDIN_node = (struct inode*)memman_alloc(memman, sizeof(struct inode));
@@ -514,7 +514,7 @@ PUBLIC void open_std_files(struct TASK *task)
 		panic("f_desc_table[] is full (PID:%d)", task->pid);
 	task->filp[STDOUT] = &f_desc_table[i];
 	
-	task->filp[STDOUT]->fd_mode = O_WR;
+	task->filp[STDOUT]->fd_mode = O_WRONLY;
 	task->filp[STDOUT]->fd_pos = 2;
 	task->filp[STDOUT]->fd_cnt = 1;
 	struct inode* STDOUT_node = (struct inode*)memman_alloc(memman, sizeof(struct inode));
@@ -530,7 +530,7 @@ PUBLIC void open_std_files(struct TASK *task)
 		panic("f_desc_table[] is full (PID:%d)", task->pid);
 	task->filp[STDERR] = &f_desc_table[i];
 	
-	task->filp[STDERR]->fd_mode = O_WR;
+	task->filp[STDERR]->fd_mode = O_WRONLY;
 	task->filp[STDERR]->fd_pos = 0;
 	task->filp[STDERR]->fd_cnt = 1;
 	struct inode* STDERR_node = (struct inode*)memman_alloc(memman, sizeof(struct inode));

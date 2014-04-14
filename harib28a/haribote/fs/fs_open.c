@@ -57,7 +57,7 @@ PUBLIC int do_open(char *pathname, int flags, struct TASK *pcaller)
 	int inode_nr = search_file(pathname);
 
 	struct inode * pin = 0;
-	if (flags & O_CREAT) {
+	if (flags & O_CREATE) {
 		if (inode_nr) {
 			debug("file exists.\n");
 			return -1;

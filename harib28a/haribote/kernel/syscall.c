@@ -83,10 +83,15 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		int fd = do_open(pathname,flags,task);
 		debug("open fd(%d)", fd);
 		reg[7] = fd;
-	}else if(eax == 6){
+	}else if(eax == 6){  //close file
 		int fd = ebx;
 		debug("close fd(%d)",fd);
 		reg[7] = do_close(fd,task);
+	}else if(eax == 8){  //create file
+		char *pathname = (char *)ebx+ds_base;
+		int fd = do_open(pathname,O_CREATE,task);
+		debug("create file %s fd[%d]",pathname,task);
+		reg[4] = fd;
 	}
 	
 	return 0;
