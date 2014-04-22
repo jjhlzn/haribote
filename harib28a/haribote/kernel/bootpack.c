@@ -70,6 +70,8 @@ void HariMain(void)
 	unsigned char *nihongo;
 	struct FILEINFO *finfo;
 	extern char hankaku[4096];
+	prepare_page_dir_and_page_table();
+	open_page();
 	
 	//初始化gdt和idt
 	init_gdtidt();
@@ -86,10 +88,13 @@ void HariMain(void)
 	io_out8(PIC1_IMR, 0xaf); /* 儅僂僗傪嫋壜(10101111), 同时打开硬盘中断  */ 
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 
-	memtotal = memtest(0x00400000, 0xbfffffff);
+	//memtotal = memtest(0x00400000, 0x00600000);
+	
+	memtotal = 16 * 1024 * 1024;
 	memman_init(memman);
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
-	memman_free(memman, 0x00400000, memtotal - 0x00400000);
+	//memman_free(memman, 0x00400000, memtotal - 0x00400000); //
+	memman_free(memman, 0x00900000, memtotal - 0x00900000); //0x00400000后面放页表
 	
 	//初始化硬盘
 	init_hd(&fifo);
@@ -144,12 +149,12 @@ void HariMain(void)
 	unsigned char sect = *(unsigned char *) (14+BIOS);    //63
 	
 	//显示内存信息 
-	debug("memory %dMB free : %dKB", memtotal / (1024 * 1024), 
-			memman_total(memman) / 1024);
-	debug("dd1 = %8x, dd2 = %8x, dd3 = %8x, dd4 = %8x", *BIOS2, *(BIOS2+1), *(BIOS2+2), *(BIOS2+3));
-	debug("cyl = %u, head = %u, wpcom = %u ctl = %u, lzone = %u, sect = %u", 
-		cyl, head, wpcom,
-		ctl, lzone, sect);
+	//debug("memory %dMB free : %dKB", memtotal / (1024 * 1024), 
+	//		memman_total(memman) / 1024);
+	//debug("dd1 = %8x, dd2 = %8x, dd3 = %8x, dd4 = %8x", *BIOS2, *(BIOS2+1), *(BIOS2+2), *(BIOS2+3));
+	//debug("cyl = %u, head = %u, wpcom = %u ctl = %u, lzone = %u, sect = %u", 
+	//	cyl, head, wpcom,
+	//	ctl, lzone, sect);
 
 	/* 嵟弶偵僉乕儃乕僪忬懺偲偺怘偄堘偄偑側偄傛偆偵丄愝掕偟偰偍偔偙偲偵偡傞 */
 	fifo32_put(&keycmd, KEYCMD_LED);
@@ -164,7 +169,7 @@ void HariMain(void)
 	//sheet_slide(sht_back,  0,  0); //刷新壁纸
 	
 	
-
+	
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {
 		i = finfo->size;
@@ -180,6 +185,7 @@ void HariMain(void)
 	}
 	*((int *) 0x0fe8) = (int) nihongo;
 	memman_free_4k(memman, (int) fat, 4 * 2880);
+	
 
 	for (;;) {
 		if (fifo32_status(&keycmd) > 0 && keycmd_wait < 0) {

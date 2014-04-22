@@ -321,7 +321,9 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 		cmd_ls(cons);
 	} else if(strcmp(cmdline, "ps") == 0) {
 		cmd_ps(cons);
-	} else if (cmdline[0] != 0) {
+	} else if(strcmp(cmdline, "page") == 0){
+		print_page_config();
+	}else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
 			/* 无法找到该命令和文件 */
 			cons_putstr0(cons, "Bad command.\n\n");

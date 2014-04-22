@@ -144,6 +144,7 @@ struct TASK *task_init(struct MEMMAN *memman)
 	return task;
 }
 
+extern int PAGE_DIR_ADDR;
 struct TASK *task_alloc(void)
 {
 	int i;
@@ -164,6 +165,7 @@ struct TASK *task_alloc(void)
 			task->tss.ds = 0;
 			task->tss.fs = 0;
 			task->tss.gs = 0;
+			task->tss.cr3 =   PAGE_DIR_ADDR;
 			task->tss.iomap = 0x40000000;
 			task->tss.ss0 = 0;
 			task->forked = 0; //重置是否是fork创建的标志

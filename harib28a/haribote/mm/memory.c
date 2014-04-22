@@ -161,3 +161,84 @@ int memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
 	i = memman_free(man, addr, size);
 	return i;
 }
+
+
+/***********************************分页相关**************************************************/
+
+/****准备页目录和页表***
+ ***先把线性地址映射成物理地址
+*/
+int PAGE_DIR_ADDR = 0x00400000; 
+void prepare_page_dir_and_page_table()
+{
+	
+	
+	//int mem_size = 32 * 1024 * 1024; //写死成32M
+	int i, j;
+	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
+	//清空1024个页目录项
+	for(i=0; i<1024; i++){
+		page_dir_base_addr[i] = 0;
+	}
+	
+	//一个页表可以维护1024个页表(4M)，16M内存只需要4个页表
+	
+	//设置页表
+	for(i = 0; i < 1024; i++){
+		int *the_page_table = page_dir_base_addr + (i + 1) * 1024;
+		page_dir_base_addr[i] = ((int)the_page_table & 0xFFFFFC00) | 0x3;
+		int base_addr = 0x00000000 + i * 4 * 1024 * 1024;
+		for(j=0; j < 1024; j++){
+			the_page_table[j] = ( (base_addr + j * 4 * 1024) & 0xFFFFFC00 ) | 0x3;
+		}
+	}
+}
+
+int test_page(unsigned x)
+{
+	int *page_dir_base_addr = PAGE_DIR_ADDR;
+	int page_dir_index = x >> 22;
+	debug("page_dir_index = %d", page_dir_index);
+	unsigned int page_add =  *(page_dir_base_addr + page_dir_index) & 0xFFFFF000;
+	debug("page_add = %8.8x", page_add);
+	int page_index = x >> 12 & 0x000003FF;
+	debug("page_index = %d", page_index);
+	int *add = (*((int *)page_add + page_index)  & 0xFFFFF000) + (x & 0x00000FFF);
+	debug("Page(0x%08.8x) = 0x%08.8x",x,(int) add);
+	return (int) add;
+}
+
+void print_page_config()
+{
+	int i, j;
+	int *page_dir_base_addr = PAGE_DIR_ADDR;
+	//清空1024个页目录项
+	for(i=0; i<10; i++){
+		debug("0x%08.8x",page_dir_base_addr[i]);
+	}
+	//设置页表
+	//for(i = 0; i < 4; i++){
+	//	int *the_page_table = page_dir_base_addr + (i + 1) * 1024;
+	//	for(j=0; j < 1024; j++){
+	//		debug("0x%08.8x",the_page_table[j]);
+	//	}
+	//}
+	//for(i = 0; i<16 * 1024 * 1024 ; i++){
+	//	int result = test_page(i);
+	//	if(result != i)
+	//		debug("find fault");
+	//}
+	 //test_page(0x00600010);
+	//test_page(0x00000000);
+	//test_page(0x00001000);
+	//test_page(0x00400000);
+	//test_page(16 * 1024 * 1024-1);
+	//test_page(4 * 1024 * 1024 * 1024-1);
+	test_page(0xe0000000);
+	test_page(0xe0001000);
+	
+	debug("cr3 = 0x%08.8x",get_cr3());
+	debug("cr0 = 0x%08.8x",get_cr0());
+}
+
+

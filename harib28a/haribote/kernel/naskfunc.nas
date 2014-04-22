@@ -22,6 +22,7 @@
 		GLOBAL	_asm_hrb_api, _start_app, _asm_linux_api
 		GLOBAL  _disable_irq, _enable_irq, _port_read,_port_write
 		GLOBAL  _memcpy1, _memset1,_ud2
+		GLOBAL  _open_page, _get_cr3, _get_cr0
 		EXTERN	_inthandler20, _inthandler21
 		EXTERN	_inthandler2c, _inthandler0d
 		EXTERN 	_inthandler2e
@@ -570,4 +571,22 @@ _start_app:		; void start_app(int eip, int cs, int esp, int ds, int *tss_esp0, i
 		RETF
 ;	应用程序结束后不会回到这里
 
+_open_page:
+	 CLI
+	 mov eax,0x00400000                 ;PCD=PWT=0
+     mov cr3,eax
+
+     mov eax,cr0
+     or eax,0x80000000
+     mov cr0,eax                        ;开启分页机制
+	 STI
+	 ret
+	 
+_get_cr3:
+	mov eax, cr3
+	ret
+
+_get_cr0:
+	mov eax, cr0
+	ret
 
