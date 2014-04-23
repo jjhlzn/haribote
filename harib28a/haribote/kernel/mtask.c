@@ -3,6 +3,7 @@
 #include "bootpack.h"
 #include "linkedlist.h"
 #include "fs.h"
+#include "memory.h"
 
 struct TASKCTL *taskctl;
 struct TIMER *task_timer;
@@ -144,7 +145,6 @@ struct TASK *task_init(struct MEMMAN *memman)
 	return task;
 }
 
-extern int PAGE_DIR_ADDR;
 struct TASK *task_alloc(void)
 {
 	int i;

@@ -878,8 +878,6 @@ static void debug_Elf32_Shdr(Elf32_Shdr *phdr)
 	debug("--------------------------------------------------");
 }
 
-
-
 int *inthandler0c(int *esp)
 {
 	struct TASK *task = task_now();

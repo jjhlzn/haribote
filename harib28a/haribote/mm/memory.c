@@ -1,6 +1,7 @@
 /* 儊儌儕娭學 */
 
 #include "bootpack.h"
+#include "memory.h"
 
 #define EFLAGS_AC_BIT		0x00040000
 #define CR0_CACHE_DISABLE	0x60000000
@@ -8,6 +9,7 @@
 /**
   用于计算计算机内存大小。方法：通过不断的测试来获取计算机内存大小。
 */
+int memtotal;
 unsigned int memtest(unsigned int start, unsigned int end)
 {
 	char flg486 = 0;
@@ -40,6 +42,7 @@ unsigned int memtest(unsigned int start, unsigned int end)
 
 	return i;
 }
+
 
 void memman_init(struct MEMMAN *man)
 {
@@ -165,15 +168,34 @@ int memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
 
 /***********************************分页相关**************************************************/
 
+
+//初始化内存, 测试内存大小，将内存划分成物理页, 分配和映射内核使用的物理页
+void mem_init()
+{
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	//检测内存
+	memtotal = memtest(0x00400000, 0xbfffffff);
+	memman_init(memman);
+	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
+	//0x00400000-0x00900000放页表，0x00900000-0x00a00000存放分页是否空闲
+	memman_free(memman, 0x00a00000, memtotal - 0x00a00000); 
+	
+	int mem_pages = memtotal / (4 * 1024);
+	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	int i;
+	for(i = 0; i < page_bit_map; i++){
+		page_bit_map = 0;
+	}
+	prepare_page_dir_and_page_table();
+	open_page();
+}
+
 /****准备页目录和页表***
  ***先把线性地址映射成物理地址
+ ***将内核所在的线性地址映射到物理地址
 */
-int PAGE_DIR_ADDR = 0x00400000; 
 void prepare_page_dir_and_page_table()
 {
-	
-	
-	//int mem_size = 32 * 1024 * 1024; //写死成32M
 	int i, j;
 	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
 	//清空1024个页目录项
@@ -181,6 +203,16 @@ void prepare_page_dir_and_page_table()
 		page_dir_base_addr[i] = 0;
 	}
 	
+	int kernel_pages = 0x00a00000 / 0x400;
+	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	//占用物理页
+	for( i = 0; i < kernel_pages; i++)
+		page_bit_map[i] = 1;
+	//映射内核所在的地址，线性地址:0 ~ 10 * 1024 * 1024-1, 物理地址：0 ~ 10 * 1024 * 1024-1
+	int start_kernel_ladd = 0, end_kernel_ladd = 0x00a00000;
+	for( i = 0; i < kernel_pages; i++)
+		
+
 	//一个页表可以维护1024个页表(4M)，16M内存只需要4个页表
 	
 	//设置页表

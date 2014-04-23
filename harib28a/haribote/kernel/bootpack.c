@@ -12,8 +12,6 @@ void keywin_on(struct SHEET *key_win);
 void close_console(struct SHEET *sht);
 void close_constask(struct TASK *task);
 struct SHEET *open_log_console(struct SHTCTL *shtctl, unsigned int memtotal);
- 
-
 
 /* bmp.nasm */
 int info_BMP(struct DLL_STRPICENV *env, int *info, int size, char *fp);
@@ -28,6 +26,7 @@ unsigned char rgb2pal(int r, int g, int b, int x, int y);
 void load_background_pic(char* back_buf, int *fat);
 static struct BOOTINFO *bootinfo = (struct BOOTINFO *) ADR_BOOTINFO;
 struct SHEET  *log_win = 0;
+extern unsigned int memtotal;
 void HariMain(void)
 {
 	
@@ -37,7 +36,6 @@ void HariMain(void)
 	struct FIFO32 fifo, keycmd;
 	int fifobuf[128], keycmd_buf[32];
 	int mx, my, i, new_mx = -1, new_my = 0, new_wx = 0x7fffffff, new_wy = 0;
-	unsigned int memtotal;
 	struct MOUSE_DEC mdec;
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	unsigned char *buf_back, buf_mouse[256];
@@ -70,14 +68,15 @@ void HariMain(void)
 	unsigned char *nihongo;
 	struct FILEINFO *finfo;
 	extern char hankaku[4096];
-	prepare_page_dir_and_page_table();
-	open_page();
 	
-	//初始化gdt和idt
+	//内存初始化
+	mem_init();
+	
+	//初始化全局描述符表（gdt）和中断向量表(idt)
 	init_gdtidt();
 	init_pic();
 
-	io_sti(); /* IDT/PIC偺弶婜壔偑廔傢偭偨偺偱CPU偺妱傝崬傒嬛巭傪夝彍 */
+	io_sti(); /* 开启中断 */
 	fifo32_init(&fifo, 128, fifobuf, 0);
 	*((int *) 0x0fec) = (int) &fifo;
 	init_pit();
@@ -88,14 +87,6 @@ void HariMain(void)
 	io_out8(PIC1_IMR, 0xaf); /* 儅僂僗傪嫋壜(10101111), 同时打开硬盘中断  */ 
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 
-	//memtotal = memtest(0x00400000, 0x00600000);
-	
-	memtotal = 16 * 1024 * 1024;
-	memman_init(memman);
-	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
-	//memman_free(memman, 0x00400000, memtotal - 0x00400000); //
-	memman_free(memman, 0x00900000, memtotal - 0x00900000); //0x00400000后面放页表
-	
 	//初始化硬盘
 	init_hd(&fifo);
 	
@@ -104,7 +95,7 @@ void HariMain(void)
 	
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
-	task_a = task_init(memman); //task_a是干什么用的？？？ task_a是不是代表内核所在的任务
+	task_a = task_init(memman); //task_a代表内核所在的任务
 	fifo.task = task_a;
 	strcpy(task_a->name,"task_a");
 	task_run(task_a, 1, 2);
