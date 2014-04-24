@@ -189,6 +189,8 @@ void mem_init()
 }
 
 /**  addr_start必须4M对其 */
+int start_addr_mapped = 0;
+int end_addr_mapped = 0;
 static void map_kernel(unsigned int addr_start, int page_count)
 {
 	int i, j, index = 0;
@@ -216,10 +218,53 @@ static void map_kernel(unsigned int addr_start, int page_count)
 	}
 }
 
+#define NO_FREE_PAGE_ADDR 0xFFFFFFFF
+
+static unsigned int get_free_page()
+{
+	int i;
+	int has_free_page = 0;
+	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	for( i = 0; i < get_count_of_total_pages(); i++ ){
+		if(page_bit_map[i] == 0){
+			has_free_page = 1;
+			break;
+		}
+	}
+	if( has_free_page )
+		return i * 4 * 1024;
+	else
+		return NO_FREE_PAGE_ADDR;
+}
+
+static void oom(){
+	panic("out of memory!");
+}
+
+static void map_user(unsigned int addr_start)
+{
+	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
+	unsigned int dir_index = addr_start >> 22; //页目录开始项
+	if(page_dir_base_addr[dir_index] == 0){  //页表没有分配
+		unsigned int page = get_free_page();
+		if(page == NO_FREE_PAGE_ADDR)
+			oom();
+		page_dir_base_addr[dir_index] = ( page & 0xFFFFFC00) | 0x7; //设置页目录项的页表物理地址
+		
+	}
+	int *pagetable = page_dir_base_addr[dir_index] & 0xFFC00000;
+}
+
+static void put_page(){
+}
+
 /*  处理Page Fault */
 void do_no_page(unsigned long error_code, unsigned long address) 
 {
+	debug("error_code = %d, address = %d",error_code, address);
 	debug("do_no_page");
+	unsigned int laddr = address & 0xFFC00000;
+	map_kernel(laddr, 1024);
 }
 
 /****准备页目录和页表***
@@ -234,7 +279,8 @@ void prepare_page_dir_and_page_table()
 	for(i=0; i<1024; i++){
 		page_dir_base_addr[i] = 0;
 	}
-	unsigned int kernel_pages = 0x0Fa00000 / 0x1000 + 1;
+	unsigned int kernel_pages = 0x00d00000 / 0x1000 + 1;
+	end_addr_mapped = kernel_pages * 4 * 1024 -1;
 	map_kernel(0x00000000, kernel_pages);  //映射内核空间
     int vram_pages = 0xc0000 / 0x1000;
 	map_kernel(0xe0000000, vram_pages);  //映射显存空间
@@ -314,6 +360,8 @@ void print_page_config()
 	//test_page(4 * 1024 * 1024 * 1024-1);
 	test_page(0xe0000000);
 	test_page(0xe0001000);
+	
+	debug("mapped addr: 0x%08.8x -- 0x%08.8x", start_addr_mapped, end_addr_mapped);
 	
 	debug("total_pages = %d", get_count_of_total_pages());
 	debug("free_pages = %d",get_count_of_free_pages());
