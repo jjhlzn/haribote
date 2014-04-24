@@ -88,10 +88,11 @@ void HariMain(void)
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 
 	//初始化硬盘
-	init_hd(&fifo);
+	//init_hd(&fifo);
 	
 	//初始化文件系统
-	init_fs();
+	//init_fs();
+	//init_fs();
 	
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);

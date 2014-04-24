@@ -6,6 +6,11 @@
 void HariMain(void){
 	int pid;
 	char str[100];
+	
+	//char * mem = api_malloc(  1024);
+	//sprintf(str,"mem = %d\n",(int)mem);
+	//api_putstr0(str);
+	//mem[1024-1] = 10;
     pid = fork();
 	if (pid != 0) { /* parent process */
 		sprintf(str,"parent is running, child pid:%d\n", pid);

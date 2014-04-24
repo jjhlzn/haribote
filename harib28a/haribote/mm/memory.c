@@ -167,8 +167,6 @@ int memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
 
 
 /***********************************分页相关**************************************************/
-
-
 //初始化内存, 测试内存大小，将内存划分成物理页, 分配和映射内核使用的物理页
 void mem_init()
 {
@@ -183,11 +181,45 @@ void mem_init()
 	int mem_pages = memtotal / (4 * 1024);
 	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
 	int i;
-	for(i = 0; i < page_bit_map; i++){
-		page_bit_map = 0;
+	for(i = 0; i < mem_pages; i++){
+		page_bit_map[i] = 0;
 	}
 	prepare_page_dir_and_page_table();
 	open_page();
+}
+
+/**  addr_start必须4M对其 */
+static void map_kernel(unsigned int addr_start, int page_count)
+{
+	int i, j, index = 0;
+	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
+	
+	unsigned int dir_start_index = addr_start >> 22; //页目录开始项
+	int dir_count = (page_count + 1023) / 1024 ; //页目录项个数
+	
+	//占用物理页
+	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	for( i = dir_start_index * 1024; i < dir_start_index * 1024 + page_count; i++)
+		page_bit_map[i] = 1;
+	
+	//设置页目录项和页表项
+	for( i = dir_start_index; i < dir_start_index + dir_count; i++ ){
+		int *the_page_table = page_dir_base_addr + (i + 1) * 1024;
+		page_dir_base_addr[i] = ((int)the_page_table & 0xFFFFFC00) | 0x7; //设置页目录项的页表物理地址
+		int base_addr =  i * 4 * 1024 * 1024;
+		for(j = 0; j < 1024; j++){
+			if(index >= page_count) //内核页已经映射完毕
+				break;
+			the_page_table[j] = ( (base_addr + j * 4 * 1024) & 0xFFFFFC00 ) | 0x7;
+			index++;
+		}
+	}
+}
+
+/*  处理Page Fault */
+void do_no_page(unsigned long error_code, unsigned long address) 
+{
+	debug("do_no_page");
 }
 
 /****准备页目录和页表***
@@ -202,29 +234,12 @@ void prepare_page_dir_and_page_table()
 	for(i=0; i<1024; i++){
 		page_dir_base_addr[i] = 0;
 	}
-	
-	int kernel_pages = 0x00a00000 / 0x400;
-	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
-	//占用物理页
-	for( i = 0; i < kernel_pages; i++)
-		page_bit_map[i] = 1;
-	//映射内核所在的地址，线性地址:0 ~ 10 * 1024 * 1024-1, 物理地址：0 ~ 10 * 1024 * 1024-1
-	int start_kernel_ladd = 0, end_kernel_ladd = 0x00a00000;
-	for( i = 0; i < kernel_pages; i++)
-		
-
-	//一个页表可以维护1024个页表(4M)，16M内存只需要4个页表
-	
-	//设置页表
-	for(i = 0; i < 1024; i++){
-		int *the_page_table = page_dir_base_addr + (i + 1) * 1024;
-		page_dir_base_addr[i] = ((int)the_page_table & 0xFFFFFC00) | 0x3;
-		int base_addr = 0x00000000 + i * 4 * 1024 * 1024;
-		for(j=0; j < 1024; j++){
-			the_page_table[j] = ( (base_addr + j * 4 * 1024) & 0xFFFFFC00 ) | 0x3;
-		}
-	}
+	unsigned int kernel_pages = 0x0Fa00000 / 0x1000 + 1;
+	map_kernel(0x00000000, kernel_pages);  //映射内核空间
+    int vram_pages = 0xc0000 / 0x1000;
+	map_kernel(0xe0000000, vram_pages);  //映射显存空间
 }
+
 
 int test_page(unsigned x)
 {
@@ -240,14 +255,45 @@ int test_page(unsigned x)
 	return (int) add;
 }
 
+int get_count_of_free_pages(){
+	int i;
+	int count_of_free_pages = 0;
+	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	for(i = 0; i < get_count_of_total_pages(); i++){
+		if(page_bit_map[i] == 0)
+			count_of_free_pages++;
+	}
+	return count_of_free_pages;
+}
+
+int get_count_of_total_pages(){
+	return memtotal / (4 * 1024);
+}
+
+int get_count_of_used_pages(){
+	int i;
+	int count_of_pages = 0;
+	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	for(i = 0; i < get_count_of_total_pages(); i++){
+		if(page_bit_map[i] == 1)
+			count_of_pages++;
+	}
+	return count_of_pages;
+}
+
+
+
+
+
 void print_page_config()
 {
+	//prepare_page_dir_and_page_table();
 	int i, j;
 	int *page_dir_base_addr = PAGE_DIR_ADDR;
 	//清空1024个页目录项
-	for(i=0; i<10; i++){
-		debug("0x%08.8x",page_dir_base_addr[i]);
-	}
+	//for(i=0; i<10; i++){
+	//	debug("0x%08.8x",page_dir_base_addr[i]);
+	//}
 	//设置页表
 	//for(i = 0; i < 4; i++){
 	//	int *the_page_table = page_dir_base_addr + (i + 1) * 1024;
@@ -260,7 +306,7 @@ void print_page_config()
 	//	if(result != i)
 	//		debug("find fault");
 	//}
-	 //test_page(0x00600010);
+	//test_page(0x00600010);
 	//test_page(0x00000000);
 	//test_page(0x00001000);
 	//test_page(0x00400000);
@@ -269,8 +315,13 @@ void print_page_config()
 	test_page(0xe0000000);
 	test_page(0xe0001000);
 	
+	debug("total_pages = %d", get_count_of_total_pages());
+	debug("free_pages = %d",get_count_of_free_pages());
+	debug("used_pages = %d",get_count_of_used_pages());
+	
 	debug("cr3 = 0x%08.8x",get_cr3());
 	debug("cr0 = 0x%08.8x",get_cr0());
 }
+
 
 

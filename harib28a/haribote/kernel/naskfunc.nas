@@ -16,7 +16,7 @@
 		GLOBAL	_asm_inthandler20, _asm_inthandler21
 		GLOBAL	_asm_inthandler2c, _asm_inthandler0c
 		GLOBAL  _asm_inthandler2e
-		GLOBAL	_asm_inthandler0d, _asm_end_app
+		GLOBAL	_asm_inthandler0d, _asm_end_app, _asm_inthandler0e
 		GLOBAL	_memtest_sub
 		GLOBAL	_farjmp, _farcall
 		GLOBAL	_asm_hrb_api, _start_app, _asm_linux_api
@@ -27,7 +27,7 @@
 		EXTERN	_inthandler2c, _inthandler0d
 		EXTERN 	_inthandler2e
 		EXTERN	_inthandler0c
-		EXTERN	_hrb_api, _linux_api
+		EXTERN	_hrb_api, _linux_api, _do_no_page
 
 [SECTION .text]
 
@@ -417,6 +417,27 @@ _asm_inthandler0d:
 		POP		ES
 		ADD		ESP,4			; INT 0x0d では、これが必要
 		IRETD
+		
+_asm_inthandler0e:
+		STI
+		XCHG   [ESP], ECX
+		PUSH   DS
+		PUSH   ES
+		PUSHAD
+		MOV	 AX,SS
+		MOV  DS, AX
+		MOV  ES, AX
+		MOV  EDX, CR2
+		PUSH EDX
+		PUSH ECX
+		CALL   _do_no_page
+		ADD  ESP, 8
+		POPAD
+		POP  ES
+		POP  DS
+		POP  ECX
+		IRETD
+
 
 _memtest_sub:	; unsigned int memtest_sub(unsigned int start, unsigned int end)
 		PUSH	EDI						; （EBX, ESI, EDI も使いたいので）
