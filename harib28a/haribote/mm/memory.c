@@ -185,7 +185,7 @@ void mem_init()
 		page_bit_map[i] = 0;
 	}
 	prepare_page_dir_and_page_table();
-	open_page();
+	//open_page();
 }
 
 /**  addr_start必须4M对其 */
@@ -243,28 +243,40 @@ static void oom(){
 
 static void map_user(unsigned int addr_start)
 {
+	//debug("laddr = 0x%08.8x",addr_start);
 	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
 	unsigned int dir_index = addr_start >> 22; //页目录开始项
+	
+	int *pagetable_item = NULL;
 	if(page_dir_base_addr[dir_index] == 0){  //页表没有分配
 		unsigned int page = get_free_page();
 		if(page == NO_FREE_PAGE_ADDR)
 			oom();
-		page_dir_base_addr[dir_index] = ( page & 0xFFFFFC00) | 0x7; //设置页目录项的页表物理地址
-		
+		page_dir_base_addr[dir_index] = ( page & 0xFFFFFC00 ) | 0x7; //设置页目录项的页表物理地址
+		//debug("paddr of page table = 0x%08.8x", page);
 	}
-	int *pagetable = page_dir_base_addr[dir_index] & 0xFFC00000;
-}
-
-static void put_page(){
+	//现在需要修改页表
+	int offset = (addr_start >> 12 & 0x3FF) * 4;   //页表的线性地址的最低12位
+	int page_offset = (addr_start >> 22) << 12;            //页表的线性地址的中间10位
+	int page_dir_offset = 0x3FF << 22;
+	//debug("page_dir_offset = %d, page_offset = %d, offset = %d", page_dir_offset, page_offset, offset);
+	pagetable_item = (int *)(page_dir_offset + page_offset + offset); //页表的线性地址
+	//debug("laddr of page table item = 0x%08.8x", (int)pagetable_item);
+		
+	unsigned int page = get_free_page();
+	if(page == NO_FREE_PAGE_ADDR)
+		oom();
+	*pagetable_item =  page | 0x7;
 }
 
 /*  处理Page Fault */
 void do_no_page(unsigned long error_code, unsigned long address) 
 {
-	debug("error_code = %d, address = %d",error_code, address);
-	debug("do_no_page");
-	unsigned int laddr = address & 0xFFC00000;
-	map_kernel(laddr, 1024);
+     debug("error_code = %d, address = %d",error_code, address);
+	 debug("-------------do_no_page--------------------");
+	//unsigned int laddr = address & 0xFFC00000;
+	//map_kernel(laddr, 1024);
+	map_user(address);
 }
 
 /****准备页目录和页表***
@@ -279,11 +291,16 @@ void prepare_page_dir_and_page_table()
 	for(i=0; i<1024; i++){
 		page_dir_base_addr[i] = 0;
 	}
-	unsigned int kernel_pages = 0x00d00000 / 0x1000 + 1;
+	
+	
+	unsigned int kernel_pages = 0x00e00000 / 0x1000;
 	end_addr_mapped = kernel_pages * 4 * 1024 -1;
 	map_kernel(0x00000000, kernel_pages);  //映射内核空间
-    int vram_pages = 0xc0000 / 0x1000;
+    int vram_pages = 4 * 1024 * 1024 / 0x1000;
 	map_kernel(0xe0000000, vram_pages);  //映射显存空间
+	
+	//页表最后一项指向它自己
+	page_dir_base_addr[1023] = PAGE_DIR_ADDR | 0x7;
 }
 
 

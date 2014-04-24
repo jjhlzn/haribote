@@ -1,5 +1,5 @@
 APP      = testfork
-STACK    = 132k
+STACK    = 2m
 MALLOC   = 64k
 
 TOOLPATH = ../../../tolset/z_tools/

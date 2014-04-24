@@ -45,7 +45,7 @@ PUBLIC void printTSSInfo(struct TSS32 *src)
 }
 
 // «∑Ò «“Ï≤Ωlog
-int is_async_log = 1;
+int is_async_log = 0;
 void debug(const char *fmt, ...){
 	static int invoke_level = 0;
 	invoke_level++;
