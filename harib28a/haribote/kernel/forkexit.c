@@ -100,7 +100,7 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	/* Text segment */
 	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
 	u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
-	//debug("text segment size = %d, addr of src = %d, add of dest = %d",codeLimit, codeBase, (int)code_seg);
+	debug("text size = %d, src_addr = %d, dest_addr = %d",codeLimit, codeBase, (int)code_seg);
 	set_segmdesc(new_task->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
 	phys_copy((void *)code_seg,(void *)codeBase,codeLimit);
 	new_task->cs_base = (int)code_seg;
@@ -108,7 +108,7 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	/* Data segment */
 	int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
 	u8 *data_seg = (u8 *)memman_alloc_4k(memman, dataLimit);
-	//debug("data segment size = %d, addr of src = %d, add of dest = %d",dataLimit,dataBase, (int)data_seg);
+	debug("data size = %d, src_addr = %d, dest_addr = %d",dataLimit,dataBase, (int)data_seg);
 	set_segmdesc(new_task->ldt + 1, dataLimit - 1, (int) data_seg, AR_DATA32_RW + 0x60);
 	phys_copy((void *)data_seg,(void *)dataBase,dataLimit);
 	new_task->ds_base = (int)data_seg;
@@ -123,7 +123,76 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 			filp_new[i]->fd_inode->i_cnt++;
 		}
 	}
-    debug("task_parent->eip = %d", task_parent->tss.eip);
+	return new_task;
+}
+
+
+PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
+{
+	/* find a free slot in proc_table */
+	//创建一个新任务
+	debug("do_fork");
+	struct TASK *new_task = task_alloc();
+	
+	if (new_task == 0) {/* no free slot */
+		debug("no free task struct");
+		return 0;
+	}
+	new_task->forked = 1;
+	new_task->parent_pid = task_parent->pid;
+	
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+
+	/* duplicate the process table */
+	copyTSS(&(new_task->tss),tss);
+	//debug("here1");
+	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
+	//debug("here2");
+	new_task->cons_stack = memman_alloc_4k(memman, 64 * 1024);
+	//debug("here3");
+	new_task->tss.esp0 = new_task->cons_stack + 64 * 1024 - 12;
+
+	debug("new_task->tss.esp0 + 4 = %d", (int)(new_task->tss.esp0) + 4);
+	*((int *) (new_task->tss.esp0 + 4)) = (int) task_parent->cons->sht;
+	//debug("here4");
+	*((int *) (new_task->tss.esp0 + 8)) = 32 * 1024 * 1024;
+	//debug("here5");
+	fifo32_init(&new_task->fifo, 128, cons_fifo, new_task);
+	
+	new_task->level = task_parent->level;
+	new_task->priority = task_parent->priority;
+	new_task->fhandle = task_parent->fhandle;
+	new_task->fat = task_parent->fat;
+	//使用和task_parnent同一个控制台
+	new_task->cons = task_parent->cons;
+
+	/* duplicate the process: T, D & S */
+	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task_parent->ldt;
+
+	
+	/* Text segment */
+	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
+	u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
+	debug("text size = %d, src_addr = %d, dest_addr = %d",codeLimit, codeBase, (int)code_seg);
+	set_segmdesc(new_task->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
+	phys_copy((void *)code_seg,(void *)codeBase,codeLimit);
+	new_task->cs_base = (int)code_seg;
+	
+	/* Data segment */
+	set_segmdesc(new_task->ldt + 1, codeLimit - 1, (int) code_seg, AR_DATA32_RW + 0x60);
+	//phys_copy((void *)data_seg,(void *)dataBase,dataLimit);
+	new_task->ds_base = (int)code_seg;
+	
+	
+	struct file_desc **filp_parent = task_parent->filp, **filp_new = new_task->filp;
+	int i;
+	for (i = 0; i < NR_FILES; i++) {
+		filp_new[i] = filp_parent[i];
+		if (filp_new[i]) {
+			filp_new[i]->fd_cnt++;
+			filp_new[i]->fd_inode->i_cnt++;
+		}
+	}
 	return new_task;
 }
 

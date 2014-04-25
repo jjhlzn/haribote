@@ -8,14 +8,14 @@
 #include "elf.h"
 
 extern int* fat;
-
 int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
 			 int fs, int gs,
 			 int es, int ds,
 			 int eip, int cs, int eflags, int user_esp, int user_ss)
 {
 	struct TASK *task = task_now();
-	debug("invoke system API: eax = %d, pid = %d", eax, task->pid);
+	debug("invoke system API: eax = %d, pid = %d, eip = %d", eax, task->pid, eip);
+	//debug("user_ss = %d, user_esp = %d, cs = %d, eflags = %d", user_ss, user_esp, cs, eflags);
 	int ds_base = task->ds_base;
 	int cs_base = task->cs_base;
 	struct CONSOLE *cons = task->cons;
@@ -31,7 +31,7 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 	struct FILEHANDLE *fh;
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 
-	if (eax == 1) {
+	if (eax == 1) {    //exit
 		//假如当前进程是通过fork调用创建的，那么可以直接结束这个任务
 		if(task->forked == 1){
 			debug("pocess[%d, forked] die!", task->pid);
@@ -39,6 +39,39 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		}else{
 			return &(task->tss.esp0);
 		}
+	}else if(eax == 2){
+		
+		struct TSS32 tss;
+		tss.backlink = 0;
+		//tss.esp0 = task->tss.esp0;  
+		tss.ss0 = 1 * 8;   //内核栈选择子
+		tss.esp1 = 0;
+		tss.ss1 = 0;
+		tss.esp2 = 0;
+		tss.ss2 = 0;
+		tss.cr3 = task->tss.cr3;
+		tss.eip = eip;
+		tss.eflags = eflags;
+		tss.eax = 0;
+		tss.ecx = ecx;
+		tss.edx = edx;
+		tss.ebx = ebx;
+		tss.esp = user_esp;
+		tss.ebp = ebp;
+		tss.esi = esi;
+		tss.edi = edi;
+		tss.es = es;
+		tss.cs = cs;
+		tss.ss = user_ss;
+		tss.ds = ds;
+		tss.fs = fs;
+		tss.gs = gs;
+		debug("eip = %d", eip);
+		debug("ss = %d, ds = %d, cs = %d", user_ss, ds, cs);
+		struct TASK * new_task = do_fork_elf(task, &tss);
+		debug("has create child process[%d]",new_task->pid);
+		reg[7] = new_task->pid;
+		task_add(new_task);
 	}else if(eax == 3){  //read file
 		int fd = ebx;
 		char *buf = (char *)(ecx+ds_base);
@@ -60,7 +93,7 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		char *buf = (char *)(ecx+ds_base);
 		int len = edx;
 		
-		debug("ebx = %d, ecx = %d, edx = %d",ebx, ecx, edx);
+		//debug("ebx = %d, ecx = %d, edx = %d",ebx, ecx, edx);
 		
 		//构建写文件内容的参数
 		MESSAGE msg;
@@ -70,12 +103,8 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		msg.type = WRITE;
 		
 		reg[7] = do_rdwt(&msg,task);
-		//int i;
-		//for(i=0; i<len; i++){
-		//	debug("%d",(char)buf[i]);
-		//}
-		debug("write %d bytes [%s] to fd(%d)",len,buf, fd);
-	}else if(eax == 5){
+		//debug("write %d bytes [%s] to fd(%d)",len,buf, fd);
+	}else if(eax == 5){   // open file
 		debug("ebx = %d, ecx = %d, edx = %d", ebx, ecx, edx);
 		char *pathname = (char *) ebx + ds_base;
 		int flags = ecx;
@@ -87,13 +116,19 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		int fd = ebx;
 		debug("close fd(%d)",fd);
 		reg[7] = do_close(fd,task);
+	}else if(eax == 7){  //wait 
+		int* add_status = (int *)(ds_base+ebx);
+		int child_pid = do_wait(task, add_status);
+		debug("exit_status = %d", *add_status);
+		reg[7] = child_pid;
 	}else if(eax == 8){  //create file
 		char *pathname = (char *)ebx+ds_base;
 		int fd = do_open(pathname,O_CREATE,task);
 		debug("create file %s fd[%d]",pathname,task);
 		reg[4] = fd;
+	}else if(eax == 14){  //getpid
+		reg[7] = task->pid;
 	}
-	
 	return 0;
 }
 

@@ -188,7 +188,7 @@ void mem_init()
 		page_bit_map[i] = 0;
 	}
 	prepare_page_dir_and_page_table();
-	open_page();
+	//open_page();
 }
 
 
@@ -259,7 +259,7 @@ static unsigned int alloc_free_page()
 	}
 	if( has_free_page ){
 		page_bit_map[i] = 1;
-		debug("alloc a new page, addr = 0x%08.8x", i * 4 * 1024);
+		//debug("alloc a new page, addr = 0x%08.8x", i * 4 * 1024);
 		return i * 4 * 1024;
 	}
 	else

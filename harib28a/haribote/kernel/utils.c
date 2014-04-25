@@ -45,7 +45,7 @@ PUBLIC void printTSSInfo(struct TSS32 *src)
 }
 
 // «∑Ò «“Ï≤Ωlog
-int is_async_log = 1;
+int is_async_log = 0;
 void debug(const char *fmt, ...){
 	static int invoke_level = 0;
 	invoke_level++;
@@ -62,6 +62,7 @@ void debug(const char *fmt, ...){
 	
 	char buf2[1025];
 	sprintf(buf2,"%s\n",buf);
+	
 	if(log_win != 0){
 		if(is_async_log && log_fifo_buffer != 0){
 			io_cli();

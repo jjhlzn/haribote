@@ -25,6 +25,19 @@ void Append(struct Node *head, struct Node *newNode){
 	Add(tail,newNode);
 }
 
+int GetSize(struct Node *head)
+{
+	assert(head != NULL);
+	int count = 0;
+	struct Node *tail = head;
+	while(tail->next != NULL){
+		tail = tail->next;
+		count ++;
+	}
+	count++;
+	return count;
+}
+
 /* 创建新节点 */
 struct Node * CreateNode(void *data){
 	struct Node *node = (struct Node *)memman_alloc(memman,sizeof(struct Node));

@@ -491,13 +491,11 @@ _asm_hrb_api:
 		PUSH [ESP+48] ;CS
 		PUSH [ESP+48] ;EIP
 		
-		
 		PUSH	DS
 		PUSH	ES
 		PUSH    GS
 		PUSH    FS
 	
-		
 		PUSHAD		; 用于向hrb_api传值得PUSH
 		
 		MOV		AX,SS

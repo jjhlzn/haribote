@@ -27,6 +27,7 @@ void load_background_pic(char* back_buf, int *fat);
 static struct BOOTINFO *bootinfo = (struct BOOTINFO *) ADR_BOOTINFO;
 struct SHEET  *log_win = 0;
 extern unsigned int memtotal;
+extern struct FIFO32* log_fifo_buffer;
 void HariMain(void)
 {
 	
@@ -87,12 +88,7 @@ void HariMain(void)
 	io_out8(PIC1_IMR, 0xaf); /* 儅僂僗傪嫋壜(10101111), 同时打开硬盘中断  */ 
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 
-	//初始化硬盘
-	init_hd(&fifo);
 	
-	//初始化文件系统
-	//init_fs();
-	init_fs();
 	
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
@@ -113,6 +109,7 @@ void HariMain(void)
 	/* sht_cons */
 	key_win = open_console(shtctl, memtotal);
 	log_win = open_log_console(shtctl,memtotal);
+	log_fifo_buffer = (struct FIFO32 *)memman_alloc_4k(memman, sizeof(struct FIFO32));
 
 	/* sht_mouse */
 	sht_mouse = sheet_alloc(shtctl);
@@ -160,7 +157,12 @@ void HariMain(void)
 	//load_background_pic(buf_back, fat);
 	//sheet_slide(sht_back,  0,  0); //刷新壁纸
 	
+	//初始化硬盘
+	init_hd(&fifo);
 	
+	//初始化文件系统
+	//init_fs();
+	init_fs();
 	
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {

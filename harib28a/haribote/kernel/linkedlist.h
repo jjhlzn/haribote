@@ -11,7 +11,7 @@ void Add(struct Node *node, struct Node *newNode);
 void Append(struct Node *head, struct Node *newNode);
 struct Node *CreateNode(void *data);
 void FreeNode(struct Node *data);
-
+int GetSize(struct Node *head);
 #endif
 
 
