@@ -70,18 +70,18 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 
 	/* duplicate the process table */
 	copyTSS(&(new_task->tss),tss);
-	debug("here1");
+	//debug("here1");
 	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
-	debug("here2");
+	//debug("here2");
 	new_task->cons_stack = memman_alloc_4k(memman, 64 * 1024);
-	debug("here3");
+	//debug("here3");
 	new_task->tss.esp0 = new_task->cons_stack + 64 * 1024 - 12;
 
 	debug("new_task->tss.esp0 + 4 = %d", (int)(new_task->tss.esp0) + 4);
 	*((int *) (new_task->tss.esp0 + 4)) = (int) task_parent->cons->sht;
-	debug("here4");
+	//debug("here4");
 	*((int *) (new_task->tss.esp0 + 8)) = 32 * 1024 * 1024;
-	debug("here5");
+	//debug("here5");
 	fifo32_init(&new_task->fifo, 128, cons_fifo, new_task);
 	
 	new_task->level = task_parent->level;
