@@ -25,6 +25,8 @@ PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
 	dst->cr3 = src->cr3;
 	
 	dst->eip = src->eip;
+	debug("src->eip = %d", src->eip);
+	debug("dst->eip = %d", dst->eip);
 	dst->eflags = src->eflags;
 	dst->eax = src->eax;
 	dst->ecx = src->ecx;
@@ -56,7 +58,7 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 {
 	/* find a free slot in proc_table */
 	//创建一个新任务
-	debug("here0");
+	debug("do_fork");
 	struct TASK *new_task = task_alloc();
 	
 	if (new_task == 0) {/* no free slot */
@@ -98,7 +100,7 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	/* Text segment */
 	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
 	u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
-	debug("text segment size = %d, addr of src = %d, add of dest = %d",codeLimit, codeBase, (int)code_seg);
+	//debug("text segment size = %d, addr of src = %d, add of dest = %d",codeLimit, codeBase, (int)code_seg);
 	set_segmdesc(new_task->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
 	phys_copy((void *)code_seg,(void *)codeBase,codeLimit);
 	new_task->cs_base = (int)code_seg;
@@ -106,7 +108,7 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	/* Data segment */
 	int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
 	u8 *data_seg = (u8 *)memman_alloc_4k(memman, dataLimit);
-	debug("data segment size = %d, addr of src = %d, add of dest = %d",dataLimit,dataBase, (int)data_seg);
+	//debug("data segment size = %d, addr of src = %d, add of dest = %d",dataLimit,dataBase, (int)data_seg);
 	set_segmdesc(new_task->ldt + 1, dataLimit - 1, (int) data_seg, AR_DATA32_RW + 0x60);
 	phys_copy((void *)data_seg,(void *)dataBase,dataLimit);
 	new_task->ds_base = (int)data_seg;
@@ -121,7 +123,7 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 			filp_new[i]->fd_inode->i_cnt++;
 		}
 	}
-
+    debug("task_parent->eip = %d", task_parent->tss.eip);
 	return new_task;
 }
 

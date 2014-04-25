@@ -1,6 +1,6 @@
 APP      = testfork
-STACK    = 2m
-MALLOC   = 64k
+STACK    = 64K
+MALLOC   = 1m
 
 TOOLPATH = ../../../tolset/z_tools/
 INCPATH  = ../../../tolset/z_tools/haribote/

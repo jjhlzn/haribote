@@ -643,8 +643,8 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			set_segmdesc(task->ldt + 1, segsiz - 1, (int) q, AR_DATA32_RW + 0x60);
 			
 			debug("start app: %s",name);
-			debug("code segment: size = %d, add = %d",appsiz,(int)p);
-			debug("data segment: size = %d, add = %d",segsiz,(int)q);
+			//debug("code segment: size = %d, add = %d",appsiz,(int)p);
+			//debug("data segment: size = %d, add = %d",segsiz,(int)q);
 			for (i = 0; i < datsiz; i++) {
 				q[esp + i] = p[dathrb + i];
 			}

@@ -23,15 +23,15 @@ void init_gdtidt(void)
 	load_idtr(LIMIT_IDT, ADR_IDT);
 
 	/* IDT初始化 */
-	set_gatedesc(idt + 0x0c, (int) asm_inthandler0c, 2 * 8, AR_INTGATE32);
-	set_gatedesc(idt + 0x0d, (int) asm_inthandler0d, 2 * 8, AR_INTGATE32);
-	set_gatedesc(idt + 0x0e, (int) asm_inthandler0e, 2 * 8, AR_INTGATE32);
-	set_gatedesc(idt + 0x20, (int) asm_inthandler20, 2 * 8, AR_INTGATE32);
-	set_gatedesc(idt + 0x21, (int) asm_inthandler21, 2 * 8, AR_INTGATE32);
-	set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 2 * 8, AR_INTGATE32);
-	set_gatedesc(idt + 0x2e, (int) asm_inthandler2e, 2 * 8, AR_INTGATE32);
-	set_gatedesc(idt + 0x40, (int) asm_hrb_api,      2 * 8, AR_INTGATE32 + 0x60); //设置系统调用的处理函数
-	set_gatedesc(idt + 0x80, (int) asm_linux_api,    2 * 8, AR_INTGATE32 + 0x60); //设置系统调用的处理函数
+	set_gatedesc(idt + 0x0c, (int) asm_inthandler0c, 2 * 8, AR_INTGATE32);  //Stack Exception
+	set_gatedesc(idt + 0x0d, (int) asm_inthandler0d, 2 * 8, AR_INTGATE32);  //General Protected Exception
+	set_gatedesc(idt + 0x0e, (int) asm_inthandler0e, 2 * 8, AR_INTGATE32);  //分页错误(Page Fault)
+	set_gatedesc(idt + 0x20, (int) asm_inthandler20, 2 * 8, AR_INTGATE32);  //时间中断
+	set_gatedesc(idt + 0x21, (int) asm_inthandler21, 2 * 8, AR_INTGATE32);  //键盘
+	set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 2 * 8, AR_INTGATE32);  //鼠标
+	set_gatedesc(idt + 0x2e, (int) asm_inthandler2e, 2 * 8, AR_INTGATE32);  //硬盘
+	set_gatedesc(idt + 0x40, (int) asm_hrb_api,      2 * 8, AR_INTGATE32 + 0x60); //HRB系统调用
+	set_gatedesc(idt + 0x80, (int) asm_linux_api,    2 * 8, AR_INTGATE32 + 0x60); //Linux系统调用
 	
 	return;
 }

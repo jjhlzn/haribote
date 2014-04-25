@@ -224,13 +224,14 @@ void task_wait(struct TASK *task)
 	if (task->flags == TASK_STATUS_RUNNING) {
 		/* 如果处于活动状态 */
 		now_task = task_now();
-		debug("task->pid = %d, now_task->pid = %d",task->pid, now_task->pid);
+		//debug("task->pid = %d, now_task->pid = %d",task->pid, now_task->pid);
 		task_remove(task,TASK_STATUS_WAITING); /* 执行此语句的话flags将变为1 */
 		if (task == now_task) {
 			/* 如果是让自己休眠，则需要进行任务切换 */
 			task_switchsub();
 			now_task = task_now(); /* 在设定后获取当前任务的值 */
-			debug("process[%d,%s] go to wait, process[%d,%s] is running",task->pid,task->name,now_task->pid,now_task->name);
+			debug("proc[%d,%s] go to wait, proc[%d,%s] will run",task->pid,task->name,now_task->pid,now_task->name);
+			debug("now_task[%d]->tss.eip = %d",now_task->pid,now_task->tss.eip);
 			farjmp(0, now_task->sel);
 		}
 	}
@@ -276,6 +277,8 @@ void task_switch(void)
 	timer_settime(task_timer, new_task->priority);
 	if (new_task != now_task) {
 		//debug("switch from process[%d,%s] to process[%d,%s]",now_task->pid,now_task->name,new_task->pid,new_task->name);
+		if(now_task->pid == 4)
+			debug("now_task[%d]->tss.eip = %d", now_task->pid, now_task->tss.eip);
 		farjmp(0, new_task->sel);
 	}
 	return;

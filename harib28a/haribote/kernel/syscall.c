@@ -109,7 +109,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	//debug("fs = %d, gs = %d", fs & 0xffff, gs & 0xffff);
 	
 	struct TASK *task = task_now();
-	debug("invoke system API: edx = %d, pid = %d", edx, task->pid);
+	debug("invoke system API: edx = %d, pid = %d, eip = %d", edx, task->pid, eip);
 	int ds_base = task->ds_base;
 	int cs_base = task->cs_base;
 	struct CONSOLE *cons = task->cons;
@@ -124,6 +124,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	struct FILEINFO *finfo;
 	struct FILEHANDLE *fh;
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+
 
 	if (edx == 1) {
 		cons_putchar(cons, eax & 0xff, 1);
@@ -174,7 +175,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		memman_init((struct MEMMAN *) (ebx + ds_base));
 		ecx &= 0xfffffff0;	/* 16僶僀僩扨埵偵 */
 		memman_free((struct MEMMAN *) (ebx + ds_base), eax, ecx);
-	} else if (edx == 9) {
+	} else if (edx == 9) {               //api_malloc
 		ecx = (ecx + 0x0f) & 0xfffffff0; /* 分配16的倍数的空间 */
 		reg[7] = memman_alloc((struct MEMMAN *) (ebx + ds_base), ecx);
 	} else if (edx == 10) {
@@ -414,7 +415,8 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		tss.ds = ds;
 		tss.fs = fs;
 		tss.gs = gs;
-		debug("ss = %d", task->tss.ss);
+		debug("eip = %d", eip);
+		debug("ss = %d, ds = %d, cs = %d", user_ss, ds, cs);
 		struct TASK * new_task = do_fork(task, &tss);
 		debug("has create child process[%d]",new_task->pid);
 		reg[7] = new_task->pid;
@@ -422,10 +424,10 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	} else if(edx == 35){
 		reg[7] = task->pid;
 		//debug("pid = %d",reg[7]);
-	} else if(edx == 36){
-		debug("addr = %d",ebx);
+	} else if(edx == 36){   //wait
+		//debug("addr = %d",ebx);
 		int* add_status = (int *)(ds_base+ebx);
-		debug("ds_base = %d, add_status = %d", ds_base, (int)add_status);
+		//debug("ds_base = %d, add_status = %d", ds_base, (int)add_status);
 		
 		int child_pid = do_wait(task, add_status);
 		debug("exit_status = %d", *add_status);

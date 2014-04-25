@@ -10,6 +10,9 @@
   用于计算计算机内存大小。方法：通过不断的测试来获取计算机内存大小。
 */
 int memtotal;
+/**  addr_start必须4M对其 */
+int start_addr_mapped = 0;
+int end_addr_mapped = 0;
 unsigned int memtest(unsigned int start, unsigned int end)
 {
 	char flg486 = 0;
@@ -185,12 +188,36 @@ void mem_init()
 		page_bit_map[i] = 0;
 	}
 	prepare_page_dir_and_page_table();
-	//open_page();
+	open_page();
 }
 
-/**  addr_start必须4M对其 */
-int start_addr_mapped = 0;
-int end_addr_mapped = 0;
+
+/****准备页目录和页表***
+ ***先把线性地址映射成物理地址
+ ***将内核所在的线性地址映射到物理地址
+*/
+void prepare_page_dir_and_page_table()
+{
+	int i, j;
+	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
+	//清空1024个页目录项
+	for(i=0; i<1024; i++){
+		page_dir_base_addr[i] = 0;
+	}
+	
+	
+	unsigned int kernel_pages = 0x00e00000 / 0x1000;
+	//unsigned int kernel_pages = 0xFFe00000 / 0x1000;
+	end_addr_mapped = kernel_pages * 4 * 1024 -1;
+	map_kernel(0x00000000, kernel_pages);  //映射内核空间
+    int vram_pages = 4 * 1024 * 1024 / 0x1000;
+	map_kernel(0xe0000000, vram_pages);  //映射显存空间
+	
+	//页表最后一项指向它自己
+	page_dir_base_addr[1023] = PAGE_DIR_ADDR | 0x7;
+}
+
+
 static void map_kernel(unsigned int addr_start, int page_count)
 {
 	int i, j, index = 0;
@@ -218,9 +245,8 @@ static void map_kernel(unsigned int addr_start, int page_count)
 	}
 }
 
-#define NO_FREE_PAGE_ADDR 0xFFFFFFFF
-
-static unsigned int get_free_page()
+/**   分配一页物理页  */
+static unsigned int alloc_free_page()
 {
 	int i;
 	int has_free_page = 0;
@@ -231,8 +257,11 @@ static unsigned int get_free_page()
 			break;
 		}
 	}
-	if( has_free_page )
+	if( has_free_page ){
+		page_bit_map[i] = 1;
+		debug("alloc a new page, addr = 0x%08.8x", i * 4 * 1024);
 		return i * 4 * 1024;
+	}
 	else
 		return NO_FREE_PAGE_ADDR;
 }
@@ -241,19 +270,23 @@ static void oom(){
 	panic("out of memory!");
 }
 
+
 static void map_user(unsigned int addr_start)
 {
-	//debug("laddr = 0x%08.8x",addr_start);
-	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
+	//debug("laddr = 0x%08.8x",addr_start); 
+	//这里应该使用页表的线性地址，而不应该是物理地址。不过对于PAGE_DIR_ADDR线性地址刚好是物理地址。
+	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;  
 	unsigned int dir_index = addr_start >> 22; //页目录开始项
 	
+	//debug("page_dir_base_addr[%d] = 0x%08.8x", dir_index, page_dir_base_addr[dir_index]);
 	int *pagetable_item = NULL;
 	if(page_dir_base_addr[dir_index] == 0){  //页表没有分配
-		unsigned int page = get_free_page();
+		unsigned int page = alloc_free_page();
 		if(page == NO_FREE_PAGE_ADDR)
 			oom();
 		page_dir_base_addr[dir_index] = ( page & 0xFFFFFC00 ) | 0x7; //设置页目录项的页表物理地址
 		//debug("paddr of page table = 0x%08.8x", page);
+		debug("allocate page dir");
 	}
 	//现在需要修改页表
 	int offset = (addr_start >> 12 & 0x3FF) * 4;   //页表的线性地址的最低12位
@@ -263,7 +296,7 @@ static void map_user(unsigned int addr_start)
 	pagetable_item = (int *)(page_dir_offset + page_offset + offset); //页表的线性地址
 	//debug("laddr of page table item = 0x%08.8x", (int)pagetable_item);
 		
-	unsigned int page = get_free_page();
+	unsigned int page = alloc_free_page();
 	if(page == NO_FREE_PAGE_ADDR)
 		oom();
 	*pagetable_item =  page | 0x7;
@@ -272,37 +305,17 @@ static void map_user(unsigned int addr_start)
 /*  处理Page Fault */
 void do_no_page(unsigned long error_code, unsigned long address) 
 {
-     debug("error_code = %d, address = %d",error_code, address);
-	 debug("-------------do_no_page--------------------");
+     //debug("-----do_no_page----: error_code = %d, address = %d",error_code, address);
 	//unsigned int laddr = address & 0xFFC00000;
 	//map_kernel(laddr, 1024);
 	map_user(address);
 }
 
-/****准备页目录和页表***
- ***先把线性地址映射成物理地址
- ***将内核所在的线性地址映射到物理地址
-*/
-void prepare_page_dir_and_page_table()
-{
-	int i, j;
-	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
-	//清空1024个页目录项
-	for(i=0; i<1024; i++){
-		page_dir_base_addr[i] = 0;
-	}
-	
-	
-	unsigned int kernel_pages = 0x00e00000 / 0x1000;
-	end_addr_mapped = kernel_pages * 4 * 1024 -1;
-	map_kernel(0x00000000, kernel_pages);  //映射内核空间
-    int vram_pages = 4 * 1024 * 1024 / 0x1000;
-	map_kernel(0xe0000000, vram_pages);  //映射显存空间
-	
-	//页表最后一项指向它自己
-	page_dir_base_addr[1023] = PAGE_DIR_ADDR | 0x7;
-}
 
+
+
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 int test_page(unsigned x)
 {
@@ -344,10 +357,6 @@ int get_count_of_used_pages(){
 	return count_of_pages;
 }
 
-
-
-
-
 void print_page_config()
 {
 	//prepare_page_dir_and_page_table();
@@ -378,7 +387,8 @@ void print_page_config()
 	test_page(0xe0000000);
 	test_page(0xe0001000);
 	
-	debug("mapped addr: 0x%08.8x -- 0x%08.8x", start_addr_mapped, end_addr_mapped);
+	//debug("mapped addr: 0x%08.8x -- 0x%08.8x", start_addr_mapped, end_addr_mapped);
+	debug("mapped addr: %d -- %d", start_addr_mapped, end_addr_mapped);
 	
 	debug("total_pages = %d", get_count_of_total_pages());
 	debug("free_pages = %d",get_count_of_free_pages());

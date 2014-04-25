@@ -7,10 +7,15 @@ void HariMain(void){
 	int pid;
 	char str[100];
 	
-	//char * mem = api_malloc(  1024);
-	//sprintf(str,"mem = %d\n",(int)mem);
-	//api_putstr0(str);
-	//mem[1024-1] = 10;
+	char * mem = api_malloc( 512 * 1024);
+	sprintf(str,"mem = %d\n",(int)mem);
+	api_putstr0(str);
+	mem[512 * 1024 - 3] = 'a';
+	mem[512 * 1024 - 2] = 'd';
+	mem[512 * 1024 - 1] = 0;
+	sprintf(str,"mem[end] = %s\n", mem+(512 * 1024 - 3));
+	api_putstr0(str);
+	
     pid = fork();
 	if (pid != 0) { /* parent process */
 		sprintf(str,"parent is running, child pid:%d\n", pid);
