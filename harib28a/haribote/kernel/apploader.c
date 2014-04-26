@@ -165,15 +165,12 @@ static void load_elf(char *p, struct Node *list)
 	set_segmdesc(task->ldt + 1, data_limit - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
 	//加载数据段、代码段
 	//debug("elf_hdr->e_phnum = %d",elf_hdr->e_phnum);
-	int loadCount = 0;
 	for (i=0; i<elf_hdr->e_phnum; i++){
 		Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
 		//debug("p_type = %d",elf_phdr->p_type);
 		if(elf_phdr->p_type == PT_LOAD){
 			
-			loadCount++;
-			if(loadCount > 2)
-				break;
+			
 			debug("see PT_LOAD section");
 			//debug_Elf32_Phdr(elf_phdr);
 			//char msg[1024];
@@ -192,9 +189,9 @@ static void load_elf(char *p, struct Node *list)
 		}
 	}
 	//封装成argv
-	int count = GetSize(list);
-	char **argv = (char **)memman_alloc(memman,sizeof(char **) * (count+1));
-	//参看参数
+	int count = GetSize(list); //参数个数
+	char **argv = (char **)memman_alloc(memman,sizeof(char **) * (count+1)); //argv参数数组
+	//准备argv数组
 	i = 0;
 	while(list != NULL){
 		debug("arg = %s",(char *)list->data);
@@ -205,8 +202,7 @@ static void load_elf(char *p, struct Node *list)
 	argv[i] = 0;
 
 	char **p_argv = argv;
-	
-	int PROC_ORIGIN_STACK = 500;
+	int PROC_ORIGIN_STACK = 512;
 	char arg_stack[PROC_ORIGIN_STACK];
 
 	int stack_len = 0;
@@ -222,9 +218,7 @@ static void load_elf(char *p, struct Node *list)
 	stack_len += sizeof(char *);
 	
 	for(p_argv = argv; *p_argv != 0; p_argv++){
-		
 		assert(stack_len + strlen(*p_argv) + 1 < PROC_ORIGIN_STACK);
-		
 		strcpy(&arg_stack[stack_len], *p_argv);
 		//debug("*p_argv = %s",*p_argv);
 		stack_len += strlen(*p_argv);
@@ -253,7 +247,7 @@ static void load_elf(char *p, struct Node *list)
 	char *argv_contents = (char *)(stack + (argc + 1) * 4);
 	for(i = 0; i<argc; i++){
 		//debug("argv_contents = %d",argv_contents);
-		*((char **)stack) = (int)argv_contents - (int)cod_seg ;
+		*((char **)stack) = (int)argv_contents - (int)cod_seg;  //等级argv[i]的地址
 		argv_contents += strlen(argv_contents) + 1;
 		stack += 4;
 	}
@@ -276,7 +270,9 @@ static void load_elf(char *p, struct Node *list)
 	char ** pp = (char **)(cod_seg+esp);
 	//debug("argv[0] = %d", (int)(pp[0]));
 	//debug("tt = %d",*((int *)esp));
-	start_app(elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
+	
+	debug("esp = 0x%08.8x", esp);
+	start_app_elf(elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
 }
 
 static void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr)

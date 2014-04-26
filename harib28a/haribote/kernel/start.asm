@@ -8,11 +8,11 @@ bits 32
 global _start
 
 _start:
-	pop eax     ;esp
-	pop ecx     ;ss
-	mov esp, eax
-	mov ax, 15
-	mov ss, ax
+	;pop eax     ;esp
+	;pop ecx     ;ss
+	;mov esp, eax
+	;mov ax, 15
+	;mov ss, ax
 	push ebx
 	push edx
 	call _main

@@ -19,7 +19,7 @@
 		GLOBAL	_asm_inthandler0d, _asm_end_app, _asm_inthandler0e
 		GLOBAL	_memtest_sub
 		GLOBAL	_farjmp, _farcall
-		GLOBAL	_asm_hrb_api, _start_app, _asm_linux_api
+		GLOBAL	_asm_hrb_api, _start_app, _asm_linux_api, _start_app_elf
 		GLOBAL  _disable_irq, _enable_irq, _port_read,_port_write
 		GLOBAL  _memcpy1, _memset1,_ud2
 		GLOBAL  _open_page, _get_cr3, _get_cr0
@@ -587,6 +587,35 @@ _start_app:		; void start_app(int eip, int cs, int esp, int ds, int *tss_esp0, i
 		PUSH	EAX				; 应用程序的EIP
 		MOV EDX, [ESP+56+16]       ; argc
 		MOV EBX, [ESP+60+16]       ; argv
+		RETF
+;	应用程序结束后不会回到这里
+
+_start_app_elf:		; void start_app_elf(int eip, int cs, int esp, int ds, int *tss_esp0, int argc, int argv);
+		PUSHAD		; 将32位寄存器的值全部保存下来
+		MOV		EAX,[ESP+36]	; 应用程序用EIP
+		MOV		ECX,[ESP+40]	; 应用程序用CS
+		MOV		EDX,[ESP+44]	; 应用程序用ESP
+		MOV		EBX,[ESP+48]	; 应用程序用DS/SS
+		MOV		EBP,[ESP+52]	; tss.esp0的地址
+		MOV		[EBP  ],ESP		; 保存操作系统用ESP, 保存在tss.esp0中
+		MOV		[EBP+4],SS		; 保存操作系统用SS, 保存在tss.ss0中
+		MOV		ES,BX
+		MOV		DS,BX
+		MOV		FS,BX
+		MOV		GS,BX
+;	下面调整栈，已免用RETF跳转到应用程序。RETF将会将CS和EIP设置成应用程序的CS和EIP。但是，栈是如何进行切换的？ 我怀疑是编译器生成HRB可执行文件的时候，会首先做这个SS和ESP的设置。
+		OR		ECX,3			; 将应用程序用段号和3进行OR运算, 将应用程序的段选择子+3, 即CS+3
+		OR		EBX,3			; 将应用程序用段号和3进行OR运算, 将应用程序的段选择子+3, 即SS+3
+		
+		;MOV     SS, BX
+		;MOV     ESP, EDX
+
+		PUSH	EBX				; 应用程序的SS
+		PUSH	EDX				; 应用程序的ESP
+		PUSH	ECX				; 应用程序的CS
+		PUSH	EAX				; 应用程序的EIP
+		;MOV EDX, [ESP+56+16]       ; argc
+		;MOV EBX, [ESP+60+16]       ; argv
 		RETF
 ;	应用程序结束后不会回到这里
 

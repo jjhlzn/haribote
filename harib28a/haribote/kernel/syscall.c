@@ -15,7 +15,7 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 {
 	struct TASK *task = task_now();
 	debug("invoke system API: eax = %d, pid = %d, eip = %d", eax, task->pid, eip);
-	//debug("user_ss = %d, user_esp = %d, cs = %d, eflags = %d", user_ss, user_esp, cs, eflags);
+	//debug("ds = %d, ss = %d, esp = %d, cs = %d, eflags = %d", ds, user_ss, user_esp, cs, eflags);
 	int ds_base = task->ds_base;
 	int cs_base = task->cs_base;
 	struct CONSOLE *cons = task->cons;
@@ -92,7 +92,6 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		int fd = ebx;
 		char *buf = (char *)(ecx+ds_base);
 		int len = edx;
-		
 		//debug("ebx = %d, ecx = %d, edx = %d",ebx, ecx, edx);
 		
 		//构建写文件内容的参数
@@ -103,7 +102,7 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		msg.type = WRITE;
 		
 		reg[7] = do_rdwt(&msg,task);
-		//debug("write %d bytes [%s] to fd(%d)",len,buf, fd);
+		debug("write %d bytes [%s] to fd(%d)",len,buf, fd);
 	}else if(eax == 5){   // open file
 		debug("ebx = %d, ecx = %d, edx = %d", ebx, ecx, edx);
 		char *pathname = (char *) ebx + ds_base;
@@ -117,7 +116,10 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		debug("close fd(%d)",fd);
 		reg[7] = do_close(fd,task);
 	}else if(eax == 7){  //wait 
-		int* add_status = (int *)(ds_base+ebx);
+		//debug("addr = %d",ebx);
+		int* add_status = (int *)(ds_base+ecx);
+		debug("eax = %d, ebx = %d, ecx = %d, edx = %d", eax, ebx,ecx,edx);
+		//debug("exit_status = %d", *add_status);
 		int child_pid = do_wait(task, add_status);
 		debug("exit_status = %d", *add_status);
 		reg[7] = child_pid;
@@ -126,7 +128,8 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		int fd = do_open(pathname,O_CREATE,task);
 		debug("create file %s fd[%d]",pathname,task);
 		reg[4] = fd;
-	}else if(eax == 14){  //getpid
+	}else if(eax == 20){  //getpid
+		debug("pid = %d",task->pid);
 		reg[7] = task->pid;
 	}
 	return 0;
@@ -142,7 +145,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	//debug("eflags = %d, user_esp = %d, user_ss = %d", eflags, user_esp, user_ss & 0xffff);
 	//debug("es = %d, ds = %d", es & 0xffff, ds & 0xffff);
 	//debug("fs = %d, gs = %d", fs & 0xffff, gs & 0xffff);
-	
+	//debug("ds = %d, ss = %d, esp = %d, cs = %d, eflags = %d", ds, user_ss, user_esp, cs, eflags);
 	struct TASK *task = task_now();
 	debug("invoke system API: edx = %d, pid = %d, eip = %d", edx, task->pid, eip);
 	int ds_base = task->ds_base;
@@ -462,8 +465,8 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	} else if(edx == 36){   //wait
 		//debug("addr = %d",ebx);
 		int* add_status = (int *)(ds_base+ebx);
-		//debug("ds_base = %d, add_status = %d", ds_base, (int)add_status);
-		
+		debug("ds_base = %d, add_status = %d", ds_base, (int)add_status);
+		debug("exit_status = %d", *add_status);
 		int child_pid = do_wait(task, add_status);
 		debug("exit_status = %d", *add_status);
 		reg[7] = child_pid;
