@@ -14,7 +14,7 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 			 int eip, int cs, int eflags, int user_esp, int user_ss)
 {
 	struct TASK *task = task_now();
-	debug("invoke system API: eax = %d, pid = %d, eip = %d", eax, task->pid, eip);
+	debug("syscall: eax = %d, pid = %d, eip = %d", eax, task->pid, eip);
 	//debug("ds = %d, ss = %d, esp = %d, cs = %d, eflags = %d", ds, user_ss, user_esp, cs, eflags);
 	int ds_base = task->ds_base;
 	int cs_base = task->cs_base;
@@ -147,7 +147,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	//debug("fs = %d, gs = %d", fs & 0xffff, gs & 0xffff);
 	//debug("ds = %d, ss = %d, esp = %d, cs = %d, eflags = %d", ds, user_ss, user_esp, cs, eflags);
 	struct TASK *task = task_now();
-	debug("invoke system API: edx = %d, pid = %d, eip = %d", edx, task->pid, eip);
+	debug("syscall: edx = %d, pid = %d, eip = %d", edx, task->pid, eip);
 	int ds_base = task->ds_base;
 	int cs_base = task->cs_base;
 	struct CONSOLE *cons = task->cons;

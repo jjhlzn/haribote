@@ -188,7 +188,7 @@ void mem_init()
 		page_bit_map[i] = 0;
 	}
 	prepare_page_dir_and_page_table();
-	//open_page();
+	open_page();
 }
 
 
@@ -396,6 +396,10 @@ void print_page_config()
 	
 	debug("cr3 = 0x%08.8x",get_cr3());
 	debug("cr0 = 0x%08.8x",get_cr0());
+	
+	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
+	int cyls = binfo->cyls;
+	debug("cyls = %d",cyls);
 }
 
 

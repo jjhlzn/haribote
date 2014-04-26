@@ -126,73 +126,17 @@ static void load_hrb(char *p, struct Node *list)
 	task->langbyte1 = 0;
 }
 
-static void load_elf(char *p, struct Node *list)
+static int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-	struct TASK *task = task_now();
-	int esp;
-	
-	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
-	//debug_Elf32_Ehd(elf_hdr);
-	
-	int i;
-	
-	//加载字符串表
-	Elf32_Shdr* str_section = (Elf32_Shdr*)(p + elf_hdr->e_shoff + elf_hdr->e_shstrndx * elf_hdr->e_shentsize);
-	char *str_contents = (char *)(p + str_section->sh_offset);
-	
-	for (i = 0; i<elf_hdr->e_shnum; i++) {
-		Elf32_Shdr *elf_shdr = (Elf32_Shdr*)(p + elf_hdr->e_shoff + i * elf_hdr->e_shentsize);
-		char *sh_name = str_contents+elf_shdr->sh_name;
-		if(strlen(sh_name) == 0)
-			continue;
-		//debug("name = %s",sh_name);
-	}
-	
-	int data_limit = 1024 * 512;
-	u8 *cod_seg =  (u8 *)memman_alloc_4k(memman, data_limit); //TODO: 代码固定尺寸
-	task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
-	task->cs_base = (int) cod_seg;
-	
-	esp = data_limit - 500;
 	char msg[200];
-	for(i=0; i<200; i++)
-		msg[i] = 0;
-	//string_memory(cod_seg+esp, 20, msg);
-	//debug(msg);
+	int esp = -1;
 	
-	set_segmdesc(task->ldt + 0, data_limit - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
-	set_segmdesc(task->ldt + 1, data_limit - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
-	//加载数据段、代码段
-	//debug("elf_hdr->e_phnum = %d",elf_hdr->e_phnum);
-	for (i=0; i<elf_hdr->e_phnum; i++){
-		Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
-		//debug("p_type = %d",elf_phdr->p_type);
-		if(elf_phdr->p_type == PT_LOAD){
-			
-			
-			debug("see PT_LOAD section");
-			//debug_Elf32_Phdr(elf_phdr);
-			//char msg[1024];
-			//int j=0;
-			//for(j=0; j<1024; j++)
-			//	msg[j] = 0;
-			//string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
-			//debug(msg);
-			//debug("\n");
-			
-			phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
-			
-			//sprintf(msg,"");
-			//string_memory(cod_seg +(int)elf_phdr->p_vaddr,elf_phdr->p_filesz,msg);
-			//debug(msg);
-		}
-	}
 	//封装成argv
 	int count = GetSize(list); //参数个数
 	char **argv = (char **)memman_alloc(memman,sizeof(char **) * (count+1)); //argv参数数组
 	//准备argv数组
-	i = 0;
+	int i = 0;
 	while(list != NULL){
 		debug("arg = %s",(char *)list->data);
 		argv[i] =  (char *)list->data;
@@ -205,7 +149,14 @@ static void load_elf(char *p, struct Node *list)
 	int PROC_ORIGIN_STACK = 512;
 	char arg_stack[PROC_ORIGIN_STACK];
 
+	//分配argv空间
+	
 	int stack_len = 0;
+	
+	//放置argc
+	//*((int *)(&arg_stack[stack_len])) = count;
+	//stack_len += 4;
+	
 	int argc = 0;
 	while(*p_argv++){
 		assert(stack_len + 2 * sizeof(char *) < PROC_ORIGIN_STACK);
@@ -236,9 +187,7 @@ static void load_elf(char *p, struct Node *list)
 		FreeNode(list);
 	}
 	
-	
-	esp = data_limit - PROC_ORIGIN_STACK;
-	//debug("esp = %d",esp);
+    esp = data_limit - PROC_ORIGIN_STACK;
 
 	phys_copy(cod_seg+esp, arg_stack, stack_len);
 	
@@ -267,11 +216,79 @@ static void load_elf(char *p, struct Node *list)
 	}
 	
 	//debug("argc = %d, argv = %d", argc, esp);
-	char ** pp = (char **)(cod_seg+esp);
+	//char ** pp = (char **)(cod_seg+esp);
 	//debug("argv[0] = %d", (int)(pp[0]));
 	//debug("tt = %d",*((int *)esp));
 	
 	debug("esp = 0x%08.8x", esp);
+	
+	return esp;
+}
+
+static void load_elf(char *p, struct Node *list)
+{
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	struct TASK *task = task_now();
+	int esp;
+	
+	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
+	//debug_Elf32_Ehd(elf_hdr);
+	
+	int i;
+	
+	//加载字符串表
+	Elf32_Shdr* str_section = (Elf32_Shdr*)(p + elf_hdr->e_shoff + elf_hdr->e_shstrndx * elf_hdr->e_shentsize);
+	char *str_contents = (char *)(p + str_section->sh_offset);
+	
+	for (i = 0; i<elf_hdr->e_shnum; i++) {
+		Elf32_Shdr *elf_shdr = (Elf32_Shdr*)(p + elf_hdr->e_shoff + i * elf_hdr->e_shentsize);
+		char *sh_name = str_contents+elf_shdr->sh_name;
+		if(strlen(sh_name) == 0)
+			continue;
+		//debug("name = %s",sh_name);
+	}
+	
+	int data_limit = 1024 * 512;
+	u8 *cod_seg =  (u8 *)memman_alloc_4k(memman, data_limit); //TODO: 代码固定尺寸
+	task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
+	task->cs_base = (int) cod_seg;
+	
+	//for(i=0; i<200; i++)
+	//	msg[i] = 0;
+	//string_memory(cod_seg+esp, 20, msg);
+	//debug(msg);
+	
+	set_segmdesc(task->ldt + 0, data_limit - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
+	set_segmdesc(task->ldt + 1, data_limit - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
+	//加载数据段、代码段
+	//debug("elf_hdr->e_phnum = %d",elf_hdr->e_phnum);
+	for (i=0; i<elf_hdr->e_phnum; i++){
+		Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
+		//debug("p_type = %d",elf_phdr->p_type);
+		if(elf_phdr->p_type == PT_LOAD){
+			
+			
+			debug("see PT_LOAD section");
+			//debug_Elf32_Phdr(elf_phdr);
+			//char msg[1024];
+			//int j=0;
+			//for(j=0; j<1024; j++)
+			//	msg[j] = 0;
+			//string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
+			//debug(msg);
+			//debug("\n");
+			
+			phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
+			
+			//sprintf(msg,"");
+			//string_memory(cod_seg +(int)elf_phdr->p_vaddr,elf_phdr->p_filesz,msg);
+			//debug(msg);
+		}
+	}
+	
+	int argc = GetSize(list);
+	esp = prepare_args(cod_seg, data_limit, list);
+	
 	start_app_elf(elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
 }
 

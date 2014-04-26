@@ -42,7 +42,6 @@ haribote.img : ../haribote/boot/ipl09.bin ../haribote/haribote.sys $(APP).hrb \
 		copy from:$(APP).hrb to:@: \
 		copy from:fork to:@: \
 		copy from:hello to:@: \
-		copy from:hello2 to:@: \
 		copy from:printf to:@: \
 		copy from:fopen to:@: \
 		copy from:lower to:@: \
