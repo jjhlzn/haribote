@@ -149,9 +149,8 @@ static void load_elf(char *p, struct Node *list)
 		//debug("name = %s",sh_name);
 	}
 	
-	int data_limit = 1024 * 132;
+	int data_limit = 1024 * 512;
 	u8 *cod_seg =  (u8 *)memman_alloc_4k(memman, data_limit); //TODO: 代码固定尺寸
-	//data_seg = (u8 *)memman_alloc_4k(memman, 1024*64); //TODO: 代码固定尺寸
 	task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
 	task->cs_base = (int) cod_seg;
 	
@@ -166,12 +165,16 @@ static void load_elf(char *p, struct Node *list)
 	set_segmdesc(task->ldt + 1, data_limit - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
 	//加载数据段、代码段
 	//debug("elf_hdr->e_phnum = %d",elf_hdr->e_phnum);
+	int loadCount = 0;
 	for (i=0; i<elf_hdr->e_phnum; i++){
 		Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
 		//debug("p_type = %d",elf_phdr->p_type);
 		if(elf_phdr->p_type == PT_LOAD){
-			debug("see PT_LOAD section");
 			
+			loadCount++;
+			if(loadCount > 2)
+				break;
+			debug("see PT_LOAD section");
 			//debug_Elf32_Phdr(elf_phdr);
 			//char msg[1024];
 			//int j=0;
@@ -188,10 +191,6 @@ static void load_elf(char *p, struct Node *list)
 			//debug(msg);
 		}
 	}
-	
-
-	//debug("count = %d", count);
-	
 	//封装成argv
 	int count = GetSize(list);
 	char **argv = (char **)memman_alloc(memman,sizeof(char **) * (count+1));

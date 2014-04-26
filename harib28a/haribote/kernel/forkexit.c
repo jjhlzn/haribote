@@ -14,6 +14,13 @@
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src);
 //PRIVATE void cleanup(struct proc * proc);
 
+
+//struct TSS32 {
+//	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3; //esp0和ss0为操作系统的栈段号和栈顶指针
+//	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
+//	int es, cs, ss, ds, fs, gs;
+//	int ldtr, iomap;
+//};
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
 	dst->backlink = src->backlink;
     dst->esp0 = src->esp0;
@@ -25,8 +32,6 @@ PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
 	dst->cr3 = src->cr3;
 	
 	dst->eip = src->eip;
-	debug("src->eip = %d", src->eip);
-	debug("dst->eip = %d", dst->eip);
 	dst->eflags = src->eflags;
 	dst->eax = src->eax;
 	dst->ecx = src->ecx;
@@ -145,18 +150,14 @@ PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
 
 	/* duplicate the process table */
 	copyTSS(&(new_task->tss),tss);
-	//debug("here1");
+
 	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
-	//debug("here2");
 	new_task->cons_stack = memman_alloc_4k(memman, 64 * 1024);
-	//debug("here3");
 	new_task->tss.esp0 = new_task->cons_stack + 64 * 1024 - 12;
 
 	debug("new_task->tss.esp0 + 4 = %d", (int)(new_task->tss.esp0) + 4);
 	*((int *) (new_task->tss.esp0 + 4)) = (int) task_parent->cons->sht;
-	//debug("here4");
 	*((int *) (new_task->tss.esp0 + 8)) = 32 * 1024 * 1024;
-	//debug("here5");
 	fifo32_init(&new_task->fifo, 128, cons_fifo, new_task);
 	
 	new_task->level = task_parent->level;
@@ -173,16 +174,14 @@ PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
 	/* Text segment */
 	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
 	u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
-	debug("text size = %d, src_addr = %d, dest_addr = %d",codeLimit, codeBase, (int)code_seg);
+	debug("text size = %d, src = %d, dest = %d",codeLimit, codeBase, (int)code_seg);
 	set_segmdesc(new_task->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
-	phys_copy((void *)code_seg,(void *)codeBase,codeLimit);
+	phys_copy((void *)code_seg,(void *)codeBase, codeLimit);
 	new_task->cs_base = (int)code_seg;
 	
 	/* Data segment */
 	set_segmdesc(new_task->ldt + 1, codeLimit - 1, (int) code_seg, AR_DATA32_RW + 0x60);
-	//phys_copy((void *)data_seg,(void *)dataBase,dataLimit);
 	new_task->ds_base = (int)code_seg;
-	
 	
 	struct file_desc **filp_parent = task_parent->filp, **filp_new = new_task->filp;
 	int i;

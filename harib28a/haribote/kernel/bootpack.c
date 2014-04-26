@@ -88,7 +88,10 @@ void HariMain(void)
 	io_out8(PIC1_IMR, 0xaf); /* 儅僂僗傪嫋壜(10101111), 同时打开硬盘中断  */ 
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 
-	
+	//初始化硬盘: TODO: 如果将初始化硬盘和文件系统移到下面去，会出现异常
+	init_hd(&fifo);
+	//初始化文件系统
+	init_fs();
 	
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
@@ -157,12 +160,6 @@ void HariMain(void)
 	//load_background_pic(buf_back, fat);
 	//sheet_slide(sht_back,  0,  0); //刷新壁纸
 	
-	//初始化硬盘
-	init_hd(&fifo);
-	
-	//初始化文件系统
-	//init_fs();
-	init_fs();
 	
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {
