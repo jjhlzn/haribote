@@ -12,6 +12,7 @@
 #include "fs.h"
 
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src);
+PRIVATE void free_mem(struct TASK *task);
 //PRIVATE void cleanup(struct proc * proc);
 
 
@@ -241,7 +242,6 @@ PUBLIC void do_exit(struct TASK *p, int status)
 {
 	int i;
 	int pid = p->pid;
-	int parent_pid = p->parent_pid;
 
 	/* 关闭该进程打开的文件 */
 	debug("close files");
@@ -378,7 +378,7 @@ PRIVATE void free_mem(struct TASK *task)
 	debug("free console stack: add = %d, size = %d", task->cons_stack, 64 * 1024);
 	
 	/* cons fifo：TODO 这时候能不能释放*/
-	memman_free_4k(memman, task->fifo.buf, 128*4);
+	memman_free_4k(memman, (u32)task->fifo.buf, 128*4);
 	debug("free FIFO buf: add = %d, size = %d", task->fifo.buf, 128 * 4);
 	
 	debug("-----------------------------------------");

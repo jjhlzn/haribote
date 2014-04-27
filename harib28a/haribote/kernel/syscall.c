@@ -17,19 +17,10 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 	debug("syscall: eax = %d, pid = %d, eip = %d", eax, task->pid, eip);
 	//debug("ds = %d, ss = %d, esp = %d, cs = %d, eflags = %d", ds, user_ss, user_esp, cs, eflags);
 	int ds_base = task->ds_base;
-	int cs_base = task->cs_base;
-	struct CONSOLE *cons = task->cons;
-	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
-	struct SHEET *sht;
-	struct FIFO32 *sys_fifo = (struct FIFO32 *) *((int *) 0x0fec);
 	int *reg = &eax + 1 + 9;	/* eax偺師偺斣抧 */
 	/* 曐懚偺偨傔偺PUSHAD傪嫮堷偵彂偒姺偊傞 */
 	/* reg[0] : EDI,   reg[1] : ESI,   reg[2] : EBP,   reg[3] : ESP */
 	/* reg[4] : EBX,   reg[5] : EDX,   reg[6] : ECX,   reg[7] : EAX */
-	int i;
-	struct FILEINFO *finfo;
-	struct FILEHANDLE *fh;
-	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 
 	if (eax == 1) {    //exit
 		//假如当前进程是通过fork调用创建的，那么可以直接结束这个任务
@@ -149,11 +140,10 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	struct TASK *task = task_now();
 	debug("syscall: edx = %d, pid = %d, eip = %d", edx, task->pid, eip);
 	int ds_base = task->ds_base;
-	int cs_base = task->cs_base;
 	struct CONSOLE *cons = task->cons;
 	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 	struct SHEET *sht;
-	struct FIFO32 *sys_fifo = (struct FIFO32 *) *((int *) 0x0fec);
+	//struct FIFO32 *sys_fifo = (struct FIFO32 *) *((int *) 0x0fec);
 	int *reg = &eax + 1 + 9;	/* eax偺師偺斣抧 */
 	/* 曐懚偺偨傔偺PUSHAD傪嫮堷偵彂偒姺偊傞 */
 	/* reg[0] : EDI,   reg[1] : ESI,   reg[2] : EBP,   reg[3] : ESP */
@@ -472,7 +462,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		reg[7] = child_pid;
 	} else if(edx == 37){
 		char *path =  (char *)(ds_base + ebx); 
-		char **argv = (char *)(ds_base + ecx);
+		char **argv = (char **)(ds_base + ecx);
 		
 		debug("path = %s", path);
 		int *regs_push_by_interrupt = &user_ss + 1 + 8;

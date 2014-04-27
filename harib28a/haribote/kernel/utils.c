@@ -1,8 +1,10 @@
 #include "bootpack.h"
 #include <stdio.h>
+#include <string.h>
 
 extern struct SHEET  *log_win;
 extern struct FIFO32 *log_fifo_buffer;
+/* bmp.nasm */
 struct DLL_STRPICENV {	/* 64KB */
 	int work[64 * 1024 / 4];
 };
@@ -10,6 +12,14 @@ struct DLL_STRPICENV {	/* 64KB */
 struct RGB {
 	unsigned char b, g, r, t;
 };
+
+int info_BMP(struct DLL_STRPICENV *env, int *info, int size, char *fp);
+int decode0_BMP(struct DLL_STRPICENV *env, int size, char *fp, int b_type, char *buf, int skip);
+
+/* jpeg.c */
+int info_JPEG(struct DLL_STRPICENV *env, int *info, int size, char *fp);
+int decode0_JPEG(struct DLL_STRPICENV *env, int size, char *fp, int b_type, char *buf, int skip);
+PRIVATE unsigned char rgb2pal(int r, int g, int b, int x, int y);
 
 PUBLIC void panic(const char *fmt, ...)
 {

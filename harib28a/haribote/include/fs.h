@@ -229,6 +229,9 @@ int do_close(int fd, struct TASK *pcaller);
 int strip_path(char * filename, const char * pathname,
 			   struct inode** ppinode);
 
+/* fs_read_write.c */
+int do_rdwt(MESSAGE * msg,struct TASK *pcaller);
+
 #define	MAX_PATH	128
 #define STDIN   0
 #define STDOUT  1

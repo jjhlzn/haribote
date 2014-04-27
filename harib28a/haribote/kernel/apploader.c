@@ -7,14 +7,16 @@
 #include "linkedlist.h"
 #include "elf.h"
 
-void load_hrb(char *p, struct Node *list);
-void load_elf(char *p, struct Node *list);
+PRIVATE void load_hrb(char *p, int appsiz, struct Node *list);
+PRIVATE void load_elf(char *p, struct Node *list);
+
+PRIVATE char *get_next_arg(char *cmdline, int *skip);
 
 int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct FILEINFO *finfo;
-	char name[18], *p, *q;
+	char name[18], *p;
 	int i, appsiz;
 
 	/* 获取程序文件名 */
@@ -63,7 +65,7 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 		appsiz = finfo->size;
 		p = file_loadfile2(finfo->clustno, &appsiz, fat); //代码段
 		if (appsiz >= 36 && strncmp(p + 4, "Hari", 4) == 0 && *p == 0x00) {
-			load_hrb(p, list);
+			load_hrb(p, appsiz, list);
 		} else if (appsiz >= sizeof(Elf32_Ehdr) && strncmp(p + 1, "ELF", 3) == 0 && p[0] == 0x7F ) {
 			load_elf(p, list);
 		} else {
@@ -79,7 +81,7 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	return 0;
 }
 
-static void load_hrb(char *p, struct Node *list)
+PRIVATE void load_hrb(char *p, int appsiz, struct Node *list)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct TASK *task = task_now();
@@ -87,7 +89,7 @@ static void load_hrb(char *p, struct Node *list)
 	struct SHTCTL *shtctl;
 	struct SHEET *sht;
 	
-	int i, segsiz, datsiz, esp, dathrb, appsiz;
+	int i, segsiz, datsiz, esp, dathrb;
     segsiz = *((int *) (p + 0x0000));
     esp    = *((int *) (p + 0x000c));
 	datsiz = *((int *) (p + 0x0010));
@@ -126,7 +128,7 @@ static void load_hrb(char *p, struct Node *list)
 	task->langbyte1 = 0;
 }
 
-static int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
+PRIVATE int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	char msg[200];
@@ -178,12 +180,12 @@ static int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 	}
 	
 	//释放准备参数时的内存
-	memman_free(memman, argv, sizeof(char **) * (count+1));
+	memman_free(memman, (u32)argv, sizeof(char **) * (count+1));
 	struct Node *tmp = NULL;
 	while(list != NULL){
 		tmp = list;
 		list = list->next;
-		memman_free_4k(memman, tmp->data, 1024);
+		memman_free_4k(memman, (u32)tmp->data, 1024);
 		FreeNode(list);
 	}
 	
@@ -196,7 +198,7 @@ static int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 	char *argv_contents = (char *)(stack + (argc + 1) * 4);
 	for(i = 0; i<argc; i++){
 		//debug("argv_contents = %d",argv_contents);
-		*((char **)stack) = (int)argv_contents - (int)cod_seg;  //等级argv[i]的地址
+		*((char **)stack) = (char *)((int)argv_contents - (int)cod_seg);  //等级argv[i]的地址
 		argv_contents += strlen(argv_contents) + 1;
 		stack += 4;
 	}
@@ -225,7 +227,7 @@ static int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 	return esp;
 }
 
-static void load_elf(char *p, struct Node *list)
+PRIVATE void load_elf(char *p, struct Node *list)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct TASK *task = task_now();
@@ -289,55 +291,81 @@ static void load_elf(char *p, struct Node *list)
 	int argc = GetSize(list);
 	esp = prepare_args(cod_seg, data_limit, list);
 	
-	start_app_elf(elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
+	start_app_elf((int)elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
 }
 
-static void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr)
-{
-	debug("-------------------Elf32 header-------------------");
-	debug("e_ident = %s", elf_hdr->e_ident);
-	debug("e_type = %d",elf_hdr->e_type);
-	debug("e_machine = %d",elf_hdr->e_machine);
-	debug("e_version = %d",elf_hdr->e_version);
-	debug("e_entry = %d",elf_hdr->e_entry);
-	debug("e_phoff = %d",elf_hdr->e_phoff);
-	debug("e_shoff = %d",elf_hdr->e_shoff);
-	debug("e_flags = %d",elf_hdr->e_flags);
-	debug("e_ehsize = %d",elf_hdr->e_ehsize);
-	debug("e_phentsize = %d",elf_hdr->e_phentsize);
-	debug("e_phnum = %d",elf_hdr->e_phnum);
-	debug("e_shentsize = %d",elf_hdr->e_shentsize);
-	debug("e_shnum = %d",elf_hdr->e_shnum);
-	debug("e_shstrndx = %d",elf_hdr->e_shstrndx);
-	debug("--------------------------------------------------");
-}
-static void debug_Elf32_Phdr(Elf32_Phdr *phdr)
-{
-	debug("-----------------Program header-------------------");
-	debug("p_type = %d", phdr->p_type);
-	debug("p_offset = %d", phdr->p_offset);
-	debug("p_vaddr = %d", phdr->p_vaddr);
-	debug("p_paddr = %d", phdr->p_paddr);
-	debug("p_filesz = %d", phdr->p_filesz);
-	debug("p_memsz = %d", phdr->p_memsz);
-	debug("p_flags = %d", phdr->p_flags);
-	debug("p_align = %d", phdr->p_align);
-	debug("--------------------------------------------------");
-}
+//PRIVATE void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr)
+//{
+//	debug("-------------------Elf32 header-------------------");
+//	debug("e_ident = %s", elf_hdr->e_ident);
+//	debug("e_type = %d",elf_hdr->e_type);
+//	debug("e_machine = %d",elf_hdr->e_machine);
+//	debug("e_version = %d",elf_hdr->e_version);
+//	debug("e_entry = %d",elf_hdr->e_entry);
+//	debug("e_phoff = %d",elf_hdr->e_phoff);
+//	debug("e_shoff = %d",elf_hdr->e_shoff);
+//	debug("e_flags = %d",elf_hdr->e_flags);
+//	debug("e_ehsize = %d",elf_hdr->e_ehsize);
+//	debug("e_phentsize = %d",elf_hdr->e_phentsize);
+//	debug("e_phnum = %d",elf_hdr->e_phnum);
+//	debug("e_shentsize = %d",elf_hdr->e_shentsize);
+//	debug("e_shnum = %d",elf_hdr->e_shnum);
+//	debug("e_shstrndx = %d",elf_hdr->e_shstrndx);
+//	debug("--------------------------------------------------");
+//}
+//PRIVATE void debug_Elf32_Phdr(Elf32_Phdr *phdr)
+//{
+//	debug("-----------------Program header-------------------");
+//	debug("p_type = %d", phdr->p_type);
+//	debug("p_offset = %d", phdr->p_offset);
+//	debug("p_vaddr = %d", phdr->p_vaddr);
+//	debug("p_paddr = %d", phdr->p_paddr);
+//	debug("p_filesz = %d", phdr->p_filesz);
+//	debug("p_memsz = %d", phdr->p_memsz);
+//	debug("p_flags = %d", phdr->p_flags);
+//	debug("p_align = %d", phdr->p_align);
+//	debug("--------------------------------------------------");
+//}
 
-static void debug_Elf32_Shdr(Elf32_Shdr *phdr)
+//PRIVATE void debug_Elf32_Shdr(Elf32_Shdr *phdr)
+//{
+//	debug("-----------------Section header-------------------");
+//	debug("sh_name = %s", phdr->sh_name);
+//	debug("sh_type = %d", phdr->sh_type);
+//	debug("sh_flags = %d", phdr->sh_flags);
+//	debug("sh_addr = %d", phdr->sh_addr);
+//	debug("sh_offset = %d", phdr->sh_offset);
+//	debug("sh_size = %d", phdr->sh_size);
+//	debug("sh_link = %d", phdr->sh_link);
+//	debug("sh_info = %d", phdr->sh_info);
+//	debug("sh_addralign = %d", phdr->sh_addralign);
+//	debug("sh_entsize = %d", phdr->sh_entsize);
+//	debug("--------------------------------------------------");
+//}
+
+PRIVATE char *get_next_arg(char *cmdline, int *skip)
 {
-	debug("-----------------Section header-------------------");
-	debug("sh_name = %s", phdr->sh_name);
-	debug("sh_type = %d", phdr->sh_type);
-	debug("sh_flags = %d", phdr->sh_flags);
-	debug("sh_addr = %d", phdr->sh_addr);
-	debug("sh_offset = %d", phdr->sh_offset);
-	debug("sh_size = %d", phdr->sh_size);
-	debug("sh_link = %d", phdr->sh_link);
-	debug("sh_info = %d", phdr->sh_info);
-	debug("sh_addralign = %d", phdr->sh_addralign);
-	debug("sh_entsize = %d", phdr->sh_entsize);
-	debug("--------------------------------------------------");
+	//debug("1 = %s",cmdline);
+	int i=0;
+	while(cmdline[i] == ' ') i++;
+	//debug("2 = %s",cmdline+i);
+	
+	if(cmdline[i] != 0){ //不是结尾处
+		//移到结尾，或者移到下个参数前的空格处
+		struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+		char *arg = (char *)memman_alloc_4k(memman,1024);
+		int j = 0;
+		while(cmdline[i] != ' ' && cmdline[i] != 0){
+			arg[j] = cmdline[i];
+			++i;
+			++j;
+		}
+		arg[j] = 0;
+		//debug("3 = %s",cmdline+i);
+		*skip = i;
+		return arg;
+	}else{
+		return NULL;
+	}
 }
 
