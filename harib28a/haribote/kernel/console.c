@@ -11,6 +11,8 @@
 
 int do_rdwt(MESSAGE * msg,struct TASK *pcaller);
 void print_identify_info(u16* hdinfo, char* str);
+static void console_loop(struct TASK *task, int memtotal, char *last_cmdline);
+
 
 int *fat;
 struct FIFO32* log_fifo_buffer = 0;
@@ -121,7 +123,8 @@ void console_task(struct SHEET *sheet, int memtotal)
 }
 
 
-void console_loop(struct TASK *task, int memtotal, char *last_cmdline){
+static void console_loop(struct TASK *task, int memtotal, char *last_cmdline)
+{
 	struct CONSOLE *cons = task->cons;
 	char *cmdline = task->cmdline;
 	int i;
@@ -545,30 +548,7 @@ void cmd_ps(struct CONSOLE *cons){
 	cons_newline(cons);
 }
 
-char *get_next_arg(char *cmdline, int *skip){
-	//debug("1 = %s",cmdline);
-	int i=0;
-	while(cmdline[i] == ' ') i++;
-	//debug("2 = %s",cmdline+i);
-	
-	if(cmdline[i] != 0){ //不是结尾处
-		//移到结尾，或者移到下个参数前的空格处
-		struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-		char *arg = (char *)memman_alloc_4k(memman,1024);
-		int j = 0;
-		while(cmdline[i] != ' ' && cmdline[i] != 0){
-			arg[j] = cmdline[i];
-			++i;
-			++j;
-		}
-		arg[j] = 0;
-		//debug("3 = %s",cmdline+i);
-		*skip = i;
-		return arg;
-	}else{
-		return NULL;
-	}
-}
+
 
 int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline)
 {

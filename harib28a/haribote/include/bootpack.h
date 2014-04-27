@@ -54,8 +54,12 @@ void farcall(int eip, int cs);
 void asm_hrb_api(void);
 void asm_linux_api(void);
 void start_app(int eip, int cs, int esp, int ds, int *tss_esp0, int argc, int argv);
+void start_app_elf(int eip, int cs, int esp, int ds, int *tss_esp0, int argc, int argv);
 void asm_end_app(void);
 void ud2(); 
+void open_page();
+int  get_cr3();
+int  get_cr0();
 
 /* fifo.c */
 struct FIFO32 {
@@ -65,6 +69,7 @@ struct FIFO32 {
 };
 void fifo32_init(struct FIFO32 *fifo, int size, int *buf, struct TASK *task);
 int fifo32_put(struct FIFO32 *fifo, int data);
+int fifo32_put2(struct FIFO32 *fifo, int data);
 int fifo32_get(struct FIFO32 *fifo);
 int fifo32_status(struct FIFO32 *fifo);
 
@@ -153,6 +158,7 @@ typedef	unsigned char		u8;
 void inthandler21(int *esp);
 void wait_KBC_sendready(void);
 void init_keyboard(struct FIFO32 *fifo, int data0);
+int read_from_keyboard(struct TASK *task, int mode);
 #define PORT_KEYDAT		0x0060
 #define PORT_KEYCMD		0x0064
 
@@ -182,6 +188,13 @@ unsigned int memman_alloc(struct MEMMAN *man, unsigned int size);
 int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size);
 unsigned int memman_alloc_4k(struct MEMMAN *man, unsigned int size);
 int memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size);
+int get_count_of_free_pages();
+int get_count_of_total_pages();
+int get_count_of_used_pages();
+void mem_init();
+void print_page_config();
+
+
 
 /* sheet.c */
 #define MAX_SHEETS		256
@@ -296,6 +309,10 @@ void task_run(struct TASK *task, int level, int priority);
 void task_switch(void);
 void task_sleep(struct TASK *task);
 struct Node* get_all_running_tasks();
+struct TASK * get_task(int pid);
+void task_add(struct TASK *task);
+void task_exit(struct TASK *task, enum TASK_STATUS task_status);
+void task_wait(struct TASK *task);
 
 /* window.c */
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char act);
@@ -375,7 +392,19 @@ PUBLIC	void*	va2la(int pid, void* va);
 void init_fs();
 
 /* exec.c */
-int do_exec(const char *name, char *argv[], int *fat, int *reg_push_by_interrupt);
+int do_exec(char *name, char *argv[], int *fat, int *reg_push_by_interrupt);
+
+/* forkexit.c */
+void do_exit(struct TASK *p, int status);
+struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss);
+struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss);
+int do_wait(struct TASK *task, int *status);
+
+/* apploader.c */
+int load_app(struct CONSOLE *cons, int *fat, char *cmdline);
+
+/* utils.c */
+void string_memory(u8 *mem, int size, char *buf);
 
 
 /* Hard Drive */

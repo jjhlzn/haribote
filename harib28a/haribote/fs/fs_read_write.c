@@ -8,6 +8,7 @@
  *****************************************************************************/
 #include "bootpack.h"
 #include "fs.h"
+#include <string.h>
 
 extern int FSBUF_SIZE;
 extern u8 *		fsbuf;

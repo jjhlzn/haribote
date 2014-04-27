@@ -5,6 +5,8 @@
 struct FIFO32 *keyfifo;
 int keydata0;
 
+
+
 void inthandler21(int *esp)
 {
 	int data;
@@ -46,8 +48,6 @@ void init_keyboard(struct FIFO32 *fifo, int data0)
 int read_from_keyboard(struct TASK *task, int mode)
 {
 	task->readKeyboard = 1;
-	struct FIFO32 *sys_fifo = (struct FIFO32 *) *((int *) 0x0fec);
-	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 	int i;
 	struct CONSOLE *cons = task->cons;
 	for (;;) {

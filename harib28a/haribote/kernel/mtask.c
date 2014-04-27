@@ -4,6 +4,7 @@
 #include "linkedlist.h"
 #include "fs.h"
 #include "memory.h"
+#include <string.h>
 
 struct TASKCTL *taskctl;
 struct TIMER *task_timer;
@@ -286,7 +287,7 @@ void task_switch(void)
 
 /*  获取所有可运行的进程 */
 struct Node* get_all_running_tasks(){
-	int i, j;
+	int i;
 	struct Node *head = NULL;
 	
 	for(i = 0; i<MAX_TASKS; i++){

@@ -13,18 +13,10 @@ void close_console(struct SHEET *sht);
 void close_constask(struct TASK *task);
 struct SHEET *open_log_console(struct SHTCTL *shtctl, unsigned int memtotal);
 
-/* bmp.nasm */
-int info_BMP(struct DLL_STRPICENV *env, int *info, int size, char *fp);
-int decode0_BMP(struct DLL_STRPICENV *env, int size, char *fp, int b_type, char *buf, int skip);
 
-/* jpeg.c */
-int info_JPEG(struct DLL_STRPICENV *env, int *info, int size, char *fp);
-int decode0_JPEG(struct DLL_STRPICENV *env, int size, char *fp, int b_type, char *buf, int skip);
-unsigned char rgb2pal(int r, int g, int b, int x, int y);
 
 
 void load_background_pic(char* back_buf, int *fat);
-static struct BOOTINFO *bootinfo = (struct BOOTINFO *) ADR_BOOTINFO;
 struct SHEET  *log_win = 0;
 extern unsigned int memtotal;
 extern struct FIFO32* log_fifo_buffer;
@@ -131,14 +123,14 @@ void HariMain(void)
 	sheet_updown(sht_mouse, 3);
 	keywin_on(key_win);
 
-	char *BIOS = (char *)0xf00;
-	int *BIOS2 = (int *)0xf00;
-	unsigned short cyl =   *(unsigned short *) BIOS; //1023
-	unsigned char head =  *(unsigned char *) (2+BIOS); //0
-	unsigned short wpcom = *(unsigned short *)(5+BIOS); //65535
-	unsigned char ctl =   *(unsigned char *) (8+BIOS);  
-	unsigned short lzone = *(unsigned short *) (12+BIOS);
-	unsigned char sect = *(unsigned char *) (14+BIOS);    //63
+	//char *BIOS = (char *)0xf00;
+	//int *BIOS2 = (int *)0xf00;
+	//unsigned short cyl =   *(unsigned short *) BIOS; //1023
+	//unsigned char head =  *(unsigned char *) (2+BIOS); //0
+	//unsigned short wpcom = *(unsigned short *)(5+BIOS); //65535
+	//unsigned char ctl =   *(unsigned char *) (8+BIOS);  
+	//unsigned short lzone = *(unsigned short *) (12+BIOS);
+	//unsigned char sect = *(unsigned char *) (14+BIOS);    //63
 	
 	//显示内存信息 
 	//debug("memory %dMB free : %dKB", memtotal / (1024 * 1024), 

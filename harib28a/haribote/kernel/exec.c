@@ -1,20 +1,23 @@
 
 #include "bootpack.h"
 #include "elf.h"
+#include <string.h>
 
 /**
  * Perform the exec() system call
  * @return Zero if successful, otherwise -1
 **/
-int do_exec(const char *name, char *argv[], int *fat, int *regs_push_by_interrupt)
+PRIVATE void free_mem(struct TASK *task);
+static void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr);
+
+
+int do_exec(char *name, char *argv[], int *fat, int *regs_push_by_interrupt)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct FILEINFO *finfo;
 	char *p, *q;
 	struct TASK *task = task_now();
 	int i, segsiz, datsiz, esp, dathrb, appsiz;
-	struct SHTCTL *shtctl;
-	struct SHEET  *sht;
 
 	/* 查找文件在磁盘中的信息 */
 	finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
@@ -85,7 +88,7 @@ int do_exec(const char *name, char *argv[], int *fat, int *regs_push_by_interrup
 			
 			int PROC_ORIGIN_STACK = 500;
 			char arg_stack0[PROC_ORIGIN_STACK+4];
-			int *tmp = arg_stack0;
+			int *tmp = (int *)arg_stack0;
 			int stack_len = 4;
 			int str_count = 0;
 			while(*p++){
@@ -110,7 +113,7 @@ int do_exec(const char *name, char *argv[], int *fat, int *regs_push_by_interrup
 				stack_len++;
 			}
 			
-			phys_copy(esp-stack_len, arg_stack0, stack_len);
+			phys_copy((void *)esp-stack_len, arg_stack0, stack_len);
 			esp = esp-stack_len;
 			
 			set_segmdesc(task->ldt + 0, 1024*64 - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
@@ -127,7 +130,7 @@ int do_exec(const char *name, char *argv[], int *fat, int *regs_push_by_interrup
 			
 			
 			
-			start_app(elf_hdr->e_entry, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0),0,0);  
+			start_app((int)elf_hdr->e_entry, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0),0,0);  
 			
 		} else {
 			return -1;

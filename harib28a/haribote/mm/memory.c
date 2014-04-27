@@ -6,6 +6,10 @@
 #define EFLAGS_AC_BIT		0x00040000
 #define CR0_CACHE_DISABLE	0x60000000
 
+
+static void prepare_page_dir_and_page_table();
+static void map_kernel(unsigned int addr_start, int page_count);
+
 /**
   用于计算计算机内存大小。方法：通过不断的测试来获取计算机内存大小。
 */
@@ -196,9 +200,9 @@ void mem_init()
  ***先把线性地址映射成物理地址
  ***将内核所在的线性地址映射到物理地址
 */
-void prepare_page_dir_and_page_table()
+static void prepare_page_dir_and_page_table()
 {
-	int i, j;
+	int i;
 	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
 	//清空1024个页目录项
 	for(i=0; i<1024; i++){
@@ -319,14 +323,14 @@ void do_no_page(unsigned long error_code, unsigned long address)
 
 int test_page(unsigned x)
 {
-	int *page_dir_base_addr = PAGE_DIR_ADDR;
+	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
 	int page_dir_index = x >> 22;
 	debug("page_dir_index = %d", page_dir_index);
 	unsigned int page_add =  *(page_dir_base_addr + page_dir_index) & 0xFFFFF000;
 	debug("page_add = %8.8x", page_add);
 	int page_index = x >> 12 & 0x000003FF;
 	debug("page_index = %d", page_index);
-	int *add = (*((int *)page_add + page_index)  & 0xFFFFF000) + (x & 0x00000FFF);
+	int *add = (int *)((*((int *)page_add + page_index)  & 0xFFFFF000) + (x & 0x00000FFF));
 	debug("Page(0x%08.8x) = 0x%08.8x",x,(int) add);
 	return (int) add;
 }
@@ -360,8 +364,8 @@ int get_count_of_used_pages(){
 void print_page_config()
 {
 	//prepare_page_dir_and_page_table();
-	int i, j;
-	int *page_dir_base_addr = PAGE_DIR_ADDR;
+	//int i, j;
+	//int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
 	//清空1024个页目录项
 	//for(i=0; i<10; i++){
 	//	debug("0x%08.8x",page_dir_base_addr[i]);

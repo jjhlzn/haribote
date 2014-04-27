@@ -43,10 +43,11 @@ struct Node * CreateNode(void *data){
 	struct Node *node = (struct Node *)memman_alloc(memman,sizeof(struct Node));
 	node->data = data;
 	node->next = NULL;
+	return node;
 }
 
 /* 释放节点的内存 */
 void FreeNode(struct Node *data){
-	memman_free(memman,data,sizeof(struct Node));
+	memman_free(memman,(unsigned int)data,sizeof(struct Node));
 }
 
