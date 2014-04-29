@@ -1,4 +1,4 @@
-OBJS =  fs_misc.obj fs_open.obj fs_read_write.obj fs.obj  
+OBJS =  orange_fs_misc.obj orange_fs_open.obj orange_fs_read_write.obj orange_fs.obj  
 
 TOOLPATH = ../../../../tolset/z_tools/
 INCPATH  = ../../../../tolset/z_tools/haribote/

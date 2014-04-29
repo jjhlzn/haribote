@@ -3,7 +3,7 @@ OBJS_BOOTPACK = kernel/bootpack.obj kernel/naskfunc.obj kernel/hankaku.obj kerne
 				kernel/bmp.obj kernel/jpeg.obj kernel/blk_drv/hd.obj kernel/exec.obj kernel/linkedlist.obj kernel/timer.obj kernel/forkexit.obj kernel/apploader.obj \
 				window/graphic.obj  window/window.obj window/sheet.obj \
 				mm/memory.obj   \
-				fs/fs_misc.obj fs/fs_open.obj fs/fs_read_write.obj fs/fs.obj  \
+				fs/orange_fs_misc.obj fs/orange_fs_open.obj fs/orange_fs_read_write.obj fs/orange_fs.obj  \
 				../apilib/alloca.obj
 
 TOOLPATH = ../../../tolset/z_tools/
