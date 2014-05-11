@@ -4,25 +4,37 @@
  *  (C) 1991  Linus Torvalds
  */
 
-#include <errno.h>
-#include <fcntl.h>
+//#include <errno.h>
+//#include <fcntl.h>
 
-#include <linux/sched.h>
-#include <linux/kernel.h>
+//#include <linux/sched.h>
+//#include <linux/kernel.h>
 #include <asm/segment.h>
+#include "errno.h"
+#include "bootpack.h"
+#include "sys/types.h"
+#include "fs.h"
+#include "fcntl.h"
 
+#define ERROR		99
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+////文件读函数 - 根据i节点和文件结构，读取文件中数据
+//由i节点我们可以知道设备号，由filp结构可以知道文件中当前读写指针位置。buf指定用户空间
+//中缓冲区的位置，count是需要读取的字节数。返回值是实际读取的字节数，或出错号
 int file_read(struct m_inode * inode, struct file * filp, char * buf, int count)
 {
 	int left,chars,nr;
 	struct buffer_head * bh;
 
+	//首先判断参数的有效性
 	if ((left=count)<=0)
 		return 0;
-	while (left) {
-		if (nr = bmap(inode,(filp->f_pos)/BLOCK_SIZE)) {
+	
+	while (left) { 
+		//利用bmap获得磁盘逻辑块号
+		if (  (nr = bmap(inode,(filp->f_pos)/BLOCK_SIZE))  ) {
 			if (!(bh=bread(inode->i_dev,nr)))
 				break;
 		} else
@@ -45,6 +57,9 @@ int file_read(struct m_inode * inode, struct file * filp, char * buf, int count)
 	return (count-left)?(count-left):-ERROR;
 }
 
+////文件写函数 - 根据i节点和文件结构信息，将用户数据写入文件中
+//由i节点我们可以知道设备号，而由file结构可以知道文件中当前读写指针位置。buf指定用户态缓冲区
+//的位置，count为需要写入的字节数。返回值是实际写入的字节数，或出错号（小于0）
 int file_write(struct m_inode * inode, struct file * filp, char * buf, int count)
 {
 	off_t pos;

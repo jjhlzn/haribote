@@ -2,7 +2,7 @@
 #include "kernel.h"
 #include <stdio.h>
 #include <string.h>
-#include "hd.h"
+//#include "hd.h"
 #include "fs.h"
 #include "linkedlist.h"
 #include "elf.h"

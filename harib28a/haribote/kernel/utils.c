@@ -35,7 +35,8 @@ PUBLIC void panic(const char *fmt, ...)
 	print_on_screen(buf2);
 
 	/* should never arrive here */
-	ud2();
+	//ud2();
+	for(;;);
 }
 
 
@@ -55,7 +56,7 @@ PUBLIC void printTSSInfo(struct TSS32 *src)
 }
 
 // «∑Ò «“Ï≤Ωlog
-int is_async_log = 1;
+int is_async_log = 0;
 void debug(const char *fmt, ...){
 	static int invoke_level = 0;
 	invoke_level++;
@@ -107,7 +108,7 @@ PUBLIC void spin(char * func_name)
 PUBLIC void string_memory(u8 *mem, int size, char *buf){
 	int i = 0;
 	for(i = 0; i < size; i++){
-		sprintf(buf+strlen(buf),"%x ",mem[i]);
+		sprintf(buf+strlen(buf),"%2.2x ",(u8)mem[i]);
 	}
 	
 }

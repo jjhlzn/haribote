@@ -1,7 +1,9 @@
 #ifndef	_BOOTPACK_H
 #define	_BOOTPACK_H
 
-#define NULL		0
+#ifndef NULL
+#define NULL ((void *) 0)
+#endif
 
 /* asmhead.nas */
 struct hd_i_struct {
@@ -278,16 +280,35 @@ struct TASK {
 	char *cmdline;
 	unsigned char langmode, langbyte1;
 	//任务的文件描述符
-	struct file_desc *filp[NR_FILES];
+	struct file *filp[NR_FILES];
+	u16 euid;
+	u16 egid;
+	u16 uid;
+	u16 gid;
+	struct m_inode * pwd;  //当前工作目录
+	struct m_inode * root;  //根目录
+	struct m_inode * executable;
+	unsigned long close_on_exec;
+	unsigned short umask;
+	long leader, pgrp;
+	int tty;
 };
+
+#define task_struct TASK
 
 enum TASK_STATUS {
 	TASK_STATUS_UNUSED = 0,  //该struct TASK未被使用
 	TASK_STATUS_SLEEP = 1,   //该进程已经睡眠了，或者该进程在创建中，但还不可以运行
 	TASK_STATUS_RUNNING = 2, //该进程可以运行
 	TASK_STATUS_HANGING = 3, //该进程是僵尸进程，等待父进程调用wait()系统调用
-	TASK_STATUS_WAITING = 4   //该进程在等待子进程结束
+	TASK_STATUS_WAITING = 4,   //该进程在等待子进程结束
+	TASK_STATUS_UNINTERRUPTIBLE = 5
 };
+
+#define TASK_UNINTERRUPTIBLE TASK_STATUS_UNINTERRUPTIBLE
+#define current task_now()
+
+#define CURRENT_TIME   1
 
 struct TASKLEVEL {
 	int running; /* 正在运行的任务数量 */
@@ -313,6 +334,8 @@ struct TASK * get_task(int pid);
 void task_add(struct TASK *task);
 void task_exit(struct TASK *task, enum TASK_STATUS task_status);
 void task_wait(struct TASK *task);
+void sleep_on(struct task_struct **p);
+void wake_up(struct task_struct **p);
 
 /* window.c */
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char act);
@@ -448,19 +471,7 @@ typedef struct {
 	} u;
 } MESSAGE;
 
-/* macros for messages */
-#define	FD		u.m3.m3i1
-#define	PATHNAME	u.m3.m3p1
-#define	FLAGS		u.m3.m3i1
-#define	NAME_LEN	u.m3.m3i2
-#define	CNT		u.m3.m3i2
-#define	REQUEST		u.m3.m3i2
-#define	PROC_NR		u.m3.m3i3
-#define	DEVICE		u.m3.m3i4
-#define	POSITION	u.m3.m3l1
-#define	BUF		u.m3.m3p2
-#define	OFFSET		u.m3.m3i2
-#define	WHENCE		u.m3.m3i3
+
 
 /* #define	PID		u.m3.m3i2 */
 /* #define	STATUS		u.m3.m3i1 */
@@ -519,7 +530,7 @@ void panic(const char *fmt, ...);
 
 //#define	NR_FILES	64
 #define	NR_FILE_DESC	64	/* FIXME */
-#define	NR_INODE	64	/* FIXME */
+
 #define	NR_SUPER_BLOCK	8
 
 
@@ -529,7 +540,7 @@ void panic(const char *fmt, ...);
 
 /* the assert macro */
 #define ASSERT
-#ifdef ASSERT
+#ifdef ASSERT 
 void assertion_failure(char *exp, char *file, char *base_file, int line);
 #define assert(exp)  if (exp) ; \
         else assertion_failure(#exp, __FILE__, __BASE_FILE__, __LINE__)
@@ -549,5 +560,11 @@ void assertion_failure(char *exp, char *file, char *base_file, int line);
 
 #define	PROC_IMAGE_SIZE_DEFAULT	0x100000 /*  1 MB */
 
+#define cli io_cli
+#define sti io_sti
+#define printk debug
+#define suser() (current->euid == 0)
+void hd_init(void);
 
+void print_hdinfo(char * str);
 #endif

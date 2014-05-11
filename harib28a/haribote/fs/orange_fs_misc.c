@@ -47,7 +47,9 @@ PUBLIC int search_file(char * path)
 {
 	int i, j;
 
+
 	char filename[MAX_PATH];
+
 	memset1(filename, 0, MAX_FILENAME_LEN);
 	struct inode * dir_inode;
 	if (strip_path(filename, path, &dir_inode) != 0)

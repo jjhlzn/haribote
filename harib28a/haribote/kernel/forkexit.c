@@ -120,13 +120,13 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	new_task->ds_base = (int)data_seg;
 	
 	
-	struct file_desc **filp_parent = task_parent->filp, **filp_new = new_task->filp;
+	struct file **filp_parent = task_parent->filp, **filp_new = new_task->filp;
 	int i;
 	for (i = 0; i < NR_FILES; i++) {
 		filp_new[i] = filp_parent[i];
 		if (filp_new[i]) {
-			filp_new[i]->fd_cnt++;
-			filp_new[i]->fd_inode->i_cnt++;
+			filp_new[i]->f_count++;
+			filp_new[i]->f_inode->i_count++;
 		}
 	}
 	return new_task;
@@ -184,13 +184,13 @@ PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
 	set_segmdesc(new_task->ldt + 1, codeLimit - 1, (int) code_seg, AR_DATA32_RW + 0x60);
 	new_task->ds_base = (int)code_seg;
 	
-	struct file_desc **filp_parent = task_parent->filp, **filp_new = new_task->filp;
+	struct file **filp_parent = task_parent->filp, **filp_new = new_task->filp;
 	int i;
 	for (i = 0; i < NR_FILES; i++) {
 		filp_new[i] = filp_parent[i];
 		if (filp_new[i]) {
-			filp_new[i]->fd_cnt++;
-			filp_new[i]->fd_inode->i_cnt++;
+			filp_new[i]->f_count++;
+			filp_new[i]->f_inode->i_count++;
 		}
 	}
 	return new_task;
@@ -245,11 +245,11 @@ PUBLIC void do_exit(struct TASK *p, int status)
 
 	/* 关闭该进程打开的文件 */
 	debug("close files");
-	struct file_desc **filp = p->filp;
+	struct file **filp = p->filp;
 	for (i = 0; i < NR_FILES; i++) {
 		if (filp[i]) {
-			filp[i]->fd_cnt++;
-			filp[i]->fd_inode->i_cnt++;
+			filp[i]->f_count++;
+			filp[i]->f_inode->i_count++;
 		}
 	}
 

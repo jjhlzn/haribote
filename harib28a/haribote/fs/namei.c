@@ -8,15 +8,18 @@
  * Some corrections by tytso.
  */
 
-#include <linux/sched.h>
-#include <linux/kernel.h>
+//#include <linux/sched.h>
+//#include <linux/kernel.h>
 #include <asm/segment.h>
 
+#include "bootpack.h"
 #include <string.h>
-#include <fcntl.h>
-#include <errno.h>
+#include "fcntl.h"
+#include "errno.h"
 #include <const.h>
+#include "sys/types.h"
 #include <sys/stat.h>
+#include "fs.h"
 
 #define ACC_MODE(x) ("\004\002\006\377"[(x)&O_ACCMODE])
 
@@ -24,11 +27,12 @@
  * comment out this line if you want names > NAME_LEN chars to be
  * truncated. Else they will be disallowed.
  */
+/* 如果想让文件名长度 > NAME_LEN个的字符被截断，就将下面定义注释掉 */
 /* #define NO_TRUNCATE */
 
-#define MAY_EXEC 1
-#define MAY_WRITE 2
-#define MAY_READ 4
+#define MAY_EXEC 1    //可执行（可进入）
+#define MAY_WRITE 2	  //可写
+#define MAY_READ 4    //可读
 
 /*
  *	permission()
@@ -37,6 +41,9 @@
  * I don't know if we should look at just the euid or both euid and
  * uid, but that should be easily changed.
  */
+/*  该函数用于检测一个文件的读/写/执行权限。我不知道是否需检查euid, 还是需要检查euid和
+ *  uid两者，不过这很容易修改 */
+//参数：inode -- 文件的i节点指针； mask -- 访问属性屏蔽码 ??什么是屏蔽码
 static int permission(struct m_inode * inode,int mask)
 {
 	int mode = inode->i_mode;
@@ -60,6 +67,12 @@ static int permission(struct m_inode * inode,int mask)
  *
  * NOTE! unlike strncmp, match returns 1 for success, 0 for failure.
  */
+/* 我们不能使用strncmp字符串比较函数，因为名称不在我们的数据空间（内核空间）。因而我们只能
+ * 使用match()。问题不大，match()同样也处理一些完整的测试 */
+////指定长度字符串比较函数
+//参数：len -- 比较的字符串长度：name -- 文件名指针: de -- 目录项结构
+//放回：相同返回1，不同返回0
+//CHANGED
 static int match(int len,const char * name,struct dir_entry * de)
 {
 	register int same __asm__("ax");
@@ -72,8 +85,7 @@ static int match(int len,const char * name,struct dir_entry * de)
 		"fs ; repe ; cmpsb\n\t"
 		"setz %%al"
 		:"=a" (same)
-		:"0" (0),"S" ((long) name),"D" ((long) de->name),"c" (len)
-		:"cx","di","si");
+		:"0" (0),"S" ((long) name),"D" ((long) de->name),"c" (len));
 	return same;
 }
 
@@ -88,6 +100,11 @@ static int match(int len,const char * name,struct dir_entry * de)
  * This also takes care of the few special cases due to '..'-traversal
  * over a pseudo-root and a mount point.
  */
+////查找指定目录和文件名的目录项
+//参数：*dir - 指定目录i节点的指针；name - 文件名; namelen - 文件名长度
+//该函数在指定目录的数据（文件）中搜索指定文件名的目录项。并对指定文件名是'..'的
+//情况根据当期进行相关设置进行特殊处理。
+//返回：成功则返回函数高速缓冲区指针，并在*res_dir处返回的目录项结构指针。不则返回空指针。
 static struct buffer_head * find_entry(struct m_inode ** dir,
 	const char * name, int namelen, struct dir_entry ** res_dir)
 {
@@ -225,6 +242,10 @@ static struct buffer_head * add_entry(struct m_inode * dir,
  * Getdir traverses the pathname until it hits the topmost directory.
  * It returns NULL on failure.
  */
+/*该函数根据给出的路径名进行搜索，直到达到最顶端的目录。*/
+////搜寻指定路径名的最顶层目录的i节点，例如/usr/src/bin将返回src/目录名的i节点
+//参数: pathname - 路径名
+//返回: 最顶层目录的i节点指针
 static struct m_inode * get_dir(const char * pathname)
 {
 	char c;
@@ -275,6 +296,10 @@ static struct m_inode * get_dir(const char * pathname)
  * dir_namei() returns the inode of the directory of the
  * specified name, and the name within that directory.
  */
+////该函数返回指定目录名的i节点指针，以及在最高顶层目录的名称
+//参数：pathname - 目录路径名；namelen - 路径名长度；name - 返回的最顶层目录名
+//注意！如果路径名最后一个字符是‘/’，那么返回的目录名为空，并且长度为0
+//返回：指定目录名最顶层目录的i节点指针和最顶层目录名称及长度。出错则返回NULL
 static struct m_inode * dir_namei(const char * pathname,
 	int * namelen, const char ** name)
 {
@@ -285,7 +310,7 @@ static struct m_inode * dir_namei(const char * pathname,
 	if (!(dir = get_dir(pathname)))
 		return NULL;
 	basename = pathname;
-	while (c=get_fs_byte(pathname++))
+	while (  (c=get_fs_byte(pathname++)) )
 		if (c=='/')
 			basename=pathname;
 	*namelen = pathname-basename-1;
@@ -300,6 +325,7 @@ static struct m_inode * dir_namei(const char * pathname,
  * Open, link etc use their own routines, but this is enough for things
  * like 'chmod' etc.
  */
+////取指定路径名的i节点
 struct m_inode * namei(const char * pathname)
 {
 	const char * basename;
@@ -334,6 +360,11 @@ struct m_inode * namei(const char * pathname)
  *
  * namei for open - this is in fact almost the whole open-routine.
  */
+/*open()函数使用的namei函数 - 这其实几乎是完整的打开文件程序*/
+////文件打开namei函数
+//参数filename是文件名，flag是打开文件标志，他可取值：O_RDONLY(只读）、O_WRONLY或
+//O_RDWR,以及O_CREAT、O_EXCL(被创建文件必须不存在）、O_APPEND等其他一些标志的组合。
+//如果本调用创建了一个新文件，则mode就用于指定文件的许可属性。
 int open_namei(const char * pathname, int flag, int mode,
 	struct m_inode ** res_inode)
 {

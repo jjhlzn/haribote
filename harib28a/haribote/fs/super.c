@@ -7,20 +7,24 @@
 /*
  * super.c contains code to handle the super-block tables.
  */
-#include <linux/config.h>
-#include <linux/sched.h>
-#include <linux/kernel.h>
-#include <asm/system.h>
+//#include <linux/config.h>
+//#include <linux/sched.h>
+//#include <linux/kernel.h>
+//#include <asm/system.h>
 
 #include <errno.h>
 #include <sys/stat.h>
 
+#include "bootpack.h"
+#include "fs.h"
+
 int sync_dev(int dev);
 void wait_for_keypress(void);
+struct m_inode * get_root_inode();
 
 /* set_bit uses setb, as gas doesn't recognize setc */
 #define set_bit(bitnr,addr) ({ \
-register int __res __asm__("ax"); \
+register int __res; \
 __asm__("bt %2,%3;setb %%al":"=a" (__res):"a" (0),"r" (bitnr),"m" (*(addr))); \
 __res; })
 
@@ -53,6 +57,8 @@ static void wait_on_super(struct super_block * sb)
 	sti();
 }
 
+/* 取指定设备的超级块 */
+//在超级块表（数组）中搜索指定设备dev的超级块结构信息。若找到则返回超级块的指针，否则返回空指针。
 struct super_block * get_super(int dev)
 {
 	struct super_block * s;
@@ -71,10 +77,11 @@ struct super_block * get_super(int dev)
 	return NULL;
 }
 
+/* 释放（放回）指定设备的超级块 */
 void put_super(int dev)
 {
 	struct super_block * sb;
-	struct m_inode * inode;
+	//struct m_inode * inode;
 	int i;
 
 	if (dev == ROOT_DEV) {
@@ -97,8 +104,12 @@ void put_super(int dev)
 	return;
 }
 
+/* 读取指定设备的超级块 */
+//如果指定设备dev上的文件系统超级块已经在超级块表中，则直接返回该超级块项的指针。
+//否则就从设备dev上读取超级块到缓冲块中，并复制到超级块表中，并返回超级块指针
 static struct super_block * read_super(int dev)
 {
+	debug("read_super1");
 	struct super_block * s;
 	struct buffer_head * bh;
 	int i,block;
@@ -106,12 +117,14 @@ static struct super_block * read_super(int dev)
 	if (!dev)
 		return NULL;
 	check_disk_change(dev);
-	if (s = get_super(dev))
+	debug("read_super2");
+	if ( (s = get_super(dev)) )
 		return s;
+	debug("read_super3");
 	for (s = 0+super_block ;; s++) {
 		if (s >= NR_SUPER+super_block)
 			return NULL;
-		if (!s->s_dev)
+		if (!s->s_dev) //找到一块空闲的超级块
 			break;
 	}
 	s->s_dev = dev;
@@ -121,7 +134,7 @@ static struct super_block * read_super(int dev)
 	s->s_rd_only = 0;
 	s->s_dirt = 0;
 	lock_super(s);
-	if (!(bh = bread(dev,1))) {
+	if (!(bh = bread(dev,1))) {  //读取超级块
 		s->s_dev=0;
 		free_super(s);
 		return NULL;
@@ -130,6 +143,7 @@ static struct super_block * read_super(int dev)
 		*((struct d_super_block *) bh->b_data);
 	brelse(bh);
 	if (s->s_magic != SUPER_MAGIC) {
+		debug("the partiton is not minix 1.0");
 		s->s_dev = 0;
 		free_super(s);
 		return NULL;
@@ -140,12 +154,12 @@ static struct super_block * read_super(int dev)
 		s->s_zmap[i] = NULL;
 	block=2;
 	for (i=0 ; i < s->s_imap_blocks ; i++)
-		if (s->s_imap[i]=bread(dev,block))
+		if ( (s->s_imap[i]=bread(dev,block)) )
 			block++;
 		else
 			break;
 	for (i=0 ; i < s->s_zmap_blocks ; i++)
-		if (s->s_zmap[i]=bread(dev,block))
+		if ( (s->s_zmap[i]=bread(dev,block)) )
 			block++;
 		else
 			break;
@@ -164,12 +178,19 @@ static struct super_block * read_super(int dev)
 	return s;
 }
 
+/* 卸载文件系统 */
+//参数dev_name是文件系统所在设备的设备文件名
+//该函数首先根据参数给出的块设备文件名获得设备号，然后复位文件系统超级块中的相应字段，释放
+//超级块和位图占用的缓冲块，最后对该设备执行高速缓冲与设备上数据的同步操作。若卸载成功则返回0，否则返回出错码
 int sys_umount(char * dev_name)
 {
 	struct m_inode * inode;
 	struct super_block * sb;
 	int dev;
 
+	//首先根据设备文件名找到对应的i节点，并取其中的设备号。设备文件所定义设备的设备号是保存
+	//在其i节点的i_zone[0]中的。另外，由于文件系统需要存放在块设备上，因此如果不是块设备文件，
+	//则放回刚申请i节点dev_i，返回出错码。
 	if (!(inode=namei(dev_name)))
 		return -ENOENT;
 	dev = inode->i_zone[0];
@@ -177,6 +198,7 @@ int sys_umount(char * dev_name)
 		iput(inode);
 		return -ENOTBLK;
 	}
+	
 	iput(inode);
 	if (dev==ROOT_DEV)
 		return -EBUSY;
@@ -197,6 +219,10 @@ int sys_umount(char * dev_name)
 	return 0;
 }
 
+/*  安装文件系统（系统调用） */
+//参数dev_name是设备文件名，dir_name是安装到的目录名，rw_flag被安装文件系统的可读写标志
+//将被加载的地方必须是一个目录名，并且对应的i节点没有被其他程序占用。
+//若操作系统则返回0，否则返回出错号。
 int sys_mount(char * dev_name, char * dir_name, int rw_flag)
 {
 	struct m_inode * dev_i, * dir_i;
@@ -241,6 +267,13 @@ int sys_mount(char * dev_name, char * dir_name, int rw_flag)
 
 void mount_root(void)
 {
+	static int hascalled = 0;
+	if(hascalled){
+		debug("mount_root has beened called");
+		return;
+	}
+	hascalled = 1;
+		
 	int i,free;
 	struct super_block * p;
 	struct m_inode * mi;
@@ -251,7 +284,8 @@ void mount_root(void)
 		file_table[i].f_count=0;
 	if (MAJOR(ROOT_DEV) == 2) {
 		printk("Insert root floppy and press ENTER");
-		wait_for_keypress();
+		//wait_for_keypress();
+		panic("don't support floppy");
 	}
 	for(p = &super_block[0] ; p < &super_block[NR_SUPER] ; p++) {
 		p->s_dev = 0;
@@ -278,4 +312,12 @@ void mount_root(void)
 		if (!set_bit(i&8191,p->s_imap[i>>13]->b_data))
 			free++;
 	printk("%d/%d free inodes\n\r",free,p->s_ninodes);
+}
+
+struct m_inode * get_root_inode()
+{
+	struct m_inode * mi;
+	if (!(mi=iget(ROOT_DEV,ROOT_INO)))
+		panic("Unable to read root i-node");
+	return mi;
 }

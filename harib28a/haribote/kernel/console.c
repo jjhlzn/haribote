@@ -4,15 +4,17 @@
 #include "kernel.h"
 #include <stdio.h>
 #include <string.h>
-#include "hd.h"
+//#include "hd.h"
 #include "fs.h"
 #include "linkedlist.h"
 #include "elf.h"
 
 int do_rdwt(MESSAGE * msg,struct TASK *pcaller);
 void print_identify_info(u16* hdinfo, char* str);
+u16* hd_identify(int drive);
+void partition(int device, int style);
 static void console_loop(struct TASK *task, int memtotal, char *last_cmdline);
-
+void cmd_testhd();
 
 int *fat;
 struct FIFO32* log_fifo_buffer = 0;
@@ -318,7 +320,9 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 		cmd_langmode(cons, cmdline);
 	} else if (strcmp(cmdline, "hd") == 0 && cons->sht != 0){
 		cmd_hd(cons);
-	} else if (strcmp(cmdline, "hdpartition") == 0 && cons->sht != 0){
+	} else if (strcmp(cmdline, "testhd") == 0) {
+		cmd_testhd();
+	}else if (strcmp(cmdline, "hdpartition") == 0 && cons->sht != 0){
 		cmd_partition(cons);
 	} else if(strcmp(cmdline, "ls") == 0){
 		cmd_ls(cons);
@@ -338,7 +342,7 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 void cmd_partition(struct CONSOLE *cons)
 {
 	hd_identify(0);
-	partition( 0 * (NR_PART_PER_DRIVE + 1), P_PRIMARY);
+	partition( 0 * (4 + 1), 0);
 	char str[600];
 	sprintf(str,"");
 	print_hdinfo(str);
@@ -351,6 +355,9 @@ void cmd_ls(struct CONSOLE *cons){
 	int dev = ROOT_DEV;
 	debug("dev = %d",dev);
 	struct FILEINFO *p_file = (struct FILEINFO*)get_all_files(dev);
+	if(p_file == NULL){
+		panic("can't find any files!");
+	}
 	char str[100];
 	int size = 0;
 	while(p_file -> size != -1){
@@ -367,11 +374,22 @@ void cmd_ls(struct CONSOLE *cons){
 
 void cmd_hd(struct CONSOLE *cons)
 {
-	u8* hdinfo = hd_identify(0);
-	char str[200];
+	u16* hdinfo = hd_identify(0);
+	//hdinfo = (u16*)0x315f6c;
+	//debug("hdinfo = 0x%x",(int)hdinfo);
+	//int sectors = ((int)hdinfo[61] << 16) + hdinfo[60];
+	//debug( "HD size: %dMB\n", sectors * 512 / 1000000);
+	char str[300];
 	print_identify_info((u16*)hdinfo,str);
 	cons_putstr0(cons, str);
 }
+
+int sys_setup(void * BIOS);
+void cmd_testhd()
+{
+	sys_setup(NULL);
+}
+
 
 void print_identify_info(u16* hdinfo, char* str)
 {
@@ -383,7 +401,7 @@ void print_identify_info(u16* hdinfo, char* str)
 		int len;
 		char * desc;
 	} iinfo[] = {{10, 20, "HD SN"}, /* Serial number in ASCII */
-	{27, 40, "HD Model"} /* Model number in ASCII */ };
+				 {27, 40, "HD Model"} /* Model number in ASCII */ };
 	
 	sprintf(str,"");
 	
@@ -404,7 +422,25 @@ void print_identify_info(u16* hdinfo, char* str)
 	int cmd_set_supported = hdinfo[83];
 	sprintf(str+strlen(str), "LBA48 supported: %s\n",
 	       (cmd_set_supported & 0x0400) ? "Yes" : "No");
-
+	
+	int wNumCyls = hdinfo[1];
+	sprintf(str+strlen(str),"cyl: %d\n",wNumCyls);
+	
+	int wReserved2 = hdinfo[2];
+	sprintf(str+strlen(str),"wReserved2: %d\n",wReserved2);
+	
+	int wNumHeads = hdinfo[3];
+	sprintf(str+strlen(str),"head: %d\n", wNumHeads);
+	
+	int wReserved4 = hdinfo[4];
+	sprintf(str+strlen(str),"wReserved4: %d\n",wReserved4);
+	
+	int wReserved5 = hdinfo[5];
+	sprintf(str+strlen(str),"wReserved5: %d\n",wReserved5);
+	
+	int wNumSectorsPerTrack = hdinfo[6];
+	sprintf(str+strlen(str),"sectors per track: %d\n", wNumSectorsPerTrack);
+	
 	int sectors = ((int)hdinfo[61] << 16) + hdinfo[60];
 	sprintf(str+strlen(str), "HD size: %dMB\n", sectors * 512 / 1000000);
 }

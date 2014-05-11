@@ -183,7 +183,8 @@ void mem_init()
 	memman_init(memman);
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
 	//0x00400000-0x00900000放页表，0x00900000-0x00a00000存放分页是否空闲
-	memman_free(memman, 0x00a00000, memtotal - 0x00a00000); 
+	//0x00a00000-0x00b00000为高速缓冲
+	memman_free(memman, 0x00b00000, memtotal - 0x00b00000); 
 	
 	int mem_pages = memtotal / (4 * 1024);
 	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
@@ -192,7 +193,7 @@ void mem_init()
 		page_bit_map[i] = 0;
 	}
 	prepare_page_dir_and_page_table();
-	open_page();
+	//open_page();
 }
 
 
@@ -314,6 +315,8 @@ void do_no_page(unsigned long error_code, unsigned long address)
 	//map_kernel(laddr, 1024);
 	map_user(address);
 }
+
+
 
 
 

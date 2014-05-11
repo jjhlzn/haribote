@@ -8,7 +8,7 @@
 
 struct TASKCTL *taskctl;
 struct TIMER *task_timer;
-
+struct m_inode * get_root_inode();
 struct TASK *task_now(void)
 {
 	struct TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];
@@ -172,6 +172,9 @@ struct TASK *task_alloc(void)
 			task->forked = 0; //重置是否是fork创建的标志
 			task->exit_status = -1000;
 			
+			task->pwd = get_root_inode();
+			task->root = get_root_inode();
+			
 			task->readKeyboard = 0;
 			open_std_files(task);
 			return task;
@@ -334,4 +337,38 @@ PUBLIC void* va2la(int pid, void* va)
 	
 	return va;
 }
+
+
+
+/*******************************文件系统升级修改*****************************/
+//TODO: 任务结构不同 ，也引入了新的状态
+void sleep_on(struct task_struct **p)
+{
+	struct task_struct *tmp;
+
+	if (!p)
+		return;
+	//if (current == &(init_task.task))
+	//	panic("task[0] trying to sleep");
+	tmp = *p;
+	*p = current;
+	current->flags = TASK_UNINTERRUPTIBLE;
+	//schedule();
+	task_switch();
+	if (tmp)
+		tmp->flags= TASK_STATUS_RUNNING;
+}
+
+//TODO: 
+void wake_up(struct task_struct **p)
+{
+	if (p && *p) {
+		(**p).flags=TASK_STATUS_RUNNING;
+		*p=NULL;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+
 

@@ -13,7 +13,16 @@
 
 *.jpg
 
-
+*.IAB
+*.IAD
+*.IMB
+*.IMD
+*.PFI
+*.PO
+*.PR
+*.PRI
+*.PS
+*.WK3
 
 #################
 ## Eclipse

@@ -1,7 +1,6 @@
 /* bootpack偺儊僀儞 */
 
 #include "bootpack.h"
-#include "hd.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -11,17 +10,21 @@ void keywin_off(struct SHEET *key_win);
 void keywin_on(struct SHEET *key_win);
 void close_console(struct SHEET *sht);
 void close_constask(struct TASK *task);
+void blk_dev_init();
+void buffer_init(long buffer_end);
+void mkfs();
+int sys_setup(void * BIOS);
 struct SHEET *open_log_console(struct SHTCTL *shtctl, unsigned int memtotal);
-
-
-
 
 void load_background_pic(char* back_buf, int *fat);
 struct SHEET  *log_win = 0;
 extern unsigned int memtotal;
 extern struct FIFO32* log_fifo_buffer;
+extern int ROOT_DEV;
 void HariMain(void)
 {
+	
+	
 	
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 	struct SHTCTL *shtctl;
@@ -81,9 +84,15 @@ void HariMain(void)
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 
 	//初始化硬盘: TODO: 如果将初始化硬盘和文件系统移到下面去，会出现异常
-	init_hd(&fifo);
+	//init_hd(&fifo);
+	ROOT_DEV = 0x301;
+	blk_dev_init();
+	hd_init();
+	buffer_init(0x00b00000-1);
+	sys_setup(NULL);
+	//mkfs();
 	//初始化文件系统
-	init_fs();
+	//init_fs();
 	
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);

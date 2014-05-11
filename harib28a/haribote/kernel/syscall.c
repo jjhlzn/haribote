@@ -2,11 +2,13 @@
 #include "kernel.h"
 #include <stdio.h>
 #include <string.h>
-#include "hd.h"
+//#include "hd.h"
 #include "fs.h"
 #include "linkedlist.h"
 #include "elf.h"
+#include <sys/stat.h>
 
+extern int sys_open();
 extern int* fat;
 int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
 			 int fs, int gs,
@@ -64,48 +66,48 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		reg[7] = new_task->pid;
 		task_add(new_task);
 	}else if(eax == 3){  //read file
-		int fd = ebx;
-		char *buf = (char *)(ecx+ds_base);
-		int len = edx;
+		//int fd = ebx;
+		//char *buf = (char *)(ecx+ds_base);
+		//int len = edx;
 		
-		MESSAGE msg;
-		msg.FD = fd;
-		msg.BUF = buf;
-		msg.CNT = len;
-		msg.type = READ;
+		//MESSAGE msg;
+		//msg.FD = fd;
+		//msg.BUF = buf;
+		//msg.CNT = len;
+		//msg.type = READ;
 		
-		reg[7] = do_rdwt(&msg,task);
-		if(reg[7] != -1)
-			buf[reg[7]] = 0; //设置结尾符
+		//reg[7] = do_rdwt(&msg,task);
+		//if(reg[7] != -1)
+		//	buf[reg[7]] = 0; //设置结尾符
 		
-		debug("read %d bytes [%s]", reg[7], buf);
+		//debug("read %d bytes [%s]", reg[7], buf);
 	}else if (eax == 4) {  //write file
-		int fd = ebx;
-		char *buf = (char *)(ecx+ds_base);
-		int len = edx;
-		//debug("ebx = %d, ecx = %d, edx = %d",ebx, ecx, edx);
+		//int fd = ebx;
+		//char *buf = (char *)(ecx+ds_base);
+		//int len = edx;
+		////debug("ebx = %d, ecx = %d, edx = %d",ebx, ecx, edx);
 		
-		//构建写文件内容的参数
-		MESSAGE msg;
-		msg.FD = fd;
-		msg.BUF = buf;
-		msg.CNT = len;
-		msg.type = WRITE;
+		////构建写文件内容的参数
+		//MESSAGE msg;
+		//msg.FD = fd;
+		//msg.BUF = buf;
+		//msg.CNT = len;
+		//msg.type = WRITE;
 		
-		reg[7] = do_rdwt(&msg,task);
-		debug("write %d bytes [%s] to fd(%d)",len,buf, fd);
+		//reg[7] = do_rdwt(&msg,task);
+		//debug("write %d bytes [%s] to fd(%d)",len,buf, fd);
 	}else if(eax == 5){   // open file
-		debug("ebx = %d, ecx = %d, edx = %d", ebx, ecx, edx);
-		char *pathname = (char *) ebx + ds_base;
-		int flags = ecx;
-		debug("open fd: pathname = %s, flags = %d",pathname,flags);
-		int fd = do_open(pathname,flags,task);
-		debug("open fd(%d)", fd);
-		reg[7] = fd;
+		//debug("ebx = %d, ecx = %d, edx = %d", ebx, ecx, edx);
+		//char *pathname = (char *) ebx + ds_base;
+		//int flags = ecx;
+		//debug("open fd: pathname = %s, flags = %d",pathname,flags);
+		//int fd = do_open(pathname,flags,task);
+		//debug("open fd(%d)", fd);
+		//reg[7] = fd;
 	}else if(eax == 6){  //close file
-		int fd = ebx;
-		debug("close fd(%d)",fd);
-		reg[7] = do_close(fd,task);
+		//int fd = ebx;
+		//debug("close fd(%d)",fd);
+		//reg[7] = do_close(fd,task);
 	}else if(eax == 7){  //wait 
 		//debug("addr = %d",ebx);
 		int* add_status = (int *)(ds_base+ecx);
@@ -115,10 +117,10 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		debug("exit_status = %d", *add_status);
 		reg[7] = child_pid;
 	}else if(eax == 8){  //create file
-		char *pathname = (char *)ebx+ds_base;
-		int fd = do_open(pathname,O_CREATE,task);
-		debug("create file %s fd[%d]",pathname,task);
-		reg[4] = fd;
+		//char *pathname = (char *)ebx+ds_base;
+		//int fd = do_open(pathname,O_CREATE,task);
+		//debug("create file %s fd[%d]",pathname,task);
+		//reg[4] = fd;
 	}else if(eax == 20){  //getpid
 		debug("pid = %d",task->pid);
 		reg[7] = task->pid;
@@ -375,47 +377,48 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		char *pathname = (char *) eax + ds_base;
 		int flags = ebx;
 		debug("open fd: pathname = %s, flags = %d",pathname,flags);
-		int fd = do_open(pathname,flags,task);
+		int fd = sys_open((char *)eax, flags, S_IRWXU);
+		//int fd = do_open(pathname,flags,task);
 		debug("open fd(%d)", fd);
 		reg[7] = fd;
 	} else if(edx == 30){   //close file
-		int fd = eax;
-		debug("close fd(%d)",fd);
-		do_close(fd,task);
+		//int fd = eax;
+		//debug("close fd(%d)",fd);
+		//do_close(fd,task);
 	} else if(edx == 31){    //read file
-		int fd = eax;
-		char *buf = (char *)(ebx+ds_base);
-		int len = ebp;
+		//int fd = eax;
+		//char *buf = (char *)(ebx+ds_base);
+		//int len = ebp;
 		
-		MESSAGE msg;
-		msg.FD = fd;
-		msg.BUF = buf;
-		msg.CNT = len;
-		msg.type = READ;
+		//MESSAGE msg;
+		//msg.FD = fd;
+		//msg.BUF = buf;
+		//msg.CNT = len;
+		//msg.type = READ;
 		
-		reg[7] = do_rdwt(&msg,task);
-		buf[reg[7]] = 0; //设置结尾符
+		//reg[7] = do_rdwt(&msg,task);
+		//buf[reg[7]] = 0; //设置结尾符
 		
-		debug("read contents = [%s]",buf);
+		//debug("read contents = [%s]",buf);
 		
 	} else if(edx == 32){        //api_write
-		int fd = eax;
-		char *buf = (char *)(ebx+ds_base);
-		int len = ebp;
+		//int fd = eax;
+		//char *buf = (char *)(ebx+ds_base);
+		//int len = ebp;
 		
-		//构建写文件内容的参数
-		MESSAGE msg;
-		msg.FD = fd;
-		msg.BUF = buf;
-		msg.CNT = len;
-		msg.type = WRITE;
+		////构建写文件内容的参数
+		//MESSAGE msg;
+		//msg.FD = fd;
+		//msg.BUF = buf;
+		//msg.CNT = len;
+		//msg.type = WRITE;
 		
-		reg[7] = do_rdwt(&msg,task);
+		//reg[7] = do_rdwt(&msg,task);
 		
-		debug("write contets(%s) to fd(%d)",buf, fd);
+		//debug("write contets(%s) to fd(%d)",buf, fd);
 	} else if(edx == 33){
 		int fd = eax;
-		reg[7] = task->filp[fd]->fd_inode->i_size;
+		reg[7] = task->filp[fd]->f_inode->i_size;
 		debug("filesize of fd[%d] = %d",fd,reg[7]);
 	} else if(edx == 34){
 		struct TSS32 tss;

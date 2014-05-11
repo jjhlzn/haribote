@@ -200,7 +200,7 @@ enable_8:
 
 
 ; ------------------------------------------------------------------------
-; void* memcpy(void* es:p_dst, void* ds:p_src, int size);
+; void* memcpy1(void* es:p_dst, void* ds:p_src, int size);
 ; ------------------------------------------------------------------------
 _memcpy1:
 	push	ebp
@@ -276,9 +276,6 @@ _memset1:
 ;                  void port_read(u16 port, void* buf, int n);
 ; ========================================================================
 _port_read:
-	;mov	edx, [esp + 4]		; port
-	;mov	edi, [esp + 4 + 4]	; buf
-	;mov	ecx, [esp + 4 + 4 + 4]	; n
 	push edx
 	push edi
 	push ecx
@@ -498,6 +495,7 @@ _asm_hrb_api:
 	
 		PUSHAD		; 用于向hrb_api传值得PUSH
 		
+		
 		MOV		AX,SS
 		MOV		DS,AX		; 将操作系统用段地址存入DS和ES
 		MOV		ES,AX
@@ -542,6 +540,7 @@ _asm_linux_api:
 	
 		
 		PUSHAD		; 用于向hrb_api传值得PUSH
+		;MOV FS, [ESP+48] ;用户空间的数据段描述符
 		
 		MOV		AX,SS
 		MOV		DS,AX		; 将操作系统用段地址存入DS和ES
