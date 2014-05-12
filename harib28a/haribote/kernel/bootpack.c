@@ -21,11 +21,11 @@ struct SHEET  *log_win = 0;
 extern unsigned int memtotal;
 extern struct FIFO32* log_fifo_buffer;
 extern int ROOT_DEV;
+void cons_key_up(struct CONSOLE *cons);
+void cons_key_down(struct CONSOLE *cons);
+
 void HariMain(void)
 {
-	
-	
-	
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 	struct SHTCTL *shtctl;
 	char s[40];
@@ -84,7 +84,6 @@ void HariMain(void)
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 
 	//初始化硬盘: TODO: 如果将初始化硬盘和文件系统移到下面去，会出现异常
-	//init_hd(&fifo);
 	ROOT_DEV = 0x301;
 	blk_dev_init();
 	hd_init();
@@ -131,23 +130,6 @@ void HariMain(void)
 	sheet_updown(key_win,   2);
 	sheet_updown(sht_mouse, 3);
 	keywin_on(key_win);
-
-	//char *BIOS = (char *)0xf00;
-	//int *BIOS2 = (int *)0xf00;
-	//unsigned short cyl =   *(unsigned short *) BIOS; //1023
-	//unsigned char head =  *(unsigned char *) (2+BIOS); //0
-	//unsigned short wpcom = *(unsigned short *)(5+BIOS); //65535
-	//unsigned char ctl =   *(unsigned char *) (8+BIOS);  
-	//unsigned short lzone = *(unsigned short *) (12+BIOS);
-	//unsigned char sect = *(unsigned char *) (14+BIOS);    //63
-	
-	//显示内存信息 
-	//debug("memory %dMB free : %dKB", memtotal / (1024 * 1024), 
-	//		memman_total(memman) / 1024);
-	//debug("dd1 = %8x, dd2 = %8x, dd3 = %8x, dd4 = %8x", *BIOS2, *(BIOS2+1), *(BIOS2+2), *(BIOS2+3));
-	//debug("cyl = %u, head = %u, wpcom = %u ctl = %u, lzone = %u, sect = %u", 
-	//	cyl, head, wpcom,
-	//	ctl, lzone, sect);
 
 	/* 嵟弶偵僉乕儃乕僪忬懺偲偺怘偄堘偄偑側偄傛偆偵丄愝掕偟偰偍偔偙偲偵偡傞 */
 	fifo32_put(&keycmd, KEYCMD_LED);
@@ -222,18 +204,40 @@ void HariMain(void)
 				} else {
 					s[0] = 0;
 				} 
-				
+				//debug("%d",i-256);
 				if ('A' <= s[0] && s[0] <= 'Z') {	/* 根据shift键和caps键, 进行小写转换(默认是大写的) */
 					if (((key_leds & 4) == 0 && key_shift == 0) ||
 							((key_leds & 4) != 0 && key_shift != 0)) {
 						s[0] += 0x20;	/* 转化为小写 */
 					}
 				}
+				if( i == 256 + 72 ) {  //UP
+					if(key_win != 0){
+						struct CONSOLE *cons = key_win->task->cons;
+						if(key_win->task->cons && cons->sht_buf){
+							//debug("taskname = %s",key_win->task->name);
+							cons_key_up(key_win->task->cons);
+						}
+						continue;
+					}
+				}
+				if( i == 256 + 80 ) {  //DOWN
+					if(key_win != 0){
+						struct CONSOLE *cons = key_win->task->cons;
+						if(key_win->task->cons && cons->sht_buf){
+							//debug("taskname = %s",key_win->task->name);
+							cons_key_down(key_win->task->cons);
+						}
+						continue;
+					}
+				}
+				
 				if (s[0] != 0 && key_win != 0) { /* 把字符发送给相应的任务 */
 					fifo32_put(&key_win->task->fifo, s[0] + 256);
 					if(key_win->task->readKeyboard == 1)
 						fifo32_put2(&key_win->task->ch_buf, s[0] + 256);
 				}
+				
 				if (i == 256 + 0x0f && key_win != 0) {	/* Tab键 */
 					keywin_off(key_win);
 					j = key_win->height - 1;
@@ -321,6 +325,7 @@ void HariMain(void)
 					new_mx = mx;
 					new_my = my;
 						
+					//debug("btn = %d, x = %d, y = %d",mdec.btn,mdec.x,mdec.y);
 					if ((mdec.btn & 0x01) != 0) {
 					
 						/* 嵍儃僞儞傪墴偟偰偄傞 */
@@ -424,7 +429,7 @@ void keywin_off(struct SHEET *key_win)
 {
 	change_wtitle8(key_win, 0);
 	if ((key_win->flags & 0x20) != 0) {
-		fifo32_put(&key_win->task->fifo, 3); /* 僐儞僜乕儖偺僇乕僜儖OFF */
+		fifo32_put(&key_win->task->fifo, 3); /* 光标OFF */
 	}
 	return;
 }
@@ -433,7 +438,7 @@ void keywin_on(struct SHEET *key_win)
 {
 	change_wtitle8(key_win, 1);
 	if ((key_win->flags & 0x20) != 0) {
-		fifo32_put(&key_win->task->fifo, 2); /* 僐儞僜乕儖偺僇乕僜儖ON */
+		fifo32_put(&key_win->task->fifo, 2); /* 光标ON */
 	}
 	return;
 }

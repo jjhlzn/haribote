@@ -4,7 +4,6 @@
 #include "kernel.h"
 #include <stdio.h>
 #include <string.h>
-//#include "hd.h"
 #include "fs.h"
 #include "linkedlist.h"
 #include "elf.h"
@@ -14,10 +13,17 @@ void print_identify_info(u16* hdinfo, char* str);
 u16* hd_identify(int drive);
 void partition(int device, int style);
 static void console_loop(struct TASK *task, int memtotal, char *last_cmdline);
+static void init_cons_buf(struct CONSOLE *cons);
+static void buf_putchar(struct CONSOLE *cons, int chr, char move);
+static void buf_newline(struct CONSOLE *cons);
+static void cons_newline2(struct CONSOLE *cons);
+void cons_key_up(struct CONSOLE *cons);
 void cmd_testhd();
+void cons_key_down(struct CONSOLE *cons);
 
 int *fat;
 struct FIFO32* log_fifo_buffer = 0;
+extern struct SHTCTL *SHEET_CTRL;
 
 void log_task(struct SHEET *sheet, int memtotal)
 {
@@ -30,14 +36,14 @@ void log_task(struct SHEET *sheet, int memtotal)
 	struct FILEHANDLE fhandle[8];
 	char cmdline[CONSOLE_WIDTH_COLS];
 	unsigned char *nihongo = (char *) *((int *) 0x0fe8);
-
+    
 	cons.sht = sheet;
 	cons.cur_x =  8;
 	cons.cur_y = 28;
 	cons.cur_c = -1;
 	task->cons = &cons;
 	task->cmdline = cmdline;
-
+	init_cons_buf(&cons);
 	//if (cons.sht != 0) {
 	//	cons.timer = timer_alloc();
 	//	timer_init(cons.timer, &task->fifo, 1);
@@ -93,13 +99,14 @@ void console_task(struct SHEET *sheet, int memtotal)
 	sprintf(last_cmdline,"");
 	unsigned char *nihongo = (char *) *((int *) 0x0fe8);
 
+	
 	cons.sht = sheet;
 	cons.cur_x =  8;
 	cons.cur_y = 28;
 	cons.cur_c = -1;
 	task->cons = &cons;
 	task->cmdline = cmdline;
-
+	init_cons_buf(&cons);
 	if (cons.sht != 0) {
 		cons.timer = timer_alloc();
 		timer_init(cons.timer, &task->fifo, 1);
@@ -124,6 +131,20 @@ void console_task(struct SHEET *sheet, int memtotal)
 	console_loop(task,memtotal,last_cmdline);
 }
 
+static void init_cons_buf(struct CONSOLE *cons)
+{	
+	struct SHEET *sht_buf = sheet_alloc(SHEET_CTRL);
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	unsigned char *buf = (unsigned char *) memman_alloc_4k(memman, CONSOLE_BUF_WIDTH * CONSOLE_BUF_HEIGHT);
+	memset(buf,0,CONSOLE_BUF_WIDTH * CONSOLE_BUF_HEIGHT);
+	sheet_setbuf(sht_buf, buf, CONSOLE_BUF_WIDTH, CONSOLE_BUF_HEIGHT, -1);
+	cons->sht_buf = sht_buf;
+	//cons->sht_buf = cons->sht;
+	cons->buf_x =  8;
+	cons->buf_y = 28;
+	cons->buf_cur_y = cons->buf_y;
+}
+
 
 static void console_loop(struct TASK *task, int memtotal, char *last_cmdline)
 {
@@ -138,26 +159,26 @@ static void console_loop(struct TASK *task, int memtotal, char *last_cmdline)
 		} else {
 			i = fifo32_get(&task->fifo);
 			io_sti();
-			if (i <= 1 && cons->sht != 0) { /* 僇乕僜儖梡僞僀儅 */
+			if (i <= 1 && cons->sht != 0) { /* 光标用定时器 */
 				if (i != 0) {
-					timer_init(cons->timer, &task->fifo, 0); /* 師偼0傪 */
+					timer_init(cons->timer, &task->fifo, 0); /* 下次置位0 */
 					if (cons->cur_c >= 0) {
 						cons->cur_c = COL8_FFFFFF;
 					}
 				} else {
-					timer_init(cons->timer, &task->fifo, 1); /* 師偼1傪 */
+					timer_init(cons->timer, &task->fifo, 1); /* 下次置位1 */
 					if (cons->cur_c >= 0) {
 						cons->cur_c = COL8_000000;
 					}
 				}
 				timer_settime(cons->timer, 50);
 			}
-			if (i == 2) {	/* 僇乕僜儖ON */
-				cons->cur_c = COL8_FFFFFF;
+			if (i == 2) {	/* 光标ON */
+				cons->cur_c = COL8_FFFFFF;  //白色
 			}
-			if (i == 3) {	/* 僇乕僜儖OFF */
+			if (i == 3) {	/* 光标OFF */
 				if (cons->sht != 0) {
-					boxfill8(cons->sht->buf, cons->sht->bxsize, COL8_000000,
+					boxfill8(cons->sht->buf, cons->sht->bxsize, COL8_000000,       //黑色
 							 cons->cur_x, cons->cur_y, cons->cur_x + 7, cons->cur_y + 15);
 				}
 				cons->cur_c = -1;
@@ -205,72 +226,144 @@ static void console_loop(struct TASK *task, int memtotal, char *last_cmdline)
 			
 			/* 僇乕僜儖嵞昞帵 */
 			if (cons->sht != 0) {
-				if (cons->cur_c >= 0) {
-					boxfill8(cons->sht->buf, cons->sht->bxsize, cons->cur_c, 
-							 cons->cur_x, cons->cur_y, cons->cur_x + 7, cons->cur_y + 15);
+				if(cons->buf_y == cons->buf_cur_y){
+					if (cons->cur_c >= 0) {
+						boxfill8(cons->sht->buf, cons->sht->bxsize, cons->cur_c, 
+								 cons->cur_x, cons->cur_y, cons->cur_x + 7, cons->cur_y + 15);
+					}
+					sheet_refresh(cons->sht, cons->cur_x, cons->cur_y, cons->cur_x + 8, cons->cur_y + 16);
 				}
-				sheet_refresh(cons->sht, cons->cur_x, cons->cur_y, cons->cur_x + 8, cons->cur_y + 16);
+				
 			}
 		}
 	}
 }
 
+////往控制台中输入字符
+//参数：cons -- 控制台结构，chr -- 显示的字符，move -- 是否移动当前字符
 void cons_putchar(struct CONSOLE *cons, int chr, char move)
 {
+	buf_putchar(cons,chr,move);
+	
 	char s[2];
 	s[0] = chr;
 	s[1] = 0;
 	
-	if (s[0] == 0x09) {	/* TAB */
+	if (s[0] == 0x09) {	   /* TAB */
 		for (;;) {
 			if (cons->sht != 0) {
 				putfonts8_asc_sht(cons->sht, cons->cur_x, cons->cur_y, COL8_FFFFFF, COL8_000000, " ", 1);
 			}
 			cons->cur_x += 8;
-			
-			if (cons->cur_x == 8 + CONSOLE_CONTENT_WIDTH) {
-				
-				cons_newline(cons);
+			if (cons->cur_x == 8 + CONSOLE_CONTENT_WIDTH) { //到达行末尾
+				cons_newline2(cons);
 			}
 			if (((cons->cur_x - 8) & 0x1f) == 0) {
 				break;	/* 32偱妱傝愗傟偨傜break */
 			}
 		}
 	} else if (s[0] == 0x0a) {	/* 换行 */
-		cons_newline(cons);
+		cons_newline2(cons);
+		char msg[100];
+		memset(msg,0,100);
+		sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
+		print_on_screen(msg);
+		memset(msg,0,100);
+		sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
+		print_on_screen(msg);
 	} else if (s[0] == 0x0d) {	/* 回车 */
-		/*  */
+		char msg[100];
+		memset(msg,0,100);
+		sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
+		print_on_screen(msg);
+		memset(msg,0,100);
+		sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
+		print_on_screen(msg);
+		/* nothing */
 	} else {	/* 常规字符 */
 		if (cons->sht != 0) {
+			char msg[100];
+			sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
+			//print_on_screen(msg);
 			putfonts8_asc_sht(cons->sht, cons->cur_x, cons->cur_y, COL8_FFFFFF, COL8_000000, s, 1);
 		}
-		if (move != 0) {
-			/* move偑0偺偲偒偼僇乕僜儖傪恑傔側偄 */
+		if (move != 0) {  //移动当前位置
 			cons->cur_x += 8;
 			if (cons->cur_x == 8 + CONSOLE_CONTENT_WIDTH) {
-				cons_newline(cons);
+				cons_newline2(cons);
+			}
+		}
+	}
+	
+	return;
+}
+
+static void buf_putchar(struct CONSOLE *cons, int chr, char move)
+{
+	char s[2];
+	s[0] = chr;
+	s[1] = 0;
+	if (s[0] == 0x09) {	   /* TAB */
+		for (;;) {
+			if (cons->sht_buf != 0) {
+				putfonts8_asc_sht(cons->sht_buf, cons->buf_x, cons->buf_y, COL8_FFFFFF, COL8_000000, " ", 1);
+			}
+			cons->buf_x += 8;
+			if (cons->buf_x == 8 + CONSOLE_BUF_CONTENT_WIDTH) { //到达行末尾
+				buf_newline(cons);
+			}
+			if (((cons->buf_x - 8) & 0x1f) == 0) {
+				break;	/* 32偱妱傝愗傟偨傜break */
+			}
+		}
+	} else if (s[0] == 0x0a) {	/* 换行 */
+		buf_newline(cons);
+	} else if (s[0] == 0x0d) {	/* 回车 */
+		/* nothing */
+	} else {	/* 常规字符 */
+		if (cons->sht_buf != 0) {
+			putfonts8_asc_sht(cons->sht_buf, cons->buf_x, cons->buf_y, COL8_FFFFFF, COL8_000000, s, 1);
+		}
+		if (move != 0) {  //移动当前位置
+			cons->buf_x += 8;
+			if (cons->buf_x == 8 + CONSOLE_BUF_CONTENT_WIDTH) {
+				buf_newline(cons);
 			}
 		}
 	}
 	return;
 }
 
+
+
 void cons_newline(struct CONSOLE *cons)
+{
+	buf_newline(cons);
+	cons_newline2(cons);
+	char msg[100];
+	memset(msg,0,100);
+	sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
+	print_on_screen(msg);
+	memset(msg,0,100);
+	sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
+	print_on_screen(msg);
+	return;
+}
+void cons_newline2(struct CONSOLE *cons)
 {
 	int x, y;
 	struct SHEET *sheet = cons->sht;
 	struct TASK *task = task_now();
 	if (cons->cur_y < 28 + CONSOLE_CONENT_HEIGHT -16) {
-		cons->cur_y += 16; /* 師偺峴傊 */
-	} else {
-		/* 僗僋儘乕儖 */
+		cons->cur_y += 16; 
+	}else {               //滚动控制台屏幕
 		if (sheet != 0) {
-			for (y = 28; y < 28 + CONSOLE_CONENT_HEIGHT -16; y++) {
+			for (y = 28; y < 28 + CONSOLE_CONENT_HEIGHT - 16; y++) {
 				for (x = 8; x < 8 + CONSOLE_CONTENT_WIDTH; x++) {
 					sheet->buf[x + y * sheet->bxsize] = sheet->buf[x + (y + 16) * sheet->bxsize];
 				}
 			}
-			for (y = 28 + CONSOLE_CONENT_HEIGHT -16; y < 28 + CONSOLE_CONENT_HEIGHT; y++) {
+			for (y = 28 + CONSOLE_CONENT_HEIGHT - 16; y < 28 + CONSOLE_CONENT_HEIGHT; y++) {
 				for (x = 8; x < 8 + CONSOLE_CONTENT_WIDTH; x++) {
 					sheet->buf[x + y * sheet->bxsize] = COL8_000000;
 				}
@@ -284,6 +377,106 @@ void cons_newline(struct CONSOLE *cons)
 	}
 	return;
 }
+static void buf_newline(struct CONSOLE *cons)
+{
+	int x, y;
+	struct SHEET *sheet = cons->sht_buf;
+	struct TASK *task = task_now();
+	int is_page_scroll_down = 0;
+	if (cons->cur_y >= 28 + CONSOLE_CONENT_HEIGHT -16) {  //如果屏幕已经翻滚
+		is_page_scroll_down = 1;
+	}
+	if (cons->buf_y < 28 + CONSOLE_BUF_CONTENT_HEIGHT - 16) {
+		cons->buf_y += 16; 
+		cons->buf_cur_y += 16;
+		if(is_page_scroll_down){
+			for (x = 8; x < 8 + CONSOLE_BUF_WIDTH; x++) {
+				sheet->buf[x + cons->buf_y * sheet->bxsize] = COL8_000000;
+			}
+		}
+	}else {               //滚动控制台屏幕
+		print_on_screen("buf newline");
+		if (sheet != 0) {
+			for (y = 28; y < 28 + CONSOLE_BUF_CONTENT_HEIGHT - 16; y++) {
+				for (x = 8; x < 8 + CONSOLE_BUF_CONTENT_WIDTH; x++) {
+					sheet->buf[x + y * sheet->bxsize] = sheet->buf[x + (y + 16) * sheet->bxsize];
+				}
+			}
+			for (y = 28 + CONSOLE_BUF_CONTENT_HEIGHT - 16; y < 28 + CONSOLE_BUF_CONTENT_HEIGHT; y++) {
+				for (x = 8; x < 8 + CONSOLE_BUF_WIDTH; x++) {
+					sheet->buf[x + y * sheet->bxsize] = COL8_000000;
+				}
+			}
+			sheet_refresh(sheet, 8, 28, 8 + CONSOLE_BUF_CONTENT_WIDTH, 28 + CONSOLE_BUF_CONTENT_HEIGHT);
+		}
+	}
+	cons->buf_x = 8;
+	if (task->langmode == 1 && task->langbyte1 != 0) {
+		cons->buf_x = 16;
+	}
+	return;
+}
+
+
+////向上翻滚
+void cons_key_up(struct CONSOLE *cons)
+{
+	char msg[100];
+	
+	//是否已经到达顶短
+	if(cons->buf_cur_y <= 12 + CONSOLE_CONENT_HEIGHT){
+		sprintf(msg,"key_up:reach top, buf_cur_y = %d",cons->buf_cur_y);
+		print_on_screen(msg);
+		return;
+	}
+	sprintf(msg,"key_up: buf_cur_y = %d",cons->buf_cur_y);
+	print_on_screen(msg);
+	cons->buf_cur_y -= 16;
+	sprintf(msg,"key_up: buf_cur_y = %d",cons->buf_cur_y);
+	print_on_screen(msg);
+	//把buf的数据拷贝到cons->sht中
+	int x, y;
+	int buf_y = cons->buf_cur_y-CONSOLE_CONENT_HEIGHT; //从buf_y的y轴出开始拷贝缓冲
+	struct SHEET *sheet = cons->sht;
+	struct SHEET *cons_buf = cons->sht_buf;
+	for (y = 12; y < 12 + CONSOLE_CONENT_HEIGHT; y++,buf_y++) {
+		for (x = 8; x < 8 + CONSOLE_CONTENT_WIDTH; x++) {
+			
+			sheet->buf[x + y * sheet->bxsize] = cons_buf->buf[x + buf_y * cons_buf->bxsize];
+		}
+	}
+	sheet_refresh(sheet, 8, 28, 8 + CONSOLE_CONTENT_WIDTH, 28 + CONSOLE_CONENT_HEIGHT);
+	
+}
+
+////向下翻滚
+void cons_key_down(struct CONSOLE *cons)
+{
+	char msg[100];
+	//是否已经到达低断
+	if(cons->buf_cur_y >= cons->buf_y){
+		
+		sprintf(msg,"reach button: buf_cur_y = %d, buf_y = %d",cons->buf_cur_y,cons->buf_y);
+		print_on_screen(msg);
+		return;
+	}
+	cons->buf_cur_y += 16;
+	sprintf(msg,"key_down: buf_cur_y = %d",cons->buf_cur_y);
+	print_on_screen(msg);
+	//把buf的数据拷贝到cons->sht中
+	int x, y;
+	int buf_y = cons->buf_cur_y-CONSOLE_CONENT_HEIGHT; //从buf_y的y轴出开始拷贝缓冲
+	struct SHEET *sheet = cons->sht;
+	struct SHEET *cons_buf = cons->sht_buf;
+	for (y = 12; y < 12 + CONSOLE_CONENT_HEIGHT; y++,buf_y++) {
+		for (x = 8; x < 8 + CONSOLE_CONTENT_WIDTH; x++) {
+			sheet->buf[x + y * sheet->bxsize] = cons_buf->buf[x + buf_y * cons_buf->bxsize];
+		}
+	}
+	sheet_refresh(sheet, 8, 28, 8 + CONSOLE_CONTENT_WIDTH, 28 + CONSOLE_CONENT_HEIGHT);
+	
+}
+
 
 void cons_putstr0(struct CONSOLE *cons, char *s)
 {
@@ -333,7 +526,7 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 	}else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
 			/* 无法找到该命令和文件 */
-			cons_putstr0(cons, "Bad command.\n\n");
+			cons_putstr0(cons, "Bad command.\n");
 		}
 	}
 	return;

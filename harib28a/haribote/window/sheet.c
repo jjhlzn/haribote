@@ -4,6 +4,8 @@
 
 #define SHEET_USE		1
 
+struct SHTCTL *SHEET_CTRL;
+
 struct SHTCTL *shtctl_init(struct MEMMAN *memman, unsigned char *vram, int xsize, int ysize)
 {
 	struct SHTCTL *ctl;
@@ -26,6 +28,7 @@ struct SHTCTL *shtctl_init(struct MEMMAN *memman, unsigned char *vram, int xsize
 		ctl->sheets0[i].ctl = ctl; /* Š‘®‚ğ‹L˜^ */
 	}
 err:
+	SHEET_CTRL = ctl;
 	return ctl;
 }
 

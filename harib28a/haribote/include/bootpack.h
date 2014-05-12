@@ -85,22 +85,22 @@ void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s
 void init_mouse_cursor8(char *mouse, char bc);
 void putblock8_8(char *vram, int vxsize, int pxsize,
 	int pysize, int px0, int py0, char *buf, int bxsize);
-#define COL8_000000		0
-#define COL8_FF0000		1
-#define COL8_00FF00		2
-#define COL8_FFFF00		3
-#define COL8_0000FF		4
-#define COL8_FF00FF		5
-#define COL8_00FFFF		6
-#define COL8_FFFFFF		7
-#define COL8_C6C6C6		8
-#define COL8_840000		9
-#define COL8_008400		10
-#define COL8_848400		11
-#define COL8_000084		12
-#define COL8_840084		13
-#define COL8_008484		14
-#define COL8_848484		15
+#define COL8_000000		0    //ºÚ
+#define COL8_FF0000		1    //ÁÁºì
+#define COL8_00FF00		2    //ÁÁÂÌ
+#define COL8_FFFF00		3    //ÁÁ»Æ
+#define COL8_0000FF		4    //ÁÁÀ¶
+#define COL8_FF00FF		5    //ÁÁ×Ï
+#define COL8_00FFFF		6    //Ç³ÁÁÀ¶
+#define COL8_FFFFFF		7    //°×
+#define COL8_C6C6C6		8    //ÁÁ»Ò
+#define COL8_840000		9    //°µºì
+#define COL8_008400		10   //°µÂÌ
+#define COL8_848400		11   //°µ»Æ
+#define COL8_000084		12   //°µÀ¶
+#define COL8_840084		13   //°µ×Ï
+#define COL8_008484		14   //Ç³°µÀ¶
+#define COL8_848484		15   //°µ»Ò
 
 /* dsctbl.c */
 struct SEGMENT_DESCRIPTOR {
@@ -344,9 +344,25 @@ void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
 void make_wtitle8(unsigned char *buf, int xsize, char *title, char act);
 void change_wtitle8(struct SHEET *sht, char act);
 
+#define CONSOLE_WIDTH_COLS 56
+#define CONSOLE_HEIGHT_LINES 5
+#define CONSOLE_CONTENT_WIDTH (CONSOLE_WIDTH_COLS*8)
+#define CONSOLE_CONENT_HEIGHT (CONSOLE_HEIGHT_LINES*16)
+#define CONSOLE_WIDTH (CONSOLE_WIDTH_COLS*8+16)
+#define CONSOLE_HEIGHT (CONSOLE_HEIGHT_LINES*16+37)
+
+#define BUF_WIDTH_COLS CONSOLE_WIDTH_COLS
+#define BUF_HEIGHT_LINES 88
+#define CONSOLE_BUF_CONTENT_WIDTH (BUF_WIDTH_COLS*8)
+#define CONSOLE_BUF_CONTENT_HEIGHT (BUF_HEIGHT_LINES*16)
+#define CONSOLE_BUF_WIDTH (BUF_WIDTH_COLS*8+16)
+#define CONSOLE_BUF_HEIGHT (BUF_HEIGHT_LINES*16+37)
 /* console.c */
 struct CONSOLE {
 	struct SHEET *sht;
+	struct SHEET *sht_buf;
+	int buf_cur_x, buf_cur_y;
+	int buf_x, buf_y;
 	int cur_x, cur_y, cur_c;
 	struct TIMER *timer; //Õâ¸ötimerÊÇÓÃ×÷Ê²Ã´µÄ£¿£¿£¿
 }; 
@@ -551,12 +567,7 @@ void assertion_failure(char *exp, char *file, char *base_file, int line);
 
 #define	DIOCTL_GET_GEO	1
 
-#define CONSOLE_WIDTH_COLS 56
-#define CONSOLE_HEIGHT_LINES 44
-#define CONSOLE_CONTENT_WIDTH (CONSOLE_WIDTH_COLS*8)
-#define CONSOLE_CONENT_HEIGHT (CONSOLE_HEIGHT_LINES*16)
-#define CONSOLE_WIDTH (CONSOLE_WIDTH_COLS*8+16)
-#define CONSOLE_HEIGHT (CONSOLE_HEIGHT_LINES*16+37)
+
 
 #define	PROC_IMAGE_SIZE_DEFAULT	0x100000 /*  1 MB */
 
