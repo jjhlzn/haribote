@@ -24,6 +24,8 @@ void cons_key_down(struct CONSOLE *cons);
 static void cons_key_down0(struct CONSOLE *cons, int lines);
 static void cons_scroll_buttom(struct CONSOLE *cons);
 
+void update_scroll_bar(struct CONSOLE *cons);
+
 int *fat;
 struct FIFO32* log_fifo_buffer = 0;
 extern struct SHTCTL *SHEET_CTRL;
@@ -272,26 +274,26 @@ void cons_putchar(struct CONSOLE *cons, int chr, char move)
 		}
 	} else if (s[0] == 0x0a) {	/* 换行 */
 		cons_newline2(cons);
-		char msg[100];
-		memset(msg,0,100);
-		sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
-		print_on_screen(msg);
-		memset(msg,0,100);
-		sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
-		print_on_screen(msg);
+		//char msg[100];
+		//memset(msg,0,100);
+		//sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
+		//print_on_screen(msg);
+		//memset(msg,0,100);
+		//sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
+		//print_on_screen(msg);
 	} else if (s[0] == 0x0d) {	/* 回车 */
-		char msg[100];
-		memset(msg,0,100);
-		sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
-		print_on_screen(msg);
-		memset(msg,0,100);
-		sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
-		print_on_screen(msg);
+		//char msg[100];
+		//memset(msg,0,100);
+		//sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
+		//print_on_screen(msg);
+		//memset(msg,0,100);
+		//sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
+		//print_on_screen(msg);
 		/* nothing */
 	} else {	/* 常规字符 */
 		if (cons->sht != 0) {
-			char msg[100];
-			sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
+			//char msg[100];
+			//sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
 			//print_on_screen(msg);
 			putfonts8_asc_sht(cons->sht, cons->cur_x, cons->cur_y, COL8_FFFFFF, COL8_000000, s, 1);
 		}
@@ -352,20 +354,21 @@ void cons_newline(struct CONSOLE *cons)
 {
 	buf_newline(cons);
 	cons_newline2(cons);
-	char msg[100];
-	memset(msg,0,100);
-	sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
-	print_on_screen(msg);
-	memset(msg,0,100);
-	sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
-	print_on_screen(msg);
+	//char msg[100];
+	//memset(msg,0,100);
+	//sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
+	//print_on_screen(msg);
+	//memset(msg,0,100);
+	//sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
+	//print_on_screen(msg);
 	return;
 }
 void cons_newline2(struct CONSOLE *cons)
 {
+	update_scroll_bar(cons);
 	if(cons == cons_debug){
 		lineNo++;
-		print_on_screen3("line %d",lineNo);
+		//print_on_screen3("line %d",lineNo);
 	}
 	int x, y;
 	struct SHEET *sheet = cons->sht;
@@ -406,7 +409,7 @@ static void buf_newline(struct CONSOLE *cons)
 		cons->buf_y += 16; 
 		cons->buf_cur_y += 16;
 	}else {               //滚动控制台屏幕
-		print_on_screen("buf newline");
+		//print_on_screen("buf newline");
 		if (sheet != 0) {
 			for (y = 28; y < 28 + CONSOLE_BUF_CONTENT_HEIGHT - 16; y++) {
 				for (x = 8; x < 8 + CONSOLE_BUF_CONTENT_WIDTH; x++) {
@@ -433,12 +436,12 @@ void cons_key_up(struct CONSOLE *cons)
 {
 	//是否已经到达顶短
 	if(cons->buf_cur_y <= 28 + CONSOLE_CONENT_HEIGHT - 16){
-		print_on_screen3("key_up:reach top, buf_cur_y = %d",cons->buf_cur_y);
+		//print_on_screen3("key_up:reach top, buf_cur_y = %d",cons->buf_cur_y);
 		return;
 	}
-	print_on_screen3("key_up: buf_cur_y = %d",cons->buf_cur_y);
+	//print_on_screen3("key_up: buf_cur_y = %d",cons->buf_cur_y);
 	cons->buf_cur_y -= 16;
-	print_on_screen3("key_up: buf_cur_y = %d",cons->buf_cur_y);
+	//print_on_screen3("key_up: buf_cur_y = %d",cons->buf_cur_y);
 	//把buf的数据拷贝到cons->sht中
 	int x, y;
 	int buf_y = cons->buf_cur_y-(CONSOLE_CONENT_HEIGHT-16); //从buf_y的y轴出开始拷贝缓冲
@@ -451,7 +454,27 @@ void cons_key_up(struct CONSOLE *cons)
 		}
 	}
 	sheet_refresh(sheet, 8, 28, 8 + CONSOLE_CONTENT_WIDTH, 28 + CONSOLE_CONENT_HEIGHT);
+	update_scroll_bar(cons);
+}
+
+#define MAX(x,y) ((x)>(y) ? (x) : (y))
+void update_scroll_bar(struct CONSOLE *cons)
+{
+	int content_height = CONSOLE_CONENT_HEIGHT;
+	//int bar_height = CONSOLE_SCROLL_BAR_HEIGHT;
 	
+	int y0 =( MAX(content_height,(cons->buf_cur_y-28+16)) - content_height) * content_height / CONSOLE_BUF_CONTENT_HEIGHT;
+	//print_on_screen3("lineno = %d, lines = %d, ch = %d, bh = %d, scroll_bar_y = %d",lineNo, lines, content_height, bar_height, y0);
+	int x, y;
+	//重新刷新滚动条背景
+	for(y = 28; y < 28 + CONSOLE_CONENT_HEIGHT + 2; y++){
+		for(x = 8 + CONSOLE_CONTENT_WIDTH + 4; x < 8 + CONSOLE_CONTENT_WIDTH + 4 + CONSOLE_SCROLL_BAR_WIDTH + 2; x++){
+			cons->sht->buf[x + y * cons->sht->bxsize] = COL8_C6C6C6;
+		}
+	}
+	//make_scroll_bar(sht,8 + CONSOLE_CONTENT_WIDTH + 4, 28, CONSOLE_SCROLL_BAR_WIDTH, CONSOLE_SCROLL_BAR_HEIGHT, COL8_000000);
+	make_scroll_bar(cons->sht,8 + CONSOLE_CONTENT_WIDTH + 4, 28+y0, CONSOLE_SCROLL_BAR_WIDTH, CONSOLE_SCROLL_BAR_HEIGHT, COL8_000000);
+	  sheet_refresh(cons->sht,8 + CONSOLE_CONTENT_WIDTH + 4, 28, 8 + CONSOLE_CONTENT_WIDTH + 4 + CONSOLE_SCROLL_BAR_WIDTH + 2, 28 + CONSOLE_CONENT_HEIGHT);
 }
 
 ////向下翻滚一行
@@ -467,20 +490,21 @@ static void cons_scroll_buttom(struct CONSOLE *cons)
 		assert(lines > 0);
 		cons_key_down0(cons,lines);
 	}
+	update_scroll_bar(cons);
 }
 
 static void cons_key_down0(struct CONSOLE *cons, int lines)
 {
-	char msg[100];
+	//char msg[100];
 	//是否已经到达低断
 	if(cons->buf_cur_y >= cons->buf_y){
-		sprintf(msg,"reach button: buf_cur_y = %d, buf_y = %d",cons->buf_cur_y,cons->buf_y);
-		print_on_screen(msg);
+		//sprintf(msg,"reach button: buf_cur_y = %d, buf_y = %d",cons->buf_cur_y,cons->buf_y);
+		//print_on_screen(msg);
 		return;
 	}
 	cons->buf_cur_y += 16 * lines;
-	sprintf(msg,"key_down: buf_cur_y = %d",cons->buf_cur_y);
-	print_on_screen(msg);
+	//sprintf(msg,"key_down: buf_cur_y = %d",cons->buf_cur_y);
+	//print_on_screen(msg);
 	//把buf的数据拷贝到cons->sht中
 	int x, y;
 	int buf_y = cons->buf_cur_y-(CONSOLE_CONENT_HEIGHT-16); //从buf_y的y轴出开始拷贝缓冲
@@ -492,6 +516,7 @@ static void cons_key_down0(struct CONSOLE *cons, int lines)
 		}
 	}
 	sheet_refresh(sheet, 8, 28, 8 + CONSOLE_CONTENT_WIDTH, 28 + CONSOLE_CONENT_HEIGHT);
+	update_scroll_bar(cons);
 }
 
 

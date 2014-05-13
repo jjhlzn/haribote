@@ -21,7 +21,7 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char ac
 void make_scroll_bar(struct SHEET *sht, int x0, int y0, int sx, int sy, int c)
 {
 	int x1 = x0 + sx, y1 = y0 + sy;
-	boxfill8(sht->buf, sht->bxsize, c, x0, y0, x1, y1); 
+	boxfill8(sht->buf, sht->bxsize, c, x0, y0, x1, y1);  
 	return;
 }
 
