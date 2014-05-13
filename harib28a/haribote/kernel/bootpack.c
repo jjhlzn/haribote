@@ -531,6 +531,12 @@ void close_console(struct SHEET *sht)
 	struct TASK *task = sht->task;
 	memman_free_4k(memman, (int) sht->buf, 256 * 165);
 	sheet_free(sht);
+	if(task->cons){
+		struct SHEET *sht_buf = task->cons->sht_buf;
+		memman_free_4k(memman, (int) sht_buf->buf, CONSOLE_BUF_WIDTH * CONSOLE_BUF_HEIGHT);
+		sheet_free(sht_buf);
+		debug("free console buffer");
+	}
 	close_constask(task);
 	return;
 }
