@@ -35,7 +35,12 @@ hankaku.obj : hankaku.bin Makefile
 	$(BIN2OBJ) hankaku.bin hankaku.obj _hankaku
 	
 %.gas : %.c ../include/bootpack.h Makefile
-	$(CC1) -I../include -I./blk_drv -o $*.gas $*.c
+	$(CC1) -I../include -I./blk_drv -I../window -o $*.gas $*.c
+	
+console.gas :  console.c ../include/bootpack.h ../window/window.h Makefile
+	$(CC1) -I../include -I./blk_drv -I../window -o console.gas console.c
+bootpack.gas :  bootpack.c ../include/bootpack.h ../window/window.h Makefile
+	$(CC1) -I../include -I./blk_drv -I../window -o bootpack.gas bootpack.c
 
 %.nas : %.gas Makefile
 	$(GAS2NASK) $*.gas $*.nas

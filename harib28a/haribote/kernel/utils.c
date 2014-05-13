@@ -160,6 +160,20 @@ void print_on_screen(char *msg)
 	}
 }
 
+void print_on_screen3(char *fmt, ...)
+{
+	int i;
+	char buf[1023];
+	va_list arg = (va_list)((char *)(&fmt) + 4);
+	i = vsprintf(buf,fmt,arg);
+	
+	char buf2[1024];
+	sprintf(buf2,"%s\n",buf);
+	
+	print_on_screen(buf2);
+}
+
+
 
 void load_background_pic(char* buf_back, int *fat)
 {

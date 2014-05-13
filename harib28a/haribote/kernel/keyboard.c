@@ -1,6 +1,7 @@
 /* キーボード関係 */
 
 #include "bootpack.h"
+#include "window.h"
 
 struct FIFO32 *keyfifo;
 int keydata0;

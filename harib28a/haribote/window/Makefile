@@ -21,7 +21,7 @@ DEL      = del
 default:
 	$(MAKE) $(OBJS)
 	
-%.gas : %.c ../include/bootpack.h Makefile
+%.gas : %.c ../include/bootpack.h ./window.h Makefile
 	$(CC1) -I../include -I../kernel/blk_drv -o $*.gas $*.c
 
 %.nas : %.gas Makefile

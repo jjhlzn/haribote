@@ -344,19 +344,7 @@ void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
 void make_wtitle8(unsigned char *buf, int xsize, char *title, char act);
 void change_wtitle8(struct SHEET *sht, char act);
 
-#define CONSOLE_WIDTH_COLS 56
-#define CONSOLE_HEIGHT_LINES 5
-#define CONSOLE_CONTENT_WIDTH (CONSOLE_WIDTH_COLS*8)
-#define CONSOLE_CONENT_HEIGHT (CONSOLE_HEIGHT_LINES*16)
-#define CONSOLE_WIDTH (CONSOLE_WIDTH_COLS*8+16)
-#define CONSOLE_HEIGHT (CONSOLE_HEIGHT_LINES*16+37)
 
-#define BUF_WIDTH_COLS CONSOLE_WIDTH_COLS
-#define BUF_HEIGHT_LINES 88
-#define CONSOLE_BUF_CONTENT_WIDTH (BUF_WIDTH_COLS*8)
-#define CONSOLE_BUF_CONTENT_HEIGHT (BUF_HEIGHT_LINES*16)
-#define CONSOLE_BUF_WIDTH (BUF_WIDTH_COLS*8+16)
-#define CONSOLE_BUF_HEIGHT (BUF_HEIGHT_LINES*16+37)
 /* console.c */
 struct CONSOLE {
 	struct SHEET *sht;
@@ -541,6 +529,7 @@ PUBLIC void	port_write(u16 port, void* buf, int n);
 
 PUBLIC void print_on_screen2(char *msg, int x, int y);
 PUBLIC void print_on_screen(char *msg);
+void print_on_screen3(char *fmt, ...);
 PUBLIC void debug(const char *fmt, ...);
 void panic(const char *fmt, ...);
 

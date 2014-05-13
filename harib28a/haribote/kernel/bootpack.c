@@ -1,6 +1,7 @@
 /* bootpackのメイン */
 
 #include "bootpack.h"
+#include "window.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -495,6 +496,7 @@ struct SHEET *open_console(struct SHTCTL *shtctl, unsigned int memtotal)
 	sheet_setbuf(sht, buf, CONSOLE_WIDTH, CONSOLE_HEIGHT, -1); /* 透明色なし */
 	make_window8(buf, CONSOLE_WIDTH, CONSOLE_HEIGHT, "console", 0);
 	make_textbox8(sht, 8, 28, CONSOLE_CONTENT_WIDTH, CONSOLE_CONENT_HEIGHT, COL8_000000);
+	make_scroll_bar(sht,8 + CONSOLE_CONTENT_WIDTH + 8, 28, CONSOLE_SCROLL_BAR_WIDTH, CONSOLE_SCROLL_BAR_HEIGHT, COL8_000000);
 	sht->task = open_constask(sht, memtotal);
 	sht->flags |= 0x20;	/* カーソルあり */
 	return sht;
