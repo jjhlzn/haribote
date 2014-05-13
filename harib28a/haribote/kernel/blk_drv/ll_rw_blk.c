@@ -88,7 +88,7 @@ static void add_request(struct blk_dev_struct * dev, struct request * req)
 
 static void make_request(int major,int rw, struct buffer_head * bh)
 {
-	debug("make_request1");
+	//debug("make_request1");
 	struct request * req;
 	int rw_ahead;
 
@@ -105,7 +105,7 @@ static void make_request(int major,int rw, struct buffer_head * bh)
 	if (rw!=READ && rw!=WRITE)
 		panic("Bad block dev command, must be R/W/RA/WA");
 	lock_buffer(bh);
-	debug("make_request2");
+	//debug("make_request2");
 	if ((rw == WRITE && !bh->b_dirt) || (rw == READ && bh->b_uptodate)) {
 		unlock_buffer(bh);
 		return;
@@ -142,7 +142,7 @@ repeat:
 	req->waiting = NULL;
 	req->bh = bh;
 	req->next = NULL;
-	debug("before add request");
+	//debug("before add request");
 	add_request(major+blk_dev,req);
 }
 
@@ -155,9 +155,9 @@ void ll_rw_block(int rw, struct buffer_head * bh)
 		printk("Trying to read nonexistent block-device\n\r");
 		return;
 	}
-	debug("ll_rw_block1");
+	//debug("ll_rw_block1");
 	make_request(major,rw,bh);
-	debug("ll_rw_block2");
+	//debug("ll_rw_block2");
 }
 
 void blk_dev_init(void)

@@ -175,10 +175,12 @@ int sys_open(const char * filename,int flag,int mode)
 		return -EINVAL;
 	(current->filp[fd]=f)->f_count++;
 	if ((i=open_namei(filename,flag,mode,&inode))<0) {
+		debug("retval of open_namei = %d",i);
 		current->filp[fd]=NULL;
 		f->f_count=0;
 		return i;
 	}
+	debug("open file successful");
 /* ttys are somewhat special (ttyxx major==4, tty major==5) */
 	if (S_ISCHR(inode->i_mode)) {
 		if (MAJOR(inode->i_zone[0])==4) {

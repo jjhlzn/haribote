@@ -8,6 +8,7 @@ INCPATH  = ../../../../tolset/z_tools/haribote/
 MAKE     = $(TOOLPATH)make.exe -r
 NASK     = $(TOOLPATH)nask.exe
 CC1      = $(TOOLPATH)cc1.exe -I$(INCPATH) -Os -Wall -Werror  -quiet
+GCC      = $(TOOLPATH)gcc.exe  -Wall -O1
 GAS2NASK = $(TOOLPATH)gas2nask.exe -a
 OBJ2BIM  = $(TOOLPATH)obj2bim.exe
 MAKEFONT = $(TOOLPATH)makefont.exe
@@ -36,6 +37,9 @@ hankaku.obj : hankaku.bin Makefile
 	
 %.gas : %.c ../include/bootpack.h Makefile
 	$(CC1) -I../include -I./blk_drv -I../window -o $*.gas $*.c
+
+utils.obj : utils.c Makefile
+	$(GCC)  -I../include -I./blk_drv -I../window -c -o utils.obj utils.c
 	
 console.gas :  console.c ../include/bootpack.h ../window/window.h Makefile
 	$(CC1) -I../include -I./blk_drv -I../window -o console.gas console.c

@@ -109,7 +109,6 @@ void put_super(int dev)
 //否则就从设备dev上读取超级块到缓冲块中，并复制到超级块表中，并返回超级块指针
 static struct super_block * read_super(int dev)
 {
-	debug("read_super1");
 	struct super_block * s;
 	struct buffer_head * bh;
 	int i,block;
@@ -117,10 +116,8 @@ static struct super_block * read_super(int dev)
 	if (!dev)
 		return NULL;
 	check_disk_change(dev);
-	debug("read_super2");
 	if ( (s = get_super(dev)) )
 		return s;
-	debug("read_super3");
 	for (s = 0+super_block ;; s++) {
 		if (s >= NR_SUPER+super_block)
 			return NULL;

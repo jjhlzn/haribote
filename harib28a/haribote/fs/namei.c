@@ -248,6 +248,7 @@ static struct buffer_head * add_entry(struct m_inode * dir,
 //返回: 最顶层目录的i节点指针
 static struct m_inode * get_dir(const char * pathname)
 {
+	debug_userspace(pathname);
 	char c;
 	const char * thisname;
 	struct m_inode * inode;
@@ -267,8 +268,11 @@ static struct m_inode * get_dir(const char * pathname)
 	else
 		return NULL;	/* empty name is bad */
 	inode->i_count++;
+	
 	while (1) {
+		debug_userspace(pathname);
 		thisname = pathname;
+		
 		if (!S_ISDIR(inode->i_mode) || !permission(inode,MAY_EXEC)) {
 			iput(inode);
 			return NULL;
@@ -277,8 +281,14 @@ static struct m_inode * get_dir(const char * pathname)
 			/* nothing */ ;
 		if (!c)
 			return inode;
+		debug_userspace1(thisname,namelen);
 		if (!(bh = find_entry(&inode,thisname,namelen,&de))) {
 			iput(inode);
+			
+			char filename[100];
+			get_str_userspace1(thisname,namelen,filename);
+			debug("can't find [%s] inode",filename);
+			
 			return NULL;
 		}
 		inr = de->inode;
@@ -296,12 +306,14 @@ static struct m_inode * get_dir(const char * pathname)
  * dir_namei() returns the inode of the directory of the
  * specified name, and the name within that directory.
  */
-////该函数返回指定目录名的i节点指针，以及在最高顶层目录的名称
-//参数：pathname - 目录路径名；namelen - 路径名长度；name - 返回的最顶层目录名
-//注意！如果路径名最后一个字符是‘/’，那么返回的目录名为空，并且长度为0
+////该函数返回指定路径的最顶层目录的i节点指针，以及在最末端的文件名（或目录名）
+//参数：pathname - 路径名；namelen - 路径名长度；name - 返回的最顶层文件名（目录名）
 //返回：指定目录名最顶层目录的i节点指针和最顶层目录名称及长度。出错则返回NULL
-static struct m_inode * dir_namei(const char * pathname,
-	int * namelen, const char ** name)
+//注意！！这里"最顶层目录"是指路径名中最靠近末端的目录
+//例如：如果路径名最后一个字符是‘/’，那么返回的目录名为空，并且长度为0
+//再例如: 如果pathname是'/usr/root/hello.c',返回的将是'/usr/root/'的inode，以及*name='hello.c'
+
+static struct m_inode * dir_namei(const char * pathname, int * namelen, const char ** name)
 {
 	char c;
 	const char * basename;
@@ -365,6 +377,7 @@ struct m_inode * namei(const char * pathname)
 //参数filename是文件名，flag是打开文件标志，他可取值：O_RDONLY(只读）、O_WRONLY或
 //O_RDWR,以及O_CREAT、O_EXCL(被创建文件必须不存在）、O_APPEND等其他一些标志的组合。
 //如果本调用创建了一个新文件，则mode就用于指定文件的许可属性。
+//返回：成功则返回0，否则返回出错码; res_inode - 返回对应文件路径名的i节点指针
 int open_namei(const char * pathname, int flag, int mode,
 	struct m_inode ** res_inode)
 {
@@ -380,6 +393,8 @@ int open_namei(const char * pathname, int flag, int mode,
 	mode |= I_REGULAR;
 	if (!(dir = dir_namei(pathname,&namelen,&basename)))
 		return -ENOENT;
+	debug("base_name:");
+	debug_userspace(basename);
 	if (!namelen) {			/* special case: '/usr/' etc */
 		if (!(flag & (O_ACCMODE|O_CREAT|O_TRUNC))) {
 			*res_inode=dir;
@@ -390,6 +405,10 @@ int open_namei(const char * pathname, int flag, int mode,
 	}
 	bh = find_entry(&dir,basename,namelen,&de);
 	if (!bh) {
+		char basename_us[100];
+		get_str_userspace1(basename,namelen,basename_us);
+		debug("can't find file [%s]",basename_us);
+		
 		if (!(flag & O_CREAT)) {
 			iput(dir);
 			return -ENOENT;
@@ -420,6 +439,7 @@ int open_namei(const char * pathname, int flag, int mode,
 		*res_inode = inode;
 		return 0;
 	}
+	
 	inr = de->inode;
 	dev = dir->i_dev;
 	brelse(bh);

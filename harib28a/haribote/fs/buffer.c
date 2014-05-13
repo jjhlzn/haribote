@@ -303,8 +303,8 @@ void brelse(struct buffer_head * buf)
 //从设备上读取指定的数据块并返回含有数据的缓冲区。如果指定的块不存在则返回NULL。
 struct buffer_head * bread(int dev,int block)
 {
-	debug("bread1");
-	debug("dev = %d, block = %d",dev, block);
+	//debug("bread1");
+	//debug("dev = %d, block = %d",dev, block);
 	struct buffer_head * bh;
 
 	//首先在高速缓冲中申请一块缓冲块。如果返回值是NULL，则表示内核出错，停机。然后我们判断
@@ -313,12 +313,12 @@ struct buffer_head * bread(int dev,int block)
 		panic("bread: getblk returned NULL\n");
 	if (bh->b_uptodate)
 		return bh;
-	debug("bread2");
+	//debug("bread2");
 	ll_rw_block(READ,bh);
-	debug("about to wait on buffer");
+	//debug("about to wait on buffer");
 	wait_on_buffer(bh);
-	debug("wait end");
-	debug("bh->b_uptodate = %d",bh->b_uptodate);
+	//debug("wait end");
+	//debug("bh->b_uptodate = %d",bh->b_uptodate);
 	if (bh->b_uptodate)
 		return bh;
 	brelse(bh);

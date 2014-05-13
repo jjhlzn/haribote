@@ -1,6 +1,7 @@
 #include "bootpack.h"
 #include <stdio.h>
 #include <string.h>
+#include <asm/segment.h>
 
 extern struct SHEET  *log_win;
 extern struct FIFO32 *log_fifo_buffer;
@@ -173,6 +174,50 @@ void print_on_screen3(char *fmt, ...)
 	print_on_screen(buf2);
 }
 
+
+void debug_userspace1(char *str, int len)
+{
+	char msg[1024];
+	memset(msg,0,1024);
+	int i = 0, ch;
+	while( (ch=get_fs_byte(str++)) && i < 1024 && i < len){
+		msg[i++] = ch;
+	}
+	debug("str on userspace:[%s]",msg);
+	return;
+}
+
+void debug_userspace(char *str)
+{
+	char msg[1024];
+	memset(msg,0,1024);
+	int i = 0, ch;
+	while( (ch=get_fs_byte(str++)) && i < 1024){
+		msg[i++] = ch;
+	}
+	debug("str on userspace:[%s]",msg);
+	return;
+}
+
+void get_str_userspace(char *str, char *buf)
+{
+	int i = 0, ch;
+	while( (ch=get_fs_byte(str++)) && i < 1024){
+		buf[i++] = ch;
+	}
+	buf[i] = 0;
+	return;
+}
+
+void get_str_userspace1(char *str, int len, char *buf)
+{
+	int i = 0, ch;
+	while( (ch=get_fs_byte(str++)) && i < len && i < 1024){
+		buf[i++] = ch;
+	}
+	buf[i] = 0;
+	return;
+}
 
 
 void load_background_pic(char* buf_back, int *fat)

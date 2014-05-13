@@ -530,6 +530,10 @@ PUBLIC void	port_write(u16 port, void* buf, int n);
 PUBLIC void print_on_screen2(char *msg, int x, int y);
 PUBLIC void print_on_screen(char *msg);
 void print_on_screen3(char *fmt, ...);
+void debug_userspace(char *str);
+void debug_userspace1(char *str, int len);
+void get_str_userspace(char *str, char *buf);
+void get_str_userspace1(char *str, int len, char *buf);
 PUBLIC void debug(const char *fmt, ...);
 void panic(const char *fmt, ...);
 

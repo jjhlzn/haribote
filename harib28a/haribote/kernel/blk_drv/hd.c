@@ -75,7 +75,7 @@ extern int sys_setup(void * BIOS);
 /* This may be used only once, enforced by 'static int callable' */
 int sys_setup(void * BIOS)
 {
-	debug("here1");
+	//debug("here1");
 	//static int callable = 1;
 	int i,drive;
 	//unsigned char cmos_disks;
@@ -88,13 +88,13 @@ int sys_setup(void * BIOS)
 		hd[i*5].nr_sects = orange_hd_info[0].primary[0].size;
 	}
 	for (drive=0 ; drive<NR_HD ; drive++) {
-		debug("here3");
+		//debug("here3");
 		if (!(bh = bread(0x300 + drive*5,0))) {
 			printk("Unable to read partition table of drive %d\n\r",
 				drive);
 			panic("");
 		}
-		debug("here4");
+		//debug("here4");
 		//不需要是引导扇区
 		//if (bh->b_data[510] != 0x55 || (unsigned char) 
 		//    bh->b_data[511] != 0xAA) {
@@ -107,7 +107,7 @@ int sys_setup(void * BIOS)
 		for (i=1;i<5;i++,p++) {
 			hd[i+5*drive].start_sect = p->start_sect;
 			hd[i+5*drive].nr_sects = p->nr_sects;
-			debug("start_sect = 0x%x, nr_sects = 0x%x", p->start_sect, p->nr_sects);
+			//debug("start_sect = 0x%x, nr_sects = 0x%x", p->start_sect, p->nr_sects);
 		}
 		brelse(bh);
 	}
@@ -217,7 +217,7 @@ static void read_intr(void)
 		do_hd_request();
 		return;
 	}
-	debug("invoke read_intr");
+	//debug("invoke read_intr");
 	port_read(HD_DATA,CURRENT->buffer,256);
 	//port_read(HD_DATA,hdbuf,256);
 	//char msg[200];
@@ -265,7 +265,7 @@ static void write_intr(void)
 
 void do_hd_request(void)
 {
-	debug("invoke do_hd_request");
+	//debug("invoke do_hd_request");
 	int i,r;
 	unsigned int block,dev;
 	//unsigned int sec,head,cyl;
@@ -288,7 +288,7 @@ void do_hd_request(void)
 	}
 	block += hd[dev].start_sect; //磁盘绝对扇区号
 	dev /= 5;
-	debug("drive = %d",dev);
+	//debug("drive = %d",dev);
 	//__asm__("divl %4":"=a" (block),"=d" (sec):"0" (block),"1" (0),
 	//	"r" (hd_info[dev].sect));
 	//__asm__("divl %4":"=a" (cyl),"=d" (head):"0" (block),"1" (0),
@@ -308,7 +308,7 @@ void do_hd_request(void)
 	//		WIN_RESTORE,&recal_intr);
 	//	return;
 	//}	
-	debug("block = %d, sec_count = %d", block, nsect);
+	//debug("block = %d, sec_count = %d", block, nsect);
 	struct hd_cmd cmd;
 	cmd.features	= 0;
 	cmd.count	= nsect;
@@ -383,8 +383,8 @@ void hd_cmd_out(struct hd_cmd* cmd,void (*intr_addr)(void))
 		panic("hd error.");
 		return;
 	}
-	debug("features = %d, count = %d, lba_low = %d, lba_mid = %d, lba_high = %d, device = 0x%x, command = %d",
-		   cmd->features, cmd->count, cmd->lba_low, cmd->lba_mid,cmd->lba_high,cmd->device,cmd->command);
+	//debug("features = %d, count = %d, lba_low = %d, lba_mid = %d, lba_high = %d, device = 0x%x, command = %d",
+	//	   cmd->features, cmd->count, cmd->lba_low, cmd->lba_mid,cmd->lba_high,cmd->device,cmd->command);
 	do_hd = intr_addr;
 	/* Activate the Interrupt Enable (nIEN) bit */
 	io_out8(REG_DEV_CTRL, 0);
@@ -401,7 +401,7 @@ void hd_cmd_out(struct hd_cmd* cmd,void (*intr_addr)(void))
 
 u16* hd_identify(int drive)
 {
-	debug("here");
+	//debug("here");
 	struct hd_cmd cmd;
 	cmd.device  = MAKE_DEVICE_REG(0, drive, 0);  //device寄存器
 	cmd.command = ATA_IDENTIFY;
@@ -418,7 +418,7 @@ u16* hd_identify(int drive)
 	
 	int sectors = ((int)hdinfo[61] << 16) + hdinfo[60];
 	debug( "HD size: %dMB\n", sectors * 512 / 1000000);
-	debug("hdinfo = 0x%x",(int)hdinfo);
+	//debug("hdinfo = 0x%x",(int)hdinfo);
 	return hdinfo;
 	//print_identify_info((u16*)hdbuf);
 }
@@ -473,7 +473,7 @@ void partition(int device, int style)
 {
 	int i;
 	int drive = DRV_OF_DEV(device);
-	debug("drive = %d, style = %d",drive, style);
+	//debug("drive = %d, style = %d",drive, style);
 	struct orange_hd_info * hdi = &orange_hd_info[drive];
 
 	struct part_ent part_tbl[NR_SUB_PER_DRIVE];
@@ -490,7 +490,7 @@ void partition(int device, int style)
 			int dev_nr = i + 1;		  /* 1~4 */
 			hdi->primary[dev_nr].base = part_tbl[i].start_sect;
 			hdi->primary[dev_nr].size = part_tbl[i].nr_sects;
-			debug("start_sector = %d, size = %d",part_tbl[i].start_sect, part_tbl[0].nr_sects);
+			//debug("start_sector = %d, size = %d",part_tbl[i].start_sect, part_tbl[0].nr_sects);
 			
 			if (part_tbl[i].sys_id == EXT_PART) /* extended */
 				partition(device + dev_nr, P_EXTENDED);
@@ -511,7 +511,7 @@ void partition(int device, int style)
 			hdi->logical[dev_nr].base = s + part_tbl[0].start_sect;
 			
 			hdi->logical[dev_nr].size = part_tbl[0].nr_sects;
-			debug("start_sector = %d, size = %d",part_tbl[0].start_sect, part_tbl[0].nr_sects);
+			//debug("start_sector = %d, size = %d",part_tbl[0].start_sect, part_tbl[0].nr_sects);
 
 			s = ext_start_sect + part_tbl[1].start_sect;
 
