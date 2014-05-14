@@ -20,9 +20,25 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 			   int eip, int cs, int eflags, int user_esp, int user_ss)
 {
 	struct TASK *task = task_now();
-	debug("syscall(%d): eax = %d, eip = %d", task->pid, eax,  eip);
+	debug("syscall(%d): eax = %d", task->pid, eax, ebx, ecx, edx);
 	int ds_base = task->ds_base;
 	int *reg = &eax + 1 + 9;
+	
+	if(eax == 4){
+		if(ebx==1 || ebx == 2){
+			
+			char *buf = (char *)ecx;
+			int len = edx;
+			if(len <= 0)
+				return 0;
+			char msg[2048];
+			get_str_userspace1(buf,ecx,msg);
+			msg[len] = 0;
+			cons_putstr0(task->cons,msg);
+			debug("msg = [%s]",msg);
+			return 0;
+		}
+	}
 	
 	if (eax == 1) {    //exit
 		//假如当前进程是通过fork调用创建的，那么可以直接结束这个任务

@@ -233,6 +233,60 @@ int sys_close(unsigned int fd)
 /* 打开进程的三个标准文件，标准输入、标准输出、标准出错 */
 PUBLIC void open_std_files(struct TASK *task)
 {
+	struct file * f;
+	int i,fd;
+	
+	//open stdin
+	for(fd=0 ; fd<NR_OPEN ; fd++)
+		if (!task->filp[fd])
+			break;
+	if (fd>=NR_OPEN){
+		panic("there is no file descriptor");
+	}
+	
+	f=0+file_table;
+	for (i=0 ; i<NR_FILE ; i++,f++)
+		if (!f->f_count) break;
+	if (i>=NR_FILE){
+		panic("there is no free struct file");
+	}
+	(task->filp[fd]=f)->f_count++;
+	debug("open fd[%d]",fd);
+	
+	//open stdout
+	for(fd=0 ; fd<NR_OPEN ; fd++)
+		if (!task->filp[fd])
+			break;
+	if (fd>=NR_OPEN){
+		panic("there is no file descriptor");
+	}
+	
+	f=0+file_table;
+	for (i=0 ; i<NR_FILE ; i++,f++)
+		if (!f->f_count) break;
+	if (i>=NR_FILE){
+		panic("there is no free struct file");
+	}
+	(task->filp[fd]=f)->f_count++;
+	debug("open fd[%d]",fd);
+	
+	//open stderr
+	for(fd=0 ; fd<NR_OPEN ; fd++)
+		if (!task->filp[fd])
+			break;
+	if (fd>=NR_OPEN){
+		panic("there is no file descriptor");
+	}
+	
+	f=0+file_table;
+	for (i=0 ; i<NR_FILE ; i++,f++)
+		if (!f->f_count) break;
+	if (i>=NR_FILE){
+		panic("there is no free struct file");
+	}
+	(task->filp[fd]=f)->f_count++;
+	debug("open fd[%d]",fd);
+	
 	//struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	
 	//int i;
