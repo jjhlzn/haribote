@@ -571,4 +571,5 @@ void assertion_failure(char *exp, char *file, char *base_file, int line);
 void hd_init(void);
 
 void print_hdinfo(char * str);
+typedef int (*fn_ptr)();
 #endif

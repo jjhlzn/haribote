@@ -27,7 +27,7 @@
 		EXTERN	_inthandler2c, _inthandler0d
 		EXTERN 	_inthandler2e
 		EXTERN	_inthandler0c
-		EXTERN	_hrb_api, _linux_api, _do_no_page
+		EXTERN	_hrb_api, _linux_api, _linux_api2, _do_no_page
 
 [SECTION .text]
 
@@ -545,7 +545,7 @@ _asm_linux_api:
 		MOV		AX,SS
 		MOV		DS,AX		; 将操作系统用段地址存入DS和ES
 		MOV		ES,AX
-		CALL	_linux_api
+		CALL	_linux_api2
 		CMP		EAX,0		; 当EAX不为0时程序结束
 		JNE		_asm_end_app
 		

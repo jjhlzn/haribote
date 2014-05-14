@@ -7,9 +7,105 @@
 #include "linkedlist.h"
 #include "elf.h"
 #include <sys/stat.h>
+#include <haribote/sys.h>
 
 extern int sys_open();
 extern int* fat;
+
+extern fn_ptr sys_call_table[];
+
+int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
+			   int fs, int gs,
+			   int es, int ds,
+			   int eip, int cs, int eflags, int user_esp, int user_ss)
+{
+	struct TASK *task = task_now();
+	debug("syscall(%d): eax = %d, eip = %d", task->pid, eax,  eip);
+	int ds_base = task->ds_base;
+	int *reg = &eax + 1 + 9;
+	
+	if (eax == 1) {    //exit
+		//假如当前进程是通过fork调用创建的，那么可以直接结束这个任务
+		if(task->forked == 1){
+			debug("pocess[%d, forked] die!", task->pid);
+			do_exit(task,0);
+		}else{
+			return &(task->tss.esp0);
+		}
+		return 0;
+	}
+	
+	if(eax == 2){
+		struct TSS32 tss;
+		tss.backlink = 0;
+		//tss.esp0 = task->tss.esp0;  
+		tss.ss0 = 1 * 8;   //内核栈选择子
+		tss.esp1 = 0;
+		tss.ss1 = 0;
+		tss.esp2 = 0;
+		tss.ss2 = 0;
+		tss.cr3 = task->tss.cr3;
+		tss.eip = eip;
+		tss.eflags = eflags;
+		tss.eax = 0;
+		tss.ecx = ecx;
+		tss.edx = edx;
+		tss.ebx = ebx;
+		tss.esp = user_esp;
+		tss.ebp = ebp;
+		tss.esi = esi;
+		tss.edi = edi;
+		tss.es = es;
+		tss.cs = cs;
+		tss.ss = user_ss;
+		tss.ds = ds;
+		tss.fs = fs;
+		tss.gs = gs;
+		debug("eip = %d", eip);
+		debug("ss = %d, ds = %d, cs = %d", user_ss, ds, cs);
+		struct TASK * new_task = do_fork_elf(task, &tss);
+		debug("has create child process[%d]",new_task->pid);
+		reg[7] = new_task->pid;
+		task_add(new_task);
+		return 0;
+	}
+	
+	if(eax == 7){  //wait 
+		//debug("addr = %d",ebx);
+		int* add_status = (int *)(ds_base+ecx);
+		debug("eax = %d, ebx = %d, ecx = %d, edx = %d", eax, ebx,ecx,edx);
+		//debug("exit_status = %d", *add_status);
+		int child_pid = do_wait(task, add_status);
+		debug("exit_status = %d", *add_status);
+		reg[7] = child_pid;
+		return 0;
+	}
+	
+	if(eax == 20){  //getpid
+		debug("pid = %d",task->pid);
+		reg[7] = task->pid;
+		return 0;
+	}
+	
+	int nr_sys_calls = 7;
+	
+	if(eax < 0 || (eax > nr_sys_calls - 1)){
+		debug("syscall number is invalid: %d",eax);
+		//reg[7] = -1;
+		return 0;
+	}
+	
+	if(sys_call_table[eax]){
+		debug("sys_call_table[%d]()",eax);
+		reg[7] = sys_call_table[eax](ebx,ecx,edx,esi,edi);
+	}else{
+		debug("syscall is not implemented: %d",eax);
+		debug("sys_call_table[%d] = %d", eax, (int)sys_call_table[eax]);
+		//reg[7] = -1;
+	}
+	return 0;
+}
+
 int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
 			 int fs, int gs,
 			 int es, int ds,
@@ -20,9 +116,9 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 	//debug("ds = %d, ss = %d, esp = %d, cs = %d, eflags = %d", ds, user_ss, user_esp, cs, eflags);
 	int ds_base = task->ds_base;
 	int *reg = &eax + 1 + 9;	/* eax偺師偺斣抧 */
-	/* 曐懚偺偨傔偺PUSHAD傪嫮堷偵彂偒姺偊傞 */
+	/* reg寄存器数组 */
 	/* reg[0] : EDI,   reg[1] : ESI,   reg[2] : EBP,   reg[3] : ESP */
-	/* reg[4] : EBX,   reg[5] : EDX,   reg[6] : ECX,   reg[7] : EAX */
+	/* reg[4] : EBX,   reg[5] : EDX,   reg[6] : ECX,   reg[7] : EAX */ 
 
 	if (eax == 1) {    //exit
 		//假如当前进程是通过fork调用创建的，那么可以直接结束这个任务
@@ -33,7 +129,6 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 			return &(task->tss.esp0);
 		}
 	}else if(eax == 2){
-		
 		struct TSS32 tss;
 		tss.backlink = 0;
 		//tss.esp0 = task->tss.esp0;  
@@ -386,36 +481,25 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		//debug("close fd(%d)",fd);
 		//do_close(fd,task);
 	} else if(edx == 31){    //read file
-		//int fd = eax;
-		//char *buf = (char *)(ebx+ds_base);
-		//int len = ebp;
+		int fd = eax;
+		char *buf = (char *)ebx;
+		int len = ebp;
+		reg[7]= sys_read(fd, (char *)ebx, len);
 		
-		//MESSAGE msg;
-		//msg.FD = fd;
-		//msg.BUF = buf;
-		//msg.CNT = len;
-		//msg.type = READ;
-		
-		//reg[7] = do_rdwt(&msg,task);
-		//buf[reg[7]] = 0; //设置结尾符
-		
-		//debug("read contents = [%s]",buf);
+		char contents[2048];
+		get_str_userspace(buf,contents);
+		debug("read %d bytes: [%s]",reg[7], contents);
 		
 	} else if(edx == 32){        //api_write
-		//int fd = eax;
-		//char *buf = (char *)(ebx+ds_base);
-		//int len = ebp;
+		int fd = eax;
+		char *buf = (char *)ebx;
+		int len = ebp;
 		
-		////构建写文件内容的参数
-		//MESSAGE msg;
-		//msg.FD = fd;
-		//msg.BUF = buf;
-		//msg.CNT = len;
-		//msg.type = WRITE;
+		reg[7] = sys_write(fd,buf,len);
 		
-		//reg[7] = do_rdwt(&msg,task);
-		
-		//debug("write contets(%s) to fd(%d)",buf, fd);
+		char contents[2048];
+		get_str_userspace1(buf,len,contents);
+		debug("write %d bytes: [%s]", reg[7], contents);
 	} else if(edx == 33){
 		int fd = eax;
 		reg[7] = task->filp[fd]->f_inode->i_size;

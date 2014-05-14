@@ -204,6 +204,9 @@ struct FILEINFO* get_all_files(int dev);
 
 extern void mount_root(void);
 
+int sys_read(unsigned int fd,char * buf,int count);
+int sys_write(unsigned int fd,char * buf,int count);
+
 #define STDIN   0
 #define STDOUT  1
 #define STDERR  2

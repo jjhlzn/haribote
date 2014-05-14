@@ -1,19 +1,25 @@
 #include "apilib.h"
 #include <stdio.h>
 #include <string.h>
+#include <fcntl.h>
 
 #define STDIN 0
 #define STDOUT 1
 #define STDERR 2
 
-#define O_CREATE 1
-#define O_RDWR 2
-
 void HariMain(){
 	char pathname[50];
 	sprintf(pathname,"/usr/root/hello.c");
-	api_open(pathname,O_RDWR);
-	
+	int fd = api_open(pathname,O_RDWR);
+	int n;
+	char buf[1024];
+	do{
+		n = api_read(fd,buf,10);
+		if( n <= 0 )
+			break;
+		buf[n] = 0;
+		printf(buf);
+	}while(1);
 	
 	//int fd_read = -1;
 	//int fd_write = api_open(pathname,O_CREATE | O_RDWR);
