@@ -240,8 +240,8 @@ void task_wait(struct TASK *task)
 			/* 如果是让自己休眠，则需要进行任务切换 */
 			task_switchsub();
 			now_task = task_now(); /* 在设定后获取当前任务的值 */
-			debug("proc[%d,%s] go to wait, proc[%d,%s] will run",task->pid,task->name,now_task->pid,now_task->name);
-			debug("now_task[%d]->tss.eip = %d",now_task->pid,now_task->tss.eip);
+			//debug("proc[%d,%s] go to wait, proc[%d,%s] will run",task->pid,task->name,now_task->pid,now_task->name);
+			//debug("now_task[%d]->tss.eip = %d",now_task->pid,now_task->tss.eip);
 			farjmp(0, now_task->sel);
 		}
 	}
@@ -287,8 +287,8 @@ void task_switch(void)
 	timer_settime(task_timer, new_task->priority);
 	if (new_task != now_task) {
 		//debug("switch from process[%d,%s] to process[%d,%s]",now_task->pid,now_task->name,new_task->pid,new_task->name);
-		if(now_task->pid == 4)
-			debug("now_task[%d]->tss.eip = %d", now_task->pid, now_task->tss.eip);
+		//if(now_task->pid == 4)
+		//	debug("now_task[%d]->tss.eip = %d", now_task->pid, now_task->tss.eip);
 		farjmp(0, new_task->sel);
 	}
 	return;

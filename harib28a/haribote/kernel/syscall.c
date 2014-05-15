@@ -8,11 +8,14 @@
 #include "elf.h"
 #include <sys/stat.h>
 #include <haribote/sys.h>
+#include <termios.h>
+#include <asm/segment.h>
 
 extern int sys_open();
 extern int* fat;
 
 extern fn_ptr sys_call_table[];
+static int _sys_stdio_ioctl(u32 fd, u32 cmd, u32 arg);
 
 int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax,
 			   int fs, int gs,
@@ -30,23 +33,45 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 		if(len <= 0)
 			return 0;
 		char msg[2048];
-		get_str_userspace1(buf,ecx,msg);
+		get_str_userspace1(buf,len,msg);
 		msg[len] = 0;
 		cons_putstr0(task->cons,msg);
 		debug("msg = [%s]",msg);
+		reg[7] = len;
 		return 0;
 	}
 	
 	if(eax == 3 && ebx == 0){
-		int ch = read_from_keyboard(task,1);
 		char *buf = (char *)ecx + ds_base;
-		if( ch == -1){
-			buf[0] = 0;
-		}else{
-			buf[0] = ch;
-			buf[1] = 0;
+	    int len = edx;
+		
+		if( len <= 0 ){
+			reg[7] = 0;
+			return 0;
 		}
-		reg[7] = strlen(buf);
+	
+		int ch = -1;
+		int i = 0;
+		do{
+			if(len == 1){
+				buf[i] = 0;
+				break;
+			}
+			ch = read_from_keyboard(task,1);
+			debug("ch = %d",ch);
+			if(ch != -1){
+				buf[i++] = ch;
+				len--;
+				if(ch == 10)   //carrige return
+					break; 
+			}else{
+				buf[i] = 0;
+				break;
+			}
+		}while(1);
+		debug("i = %d", i);
+		debug("buf = [%s]",buf);
+		reg[7] = i;
 		return 0;
 	}
 	
@@ -109,16 +134,13 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 	
 	if(eax == 54)  //ioctl
 	{
-		if(ebx == 0){ //STDIN, 标准输入带缓冲
-			reg[7] = 0;
-			debug("set has buffer");
-		}else if(ebx == 1 || ebx == 2){   //STDOUT, STDERR 不带缓冲 
-			reg[7] = 0;   
-			debug("set no buffer");
-		}else{   //其他都带缓冲
-			reg[7] = -1;
-			debug("set has buffer");
-		}
+		//if(ebx == 0 || ebx == 1 || ebx == 2){   //STDOUT, STDERR 不带缓冲 
+		//	reg[7] = _sys_stdio_ioctl(ebx,ecx,edx);
+		//}else{   //其他都带缓冲
+		//	reg[7] = -1;
+		//}
+		_sys_stdio_ioctl(ebx,ecx,edx);
+		reg[7] = 0;
 		return 0;
 	}
 	
@@ -592,7 +614,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	}
 	return 0;
 }
-
+#define INIT_C_CC "\003\034\177\025\004\0\1\0\021\023\032\0\022\017\027\026\0"
 struct termios termios_table[] = {
 
 	{	ICRNL,		/* change incoming CR to NL */
@@ -600,26 +622,17 @@ struct termios termios_table[] = {
 		0,
 		ISIG | ICANON | ECHO | ECHOCTL | ECHOKE,
 		0,		/* console termio */
-		INIT_C_CC},
-	
-	{	0, /* no translation */
-		0,  /* no translation */
-		B2400 | CS8,
-		0,
-		0,
-		INIT_C_CC},
-	
-	{	0, /* no translation */
-		0,  /* no translation */
-		B2400 | CS8,
-		0,
-		0,
 		INIT_C_CC}
 	
 };
 
 static int _sys_stdio_ioctl(u32 fd, u32 cmd, u32 arg)
 {
-	
-	put_fs_byte( ((char *)termios_table[i])[i] , i+(char *)termios );
+	debug("_sys_stdio_ioctl");
+	struct termios * termios = (struct termios *)arg;
+	int i;
+	//verify_area(termios, sizeof (*termios));
+	for (i=0 ; i< (sizeof (*termios)) ; i++)
+		put_fs_byte( ((char *)&termios_table[0])[i] , i+(char *)termios );
+	return 0;
 }

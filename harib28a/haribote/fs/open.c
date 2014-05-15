@@ -253,7 +253,7 @@ PUBLIC void open_std_files(struct TASK *task)
 		panic("there is no free struct file");
 	}
 	(task->filp[fd]=f)->f_count++;
-	debug("open fd[%d]",fd);
+	//debug("open fd[%d]",fd);
 	
 	//open stdout
 	for(fd=0 ; fd<NR_OPEN ; fd++)
@@ -270,7 +270,7 @@ PUBLIC void open_std_files(struct TASK *task)
 		panic("there is no free struct file");
 	}
 	(task->filp[fd]=f)->f_count++;
-	debug("open fd[%d]",fd);
+	//debug("open fd[%d]",fd);
 	
 	//open stderr
 	for(fd=0 ; fd<NR_OPEN ; fd++)
@@ -287,7 +287,7 @@ PUBLIC void open_std_files(struct TASK *task)
 		panic("there is no free struct file");
 	}
 	(task->filp[fd]=f)->f_count++;
-	debug("open fd[%d]",fd);
+	//debug("open fd[%d]",fd);
 	
 	//struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	

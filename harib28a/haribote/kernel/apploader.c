@@ -270,7 +270,7 @@ PRIVATE void load_elf(char *p, struct Node *list)
 		if(elf_phdr->p_type == PT_LOAD){
 			
 			
-			debug("see PT_LOAD section");
+			//debug("see PT_LOAD section");
 			//debug_Elf32_Phdr(elf_phdr);
 			//char msg[1024];
 			//int j=0;
