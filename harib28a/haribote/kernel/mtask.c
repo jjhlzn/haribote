@@ -9,6 +9,12 @@
 struct TASKCTL *taskctl;
 struct TIMER *task_timer;
 struct m_inode * get_root_inode();
+
+int sys_getpid()
+{
+	return current->pid;
+}
+
 struct TASK *task_now(void)
 {
 	struct TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];

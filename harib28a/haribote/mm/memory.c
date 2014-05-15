@@ -156,7 +156,8 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size)
 	return -1; /* 失败 */
 }
 
-unsigned int memman_alloc_4k(struct MEMMAN *man, unsigned int size)
+unsigned int 
+memman_alloc_4k(struct MEMMAN *man, unsigned int size)
 {
 	unsigned int a;
 	size = (size + 0xfff) & 0xfffff000;
@@ -164,7 +165,8 @@ unsigned int memman_alloc_4k(struct MEMMAN *man, unsigned int size)
 	return a;
 }
 
-int memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
+int 
+memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
 {
 	int i;
 	size = (size + 0xfff) & 0xfffff000;
@@ -175,7 +177,8 @@ int memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
 
 /***********************************分页相关**************************************************/
 //初始化内存, 测试内存大小，将内存划分成物理页, 分配和映射内核使用的物理页
-void mem_init()
+void 
+mem_init()
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	//检测内存

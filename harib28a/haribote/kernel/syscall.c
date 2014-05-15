@@ -20,24 +20,34 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 			   int eip, int cs, int eflags, int user_esp, int user_ss)
 {
 	struct TASK *task = task_now();
-	debug("syscall(%d): eax = %d", task->pid, eax, ebx, ecx, edx);
+	debug("syscall(%d): eax = %d, ebx=%d, ecx=%d, edx = %d", task->pid, eax, ebx, ecx, edx);
 	int ds_base = task->ds_base;
 	int *reg = &eax + 1 + 9;
 	
-	if(eax == 4){
-		if(ebx==1 || ebx == 2){
-			
-			char *buf = (char *)ecx;
-			int len = edx;
-			if(len <= 0)
-				return 0;
-			char msg[2048];
-			get_str_userspace1(buf,ecx,msg);
-			msg[len] = 0;
-			cons_putstr0(task->cons,msg);
-			debug("msg = [%s]",msg);
+	if(eax == 4 && (ebx==1 || ebx == 2)){
+		char *buf = (char *)ecx;
+		int len = edx;
+		if(len <= 0)
 			return 0;
+		char msg[2048];
+		get_str_userspace1(buf,ecx,msg);
+		msg[len] = 0;
+		cons_putstr0(task->cons,msg);
+		debug("msg = [%s]",msg);
+		return 0;
+	}
+	
+	if(eax == 3 && ebx == 0){
+		int ch = read_from_keyboard(task,1);
+		char *buf = (char *)ecx + ds_base;
+		if( ch == -1){
+			buf[0] = 0;
+		}else{
+			buf[0] = ch;
+			buf[1] = 0;
 		}
+		reg[7] = strlen(buf);
+		return 0;
 	}
 	
 	if (eax == 1) {    //exit
@@ -89,7 +99,7 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 	if(eax == 7){  //wait 
 		//debug("addr = %d",ebx);
 		int* add_status = (int *)(ds_base+ecx);
-		debug("eax = %d, ebx = %d, ecx = %d, edx = %d", eax, ebx,ecx,edx);
+		//debug("eax = %d, ebx = %d, ecx = %d, edx = %d", eax, ebx,ecx,edx);
 		//debug("exit_status = %d", *add_status);
 		int child_pid = do_wait(task, add_status);
 		debug("exit_status = %d", *add_status);
@@ -97,17 +107,26 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 		return 0;
 	}
 	
-	if(eax == 20){  //getpid
-		debug("pid = %d",task->pid);
-		reg[7] = task->pid;
+	if(eax == 54)  //ioctl
+	{
+		if(ebx == 0){ //STDIN, 标准输入带缓冲
+			reg[7] = 0;
+			debug("set has buffer");
+		}else if(ebx == 1 || ebx == 2){   //STDOUT, STDERR 不带缓冲 
+			reg[7] = 0;   
+			debug("set no buffer");
+		}else{   //其他都带缓冲
+			reg[7] = -1;
+			debug("set has buffer");
+		}
 		return 0;
 	}
 	
-	int nr_sys_calls = 7;
+	int nr_sys_calls = 21;
 	
 	if(eax < 0 || (eax > nr_sys_calls - 1)){
 		debug("syscall number is invalid: %d",eax);
-		//reg[7] = -1;
+		reg[7] = -1;
 		return 0;
 	}
 	
@@ -117,7 +136,7 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 	}else{
 		debug("syscall is not implemented: %d",eax);
 		debug("sys_call_table[%d] = %d", eax, (int)sys_call_table[eax]);
-		//reg[7] = -1;
+		reg[7] = -1;
 	}
 	return 0;
 }
@@ -572,4 +591,35 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		reg[7] = do_exec(path, argv, fat, regs_push_by_interrupt);
 	}
 	return 0;
+}
+
+struct termios termios_table[] = {
+
+	{	ICRNL,		/* change incoming CR to NL */
+		OPOST|ONLCR,	/* change outgoing NL to CRNL */
+		0,
+		ISIG | ICANON | ECHO | ECHOCTL | ECHOKE,
+		0,		/* console termio */
+		INIT_C_CC},
+	
+	{	0, /* no translation */
+		0,  /* no translation */
+		B2400 | CS8,
+		0,
+		0,
+		INIT_C_CC},
+	
+	{	0, /* no translation */
+		0,  /* no translation */
+		B2400 | CS8,
+		0,
+		0,
+		INIT_C_CC}
+	
+};
+
+static int _sys_stdio_ioctl(u32 fd, u32 cmd, u32 arg)
+{
+	
+	put_fs_byte( ((char *)termios_table[i])[i] , i+(char *)termios );
 }

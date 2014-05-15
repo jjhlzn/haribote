@@ -1,4 +1,4 @@
-extern _main
+extern main
 extern _api_end
 
 bits 32
@@ -15,7 +15,7 @@ _start:
 	;mov ss, ax
 	push ebx
 	push edx
-	call _main
+	call main
 	
 	push eax
 	call _api_end

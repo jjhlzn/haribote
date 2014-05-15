@@ -3,7 +3,7 @@ OBJS_BOOTPACK = kernel/bootpack.obj kernel/naskfunc.obj kernel/hankaku.obj kerne
 				kernel/bmp.obj kernel/jpeg.obj kernel/blk_drv/hd.obj kernel/blk_drv/ll_rw_blk.obj kernel/exec.obj kernel/linkedlist.obj kernel/timer.obj kernel/forkexit.obj kernel/apploader.obj \
 				window/graphic.obj  window/window.obj window/sheet.obj \
 				mm/memory.obj   \
-				fs/bitmap.obj fs/buffer.obj fs/file_dev.obj fs/file_table.obj fs/inode.obj fs/namei.obj fs/open.obj fs/read_write.obj fs/super.obj fs/truncate.obj    \
+				fs/bitmap.obj fs/buffer.obj fs/file_dev.obj fs/file_table.obj fs/inode.obj fs/namei.obj fs/open.obj fs/read_write.obj fs/super.obj fs/truncate.obj fs/fcntl.obj    \
 				../apilib/alloca.obj w32clibc.lib
 
 TOOLPATH = ../../../tolset/z_tools/

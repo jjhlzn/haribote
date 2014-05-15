@@ -1,4 +1,4 @@
-OBJS =  bitmap.obj buffer.obj file_dev.obj file_table.obj inode.obj namei.obj open.obj read_write.obj super.obj truncate.obj 
+OBJS =  bitmap.obj buffer.obj file_dev.obj file_table.obj inode.obj namei.obj open.obj read_write.obj super.obj truncate.obj fcntl.obj 
 
 TOOLPATH = ../../../../tolset/z_tools/
 INCPATH  = ../../../../tolset/z_tools/haribote/

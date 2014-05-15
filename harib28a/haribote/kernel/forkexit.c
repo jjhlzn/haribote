@@ -13,15 +13,22 @@
 
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src);
 PRIVATE void free_mem(struct TASK *task);
+
+
+//int sys_exit(int errcode)
+//{
+//	struct TASK *task = current;
+//	if(task->forked == 1){
+//		debug("pocess[%d, forked] die!", task->pid);
+//		do_exit(task,0);
+//	}else{
+//		return &(task->tss.esp0);
+//	}
+//	return 0;
+//}
 //PRIVATE void cleanup(struct proc * proc);
 
 
-//struct TSS32 {
-//	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3; //esp0和ss0为操作系统的栈段号和栈顶指针
-//	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
-//	int es, cs, ss, ds, fs, gs;
-//	int ldtr, iomap;
-//};
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
 	dst->backlink = src->backlink;
     dst->esp0 = src->esp0;
@@ -264,7 +271,7 @@ PUBLIC void do_exit(struct TASK *p, int status)
 	for (i = 0; i < MAX_TASKS; i++) {
 		struct TASK *tmp = get_task(i);
 		if (tmp->parent_pid == pid) { /* is a child */
-			debug("I entered!!!!!!!");
+			//debug("I entered!!!!!!!");
 			tmp->parent_pid = 1;  //TODO, 把idle的进程号写死为1
 			if ( idle->flags == TASK_STATUS_WAITING && tmp->flags == TASK_STATUS_HANGING) {
 				idle->wait_return_task = tmp;

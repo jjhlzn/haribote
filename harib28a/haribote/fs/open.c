@@ -18,6 +18,8 @@
 
 #include <asm/segment.h>
 
+int sys_dup(unsigned int fildes);
+
 int sys_ustat(int dev, struct ustat * ubuf)
 {
 	return -ENOSYS;
