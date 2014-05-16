@@ -315,9 +315,9 @@ _asm_inthandler20:
 		PUSH	DS
 		PUSHAD
 		MOV		EAX,ESP
-		PUSH	EAX
-		MOV		AX,SS
-		MOV		DS,AX
+		PUSH	EAX      ;ESP作为参数传递给_inthandler20
+		MOV		AX,SS    
+		MOV		DS,AX    ;DS, ES设置为内核段描述符
 		MOV		ES,AX
 		CALL	_inthandler20
 		POP		EAX
