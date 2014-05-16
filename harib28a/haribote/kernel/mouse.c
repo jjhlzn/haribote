@@ -5,8 +5,8 @@
 struct FIFO32 *mousefifo;
 int mousedata0;
 
+//// PS/2鼠标中断处理程序 
 void inthandler2c(int *esp)
-/* PS/2儅僂僗偐傜偺妱傝崬傒 */
 {
 	int data;
 	io_out8(PIC1_OCW2, 0x64);	/* 通知PIC1 IRQ-12的受理已经完成  0x64 = 0110 0100*/
@@ -21,7 +21,7 @@ void inthandler2c(int *esp)
 
 void enable_mouse(struct FIFO32 *fifo, int data0, struct MOUSE_DEC *mdec)
 {
-	/* 彂偒崬傒愭偺FIFO僶僢僼傽傪婰壇 */
+	/* 设置接受鼠标信息的队列，以及区别鼠标数据的值 */
 	mousefifo = fifo;
 	mousedata0 = data0;
 	/* 激活鼠标 */
@@ -29,8 +29,7 @@ void enable_mouse(struct FIFO32 *fifo, int data0, struct MOUSE_DEC *mdec)
 	io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
 	wait_KBC_sendready();
 	io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
-	/* 偆傑偔偄偔偲ACK(0xfa)偑憲怣偝傟偰偔傞 */
-	mdec->phase = 0; /* 儅僂僗偺0xfa傪懸偭偰偄傞抜奒 */
+	mdec->phase = 0; /* 顺利的话，键盘控制器会返回ACK(0xfa) */
 	return;
 }
 

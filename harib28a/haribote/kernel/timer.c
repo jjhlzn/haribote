@@ -14,9 +14,12 @@ void init_pit(void)
 {
 	int i;
 	struct TIMER *t;
+	
+	/* 初始化pit, 这样设置1秒钟会发生100次中断 */
 	io_out8(PIT_CTRL, 0x34);
 	io_out8(PIT_CNT0, 0x9c);
 	io_out8(PIT_CNT0, 0x2e);
+	
 	timerctl.count = 0;
 	for (i = 0; i < MAX_TIMER; i++) {
 		timerctl.timers0[i].flags = 0; /* 枹巊梡 */
@@ -91,7 +94,7 @@ void inthandler20(int *esp)
 {
 	struct TIMER *timer;
 	char ts = 0;
-	io_out8(PIC0_OCW2, 0x60);	/* IRQ-00庴晅姰椆傪PIC偵捠抦 */
+	io_out8(PIC0_OCW2, 0x60);	/* 把IRQ-00信号接收完了信息通知给PIC */
 	timerctl.count++;
 	if (timerctl.next > timerctl.count) {
 		return;

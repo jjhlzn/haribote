@@ -4,8 +4,8 @@
 
 #define FLAGS_OVERRUN		0x0001
 
+//// FIFO缓冲区初始化 
 void fifo32_init(struct FIFO32 *fifo, int size, int *buf, struct TASK *task)
-/* FIFO缓冲区初始化 */
 {
 	fifo->size = size;
 	fifo->buf = buf;
@@ -33,10 +33,6 @@ int fifo32_put(struct FIFO32 *fifo, int data)
 	fifo->free--;
 	if (fifo->task != 0) {
 		if (fifo->task->flags != 2) { /* 如果任务处于休眠状态 */
-			//char msg[100];
-			//sprintf(msg,"make process[%d,%s] awake",fifo->task->pid,fifo->task->name);
-			//print_on_screen(msg);
-			//debug("fifo32_put: wakeup pid: %d",fifo->task->pid);
 			task_run(fifo->task, -1, 0); /* 将任务唤醒 */
 		}
 	}

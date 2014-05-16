@@ -38,6 +38,9 @@ void HariMain(void)
 	unsigned char *buf_back, buf_mouse[256];
 	struct SHEET *sht_back, *sht_mouse;
 	struct TASK *task_a, *task;
+	
+	/* 之所以将keytable[]设定为static char，就是因为希望程序被编译为汇编语言的时候，static char能编译成
+	 * DB指令 */
 	static char keytable0[0x80] = {
 		0,   0,   '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '^', 0x08, 0,
 		'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '@', '[', 0x0a, 0, 'A', 'S',
@@ -66,36 +69,49 @@ void HariMain(void)
 	struct FILEINFO *finfo;
 	extern char hankaku[4096];
 	
-	//内存初始化
+	/* 内存管理初始化 */
 	mem_init();
 	
-	//初始化全局描述符表（gdt）和中断向量表(idt)
+	/* 全局描述符表（gdt）和中断向量表(idt)初始化 */
 	init_gdtidt();
+	
+	/* 可编程中断控制器初始化 */
 	init_pic();
 
-	io_sti(); /* 开启中断 */
+	/* 开启中断 */
+	io_sti();
+	
+	/* 中断产生的数据队列初始化，这个可以任务是中断的下半部队列 */
 	fifo32_init(&fifo, 128, fifobuf, 0);
 	*((int *) 0x0fec) = (int) &fifo;
+	
+	/* 可编程的间隔定时器(PIT)初始化，中断号0 */
 	init_pit();
 	
-	init_keyboard(&fifo, 256);
+	/* 初始化键盘,中断号1 */
+	init_keyboard(&fifo, 256); 
+	
+	/* 初始化鼠标，中断号12 */
 	enable_mouse(&fifo, 512, &mdec);
-	io_out8(PIC0_IMR, 0xf8); /* PIT偲PIC1偲僉乕儃乕僪傪嫋壜(11111000) */
-	io_out8(PIC1_IMR, 0xaf); /* 儅僂僗傪嫋壜(10101111), 同时打开硬盘中断  */ 
+	
+	/* 设置设备的中断屏蔽码 */
+	io_out8(PIC0_IMR, 0xf8); /* 开始以下中断：系统定时器、键盘、可编程中断控制器2 (11111000) */
+	io_out8(PIC1_IMR, 0xaf); /* 开始以下中断：硬盘、鼠标 (10101111) */ 
+	
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 
-	//初始化硬盘: TODO: 如果将初始化硬盘和文件系统移到下面去，会出现异常
+	/* 初始化硬盘和高速缓冲区: TODO: 如果将初始化硬盘和文件系统移到下面去，会出现异常 */
 	ROOT_DEV = 0x301;
 	blk_dev_init();
 	hd_init();
 	buffer_init(0x00b00000-1);
 	sys_setup(NULL);
-	//mkfs();
-	//初始化文件系统
-	//init_fs();
 	
+	/* 初始化图形相关 */
 	init_palette();
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
+	
+	/* 初始化进程结构 */
 	task_a = task_init(memman); //task_a代表内核所在的任务
 	fifo.task = task_a;
 	strcpy(task_a->name,"task_a");
@@ -140,7 +156,7 @@ void HariMain(void)
 	fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 	file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
 	
-	//加载壁纸
+	/*  加载壁纸 */
 	//load_background_pic(buf_back, fat);
 	//sheet_slide(sht_back,  0,  0); //刷新壁纸
 	
@@ -417,16 +433,15 @@ void HariMain(void)
 						}
 					}
 				}
-			} else if (768 <= i && i <= 1023) {	/* 僐儞僜乕儖廔椆張棟 */
+			} else if (768 <= i && i <= 1023) {	/* 关闭控制台Sheet的信号 */
 				close_console(shtctl->sheets0 + (i - 768));
-			} else if (1024 <= i && i <= 2023) {
+			} else if (1024 <= i && i <= 2023) { /* 关闭控制台任务的信号 */
 				close_constask(taskctl->tasks0 + (i - 1024));
-			} else if (2024 <= i && i <= 2279) {	/* 僐儞僜乕儖偩偗傪暵偠傞 */
+			} else if (2024 <= i && i <= 2279) { /* 关闭sheet的信号 */
 				temp_sheet = shtctl->sheets0 + (i - 2024);
 				memman_free_4k(memman, (int) temp_sheet->buf, 256 * 165);
 				sheet_free(temp_sheet);
-			} else if( i == 3000){   //硬盘中断
-			}
+			} 
 		}
 	}
 }
