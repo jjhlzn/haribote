@@ -6,7 +6,7 @@
 struct FIFO32 *keyfifo;
 int keydata0;
 
-
+static int read_char_from_keyboard(int read_bytes);
 
 void inthandler21(int *esp)
 {
@@ -21,6 +21,9 @@ void inthandler21(int *esp)
 #define KEYSTA_SEND_NOTREADY	0x02
 #define KEYCMD_WRITE_MODE		0x60
 #define KBC_MODE				0x47
+
+
+
 
 void wait_KBC_sendready(void)
 {
@@ -46,27 +49,88 @@ void init_keyboard(struct FIFO32 *fifo, int data0)
 	return;
 }
 
-int read_from_keyboard(struct TASK *task, int mode)
+
+
+
+int read_from_keyboard(char *buf, int len)
 {
+	if( len <= 0 ){
+		return 0;
+	}
+
+	int ch = -1;
+	int i = 0;
+	int end = 0;
+	while(1){
+		if(len == 1){
+			buf[i++] = 0;
+			break;
+		}
+		ch = read_char_from_keyboard(i);
+		debug("ch = %d",ch);
+		
+		switch(ch){
+			case -1:  //read error
+				buf[i++] = 0;
+				len--;
+				end = 1;
+				break;
+			case 10:  //line feed
+				buf[i++] = ch;
+				len--;
+				buf[i++] = 0;
+				end = 1;
+				break;
+			case 8:  //backspace
+				if(i > 0){
+					i--;
+				}
+				break;
+			default:
+				buf[i++] = ch;
+				len--;
+		}
+		
+		if(end)
+			break;
+	};
+	
+	return i-1;
+}
+
+static int read_char_from_keyboard(int read_bytes)
+{
+	struct TASK *task = current;
+	struct CONSOLE *cons = task->cons;
+	cons->sht->read_kb_task = task;
+	debug("read_bytes = %d",read_bytes);
+	//debug("read kb pid: %d", task->pid);
 	task->readKeyboard = 1;
 	int i;
-	struct CONSOLE *cons = task->cons;
 	for (;;) {
 		io_cli();
 		if (fifo32_status(&task->ch_buf) == 0) {
-			if (mode != 0) {
-				task_sleep(task);	/* FIFO中没有内容，睡眠等待 */
-			} else {
-				io_sti();
-				return -1;
-			}
+			task_sleep(task);	/* FIFO中没有内容，睡眠等待 */
 		}
 		i = fifo32_get(&task->ch_buf);
 		io_sti();
 		if (i >= 256 && i<512) { /* 键盘按键 */
 			if (cons->cur_x < CONSOLE_CONTENT_WIDTH) {
 				/* 显示输入的字符 */
-				cons_putchar(cons, i - 256, 1);
+				int ch = i - 256;
+				switch(ch){
+					case 8:
+						if (read_bytes > 0) {
+							/* 将当前的字符变为空格 */
+							cons->cur_x -= 8;
+							cons->buf_x -= 8;
+							cons_putchar(cons, ' ', 0);
+							
+						}
+						break;
+					default:
+						cons_putchar(cons, ch, 1);
+				}
 			}
 			task->readKeyboard = 0;
 			return i - 256;

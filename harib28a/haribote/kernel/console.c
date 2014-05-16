@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "fs.h"
+#include <fcntl.h>
 #include "linkedlist.h"
 #include "elf.h"
 
@@ -23,6 +24,7 @@ void cmd_testhd();
 void cons_key_down(struct CONSOLE *cons);
 static void cons_key_down0(struct CONSOLE *cons, int lines);
 static void cons_scroll_buttom(struct CONSOLE *cons);
+void cmd_cp0(struct CONSOLE *cons, char *cmdline, int *fat);
 
 void update_scroll_bar(struct CONSOLE *cons);
 
@@ -274,27 +276,10 @@ void cons_putchar(struct CONSOLE *cons, int chr, char move)
 		}
 	} else if (s[0] == 0x0a) {	/* 换行 */
 		cons_newline2(cons);
-		//char msg[100];
-		//memset(msg,0,100);
-		//sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
-		//print_on_screen(msg);
-		//memset(msg,0,100);
-		//sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
-		//print_on_screen(msg);
 	} else if (s[0] == 0x0d) {	/* 回车 */
-		//char msg[100];
-		//memset(msg,0,100);
-		//sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
-		//print_on_screen(msg);
-		//memset(msg,0,100);
-		//sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
-		//print_on_screen(msg);
 		/* nothing */
 	} else {	/* 常规字符 */
 		if (cons->sht != 0) {
-			//char msg[100];
-			//sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
-			//print_on_screen(msg);
 			putfonts8_asc_sht(cons->sht, cons->cur_x, cons->cur_y, COL8_FFFFFF, COL8_000000, s, 1);
 		}
 		if (move != 0) {  //移动当前位置
@@ -565,12 +550,67 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 		cmd_ps(cons);
 	} else if(strcmp(cmdline, "page") == 0){
 		print_page_config();
+	} else if(strncmp(cmdline, "cp0 ", 4) == 0){               //从软盘映像中拷贝文件到硬盘的特定目录
+	   cmd_cp0(cons,cmdline, fat);
 	}else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
 			/* 无法找到该命令和文件 */
 			cons_putstr0(cons, "Bad command.\n\n");
 		}
 	}
+	return;
+}
+
+int sys_open(const char * filename,int flag,int mode);
+int sys_sync(void); 
+int sys_close(unsigned int fd);
+void
+cmd_cp0(struct CONSOLE *cons, char *cmdline, int *fat)
+{
+	//获取文件名
+	int i;
+	for(i=4; i<strlen(cmdline); i++)
+		if(cmdline[i] != ' ')
+			break;
+	char *filename = cmdline + i;
+	
+	//从软盘映像中查找该文件
+	char src_path[100];
+	memset(src_path, 0 , 100);
+	sprintf(src_path,"%s",filename);
+	struct FILEINFO * finfo = file_search(filename, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+	if(finfo == NULL){
+		char msg[200];
+		sprintf(msg,"can't find file %s!\n",src_path);
+		cons_putstr0(cons, msg);
+		return;
+	}
+	int appsiz = finfo->size;
+	char *buf = file_loadfile2(finfo->clustno, &appsiz, fat); 
+	
+	//拷贝到硬盘的文件中
+	char dest_path[100];
+	sprintf(dest_path,"/usr/root/%s",filename);
+	int fd = sys_open(dest_path, O_CREAT | O_TRUNC | O_RDWR, 0x777);
+	if(fd<0){
+		return;
+	}
+	int n = sys_write(fd, buf, finfo->size);
+	if(n != finfo->size){
+		debug("write failed!");
+		goto err;
+	}
+	sys_sync();
+	
+err:
+	sys_close(fd);
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	memman_free(memman,(unsigned int)finfo,sizeof(struct FILEINFO));
+	memman_free(memman,(unsigned int)buf,finfo->size);
+	
+	char msg[200];
+	sprintf(msg,"copy file %s success!\n",dest_path);
+	cons_putstr0(cons, msg);
 	return;
 }
 

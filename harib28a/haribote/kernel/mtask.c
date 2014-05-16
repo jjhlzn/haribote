@@ -201,6 +201,11 @@ void task_run(struct TASK *task, int level, int priority)
 		task_remove(task, TASK_STATUS_SLEEP); /* 这里执行之后flag的值会变为1，于是下面的if语句也会被执行 */
 	}
 	if (task->flags != 2) {
+		
+		//if(task->pid == 2){
+		//	debug("task 2 run again!!!!!!!!!");
+		//}
+		//}
 		/* 从休眠状态唤醒的情形 */
 		task->level = level;
 		task_add(task);

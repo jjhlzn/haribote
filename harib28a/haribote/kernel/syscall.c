@@ -44,34 +44,7 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 	if(eax == 3 && ebx == 0){
 		char *buf = (char *)ecx + ds_base;
 	    int len = edx;
-		
-		if( len <= 0 ){
-			reg[7] = 0;
-			return 0;
-		}
-	
-		int ch = -1;
-		int i = 0;
-		do{
-			if(len == 1){
-				buf[i] = 0;
-				break;
-			}
-			ch = read_from_keyboard(task,1);
-			debug("ch = %d",ch);
-			if(ch != -1){
-				buf[i++] = ch;
-				len--;
-				if(ch == 10)   //carrige return
-					break; 
-			}else{
-				buf[i] = 0;
-				break;
-			}
-		}while(1);
-		debug("i = %d", i);
-		debug("buf = [%s]",buf);
-		reg[7] = i;
+		reg[7] = read_from_keyboard(buf,len);;
 		return 0;
 	}
 	
@@ -129,6 +102,16 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 		int child_pid = do_wait(task, add_status);
 		debug("exit_status = %d", *add_status);
 		reg[7] = child_pid;
+		return 0;
+	}
+	
+	if(eax == 11) { //execve
+		char *path =  (char *)(ds_base + ebx); 
+		char **argv = (char **)(ds_base + ecx);
+		
+		debug("path = %s", path);
+		int *regs_push_by_interrupt = &user_ss + 1 + 8;
+		reg[7] = do_exec(path+1, argv, fat, regs_push_by_interrupt); //例如 /hello 要变成 hello
 		return 0;
 	}
 	
@@ -391,7 +374,8 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	} else if (edx == 14) {
 		sheet_free((struct SHEET *) ebx);
 	} else if (edx == 15) {
-		reg[7] = read_from_keyboard(task,eax);
+		//reg[7] = read_from_keyboard(task,eax);
+		panic("don't support");
 		return 0;
 	} else if (edx == 16) {
 		reg[7] = (int) timer_alloc();

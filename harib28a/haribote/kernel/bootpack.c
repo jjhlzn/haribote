@@ -234,9 +234,14 @@ void HariMain(void)
 				}
 				
 				if (s[0] != 0 && key_win != 0) { /* 把字符发送给相应的任务 */
-					fifo32_put(&key_win->task->fifo, s[0] + 256);
-					if(key_win->task->readKeyboard == 1)
-						fifo32_put2(&key_win->task->ch_buf, s[0] + 256);
+					if( key_win->task->flags != TASK_STATUS_WAITING && key_win->task->flags != TASK_STATUS_UNINTERRUPTIBLE){
+						//debug("task[%d].flags = %d",key_win->task->pid,key_win->task->flags);
+						fifo32_put(&key_win->task->fifo, s[0] + 256);
+					}
+					if(key_win->read_kb_task->readKeyboard == 1){
+						//debug("send kb info to pid: %d", key_win->read_kb_task->pid);
+						fifo32_put2(&key_win->read_kb_task->ch_buf, s[0] + 256);
+					}
 				}
 				
 				if (i == 256 + 0x0f && key_win != 0) {	/* Tab键 */

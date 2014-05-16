@@ -82,6 +82,10 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 	new_task->parent_pid = task_parent->pid;
 	
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	
+	//³õÊ¼keyboard buf
+	int *kb_buf_fifo32 = (int *) memman_alloc_4k(memman, 128 * 4);
+	fifo32_init(&new_task->ch_buf, 128, kb_buf_fifo32, new_task);
 
 	/* duplicate the process table */
 	copyTSS(&(new_task->tss),tss);
@@ -155,6 +159,10 @@ PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
 	new_task->parent_pid = task_parent->pid;
 	
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	
+	//³õÊ¼keyboard buf
+	int *kb_buf_fifo32 = (int *) memman_alloc_4k(memman, 128 * 4);
+	fifo32_init(&new_task->ch_buf, 128, kb_buf_fifo32, new_task);
 
 	/* duplicate the process table */
 	copyTSS(&(new_task->tss),tss);

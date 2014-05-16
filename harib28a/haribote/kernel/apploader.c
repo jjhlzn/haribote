@@ -6,18 +6,43 @@
 #include "fs.h"
 #include "linkedlist.h"
 #include "elf.h"
+#include <fcntl.h>
 
-PRIVATE void load_hrb(char *p, int appsiz, struct Node *list);
-PRIVATE void load_elf(char *p, struct Node *list);
+ void load_hrb(char *p, int appsiz, struct Node *list);
+ void load_elf(char *p, struct Node *list);
 
 PRIVATE char *get_next_arg(char *cmdline, int *skip);
+static char * get_file_from_hd(char *name);
+int sys_open(const char * filename,int flag,int mode);
+int sys_read(unsigned int fd,char * buf,int count);
+int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list);
+
+static char * 
+get_file_from_hd(char *name)
+{
+	int fd = sys_open(name,O_RDONLY,0);
+	if(fd<0){
+		debug("can't find in hd");
+		return NULL;
+	}
+	int filesz = 100 * 1024;
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	char *p = (char *)memman_alloc_4k(memman, filesz);
+	int n = sys_read(fd, p, filesz);
+	if( n < 0 ){
+		debug("read failed!");
+		return NULL;
+	}
+	return p;
+}
 
 int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct FILEINFO *finfo;
-	char name[18], *p;
+	char name[18], *p = NULL;
 	int i, appsiz;
+	char *origin_cmdline = cmdline;
 
 	/* 获取程序文件名 */
 	for (i = 0; i < 13; i++) {
@@ -51,18 +76,27 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	/* 查找文件在磁盘中的信息 */
 	finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo == 0 && name[i - 1] != '.') {
-		/* 加入.hrb后缀再试试 */
-		name[i    ] = '.';
-		name[i + 1] = 'H';
-		name[i + 2] = 'R';
-		name[i + 3] = 'B';
-		name[i + 4] = 0;
-		finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+		
+		if(finfo == NULL){
+			debug("cmdline = %s",origin_cmdline);
+			p = get_file_from_hd(origin_cmdline);
+		}
+		
+		if( p == NULL){
+			/* 加入.hrb后缀再试试 */
+			name[i    ] = '.';
+			name[i + 1] = 'H';
+			name[i + 2] = 'R';
+			name[i + 3] = 'B';
+			name[i + 4] = 0;
+			finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+		}
 	} 
 
 	if (finfo != 0) {
 		/* 加载文件信息 */
 		appsiz = finfo->size;
+		int filesz = finfo->size;
 		p = file_loadfile2(finfo->clustno, &appsiz, fat); //代码段
 		if (appsiz >= 36 && strncmp(p + 4, "Hari", 4) == 0 && *p == 0x00) {
 			load_hrb(p, appsiz, list);
@@ -71,7 +105,11 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 		} else {
 			cons_putstr0(cons, ".hrb or .elf file format error.\n");
 		}
-		memman_free_4k(memman, (int) p, appsiz);
+		memman_free_4k(memman, (int) p, filesz);
+		cons_newline(cons);
+		return 1;
+	}else if((finfo == 0 && p != NULL)){
+		load_elf(p, list);
 		cons_newline(cons);
 		return 1;
 	}else{
@@ -81,7 +119,7 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	return 0;
 }
 
-PRIVATE void load_hrb(char *p, int appsiz, struct Node *list)
+ void load_hrb(char *p, int appsiz, struct Node *list)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct TASK *task = task_now();
@@ -128,7 +166,7 @@ PRIVATE void load_hrb(char *p, int appsiz, struct Node *list)
 	task->langbyte1 = 0;
 }
 
-PRIVATE int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
+int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	char msg[200];
@@ -227,7 +265,7 @@ PRIVATE int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list
 	return esp;
 }
 
-PRIVATE void load_elf(char *p, struct Node *list)
+ void load_elf(char *p, struct Node *list)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct TASK *task = task_now();

@@ -160,7 +160,7 @@ typedef	unsigned char		u8;
 void inthandler21(int *esp);
 void wait_KBC_sendready(void);
 void init_keyboard(struct FIFO32 *fifo, int data0);
-int read_from_keyboard(struct TASK *task, int mode);
+int read_from_keyboard(char *buf, int len);
 #define PORT_KEYDAT		0x0060
 #define PORT_KEYCMD		0x0064
 
@@ -205,6 +205,7 @@ struct SHEET {
 	int bxsize, bysize, vx0, vy0, col_inv, height, flags;
 	struct SHTCTL *ctl;
 	struct TASK *task;
+	struct TASK *read_kb_task;
 };
 struct SHTCTL {
 	unsigned char *vram, *map;

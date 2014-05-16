@@ -313,7 +313,7 @@ static void map_user(unsigned int addr_start)
 /*  ´¦ÀíPage Fault */
 void do_no_page(unsigned long error_code, unsigned long address) 
 {
-     //debug("-----do_no_page----: error_code = %d, address = %d",error_code, address);
+     debug("-----do_no_page----: error_code = %d, address = %d",error_code, address);
 	//unsigned int laddr = address & 0xFFC00000;
 	//map_kernel(laddr, 1024);
 	map_user(address);
