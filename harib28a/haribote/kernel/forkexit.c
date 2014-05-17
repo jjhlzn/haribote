@@ -1,18 +1,11 @@
-/*************************************************************************//**
- *****************************************************************************
- * @file   forkexit.c
- * @brief  
- * @author Forrest Y. Yu
- * @date   Tue May  6 00:37:15 2008
- *****************************************************************************
- *****************************************************************************/
-
 #include "bootpack.h"
 #include <string.h>
 #include "fs.h"
 
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src);
 PRIVATE void free_mem(struct TASK *task);
+static void copy_task(struct TASK *dst, struct TSS32 *tss);
+static void copy_mem(struct TASK *dst);
 
 
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
@@ -42,130 +35,76 @@ PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
 	dst->ds = src->ds;
 	dst->fs = src->fs;
 	dst->gs = src->gs;
-	
 }
 
-/*****************************************************************************
- *                                do_fork
- *****************************************************************************/
-/**
- * Perform the fork() syscall.
- * 
- * @return  Zero if success, otherwise -1.
- *****************************************************************************/
-PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
+
+PUBLIC struct TASK* do_fork_elf(struct TSS32 *tss)
 {
-	/* find a free slot in proc_table */
-	//创建一个新任务
-	//debug("do_fork");
-	struct TASK *new_task = task_alloc();
-	
-	if (new_task == 0) {/* no free slot */
-		debug("no free task struct");
+	/* 找到一个空闲的进程结构 */
+	struct TASK *dst = task_alloc();
+	if (dst == 0) {/* 没有空闲的进程结构 */
+		panic("no free task struct");
 		return 0;
 	}
-	new_task->forked = 1;
-	new_task->parent_pid = task_parent->pid;
 	
-	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	copy_task(dst,tss);
+	copy_mem(dst);
 	
-	//初始keyboard buf
-	int *kb_buf_fifo32 = (int *) memman_alloc_4k(memman, 128 * 4);
-	fifo32_init(&new_task->ch_buf, 128, kb_buf_fifo32, new_task);
-
-	/* duplicate the process table */
-	copyTSS(&(new_task->tss),tss);
-
-	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
-	new_task->cons_stack = memman_alloc_4k(memman, 64 * 1024);
-	new_task->tss.esp0 = new_task->cons_stack + 64 * 1024 - 12;
-
-	//debug("new_task->tss.esp0 + 4 = %d", (int)(new_task->tss.esp0) + 4);
-	*((int *) (new_task->tss.esp0 + 4)) = (int) task_parent->cons->sht;
-	*((int *) (new_task->tss.esp0 + 8)) = 32 * 1024 * 1024;
-	fifo32_init(&new_task->fifo, 128, cons_fifo, new_task);
-	
-	new_task->level = task_parent->level;
-	new_task->priority = task_parent->priority;
-	new_task->fhandle = task_parent->fhandle;
-	new_task->fat = task_parent->fat;
-	//使用和task_parnent同一个控制台
-	new_task->cons = task_parent->cons;
-
-	/* duplicate the process: T, D & S */
-	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task_parent->ldt;
-	
-	/* Text segment */
-	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
-	u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
-	//debug("text size = %d, src_addr = %d, dest_addr = %d",codeLimit, codeBase, (int)code_seg);
-	set_segmdesc(new_task->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
-	phys_copy((void *)code_seg,(void *)codeBase,codeLimit);
-	new_task->cs_base = (int)code_seg;
-	
-	/* Data segment */
-	int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
-	u8 *data_seg = (u8 *)memman_alloc_4k(memman, dataLimit);
-	//debug("data size = %d, src_addr = %d, dest_addr = %d",dataLimit,dataBase, (int)data_seg);
-	set_segmdesc(new_task->ldt + 1, dataLimit - 1, (int) data_seg, AR_DATA32_RW + 0x60);
-	phys_copy((void *)data_seg,(void *)dataBase,dataLimit);
-	new_task->ds_base = (int)data_seg;
-	
-	
-	struct file **filp_parent = task_parent->filp, **filp_new = new_task->filp;
 	int i;
+	struct file *f;
 	for (i = 0; i < NR_FILES; i++) {
-		filp_new[i] = filp_parent[i];
-		if (filp_new[i]) {
-			filp_new[i]->f_count++;
-			filp_new[i]->f_inode->i_count++;
+		if ( (f=dst->filp[i]) ) {
+			f->f_count++;
+			f->f_inode->i_count++;
 		}
 	}
-	return new_task;
+	return dst;
 }
 
-
-PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
+//////拷贝进程结构数据
+static void 
+copy_task(struct TASK *dst, struct TSS32 *tss)
 {
-	debug("do_fork_elf");
-	/* find a free slot in proc_table */
-	struct TASK *new_task = task_alloc();
+	struct TASK *src = current;
+	int old_pid = dst->pid;
+	int old_sel = dst->sel;
+	struct TSS32 old_tss32 = dst->tss;
+	*dst = *src;
+	dst->pid = old_pid;
+	dst->sel = old_sel;
+	dst->tss = old_tss32;
 	
-	if (new_task == 0) {/* no free slot */
-		debug("no free task struct");
-		return 0;
-	}
-	new_task->forked = 1;
-	new_task->parent_pid = task_parent->pid;
+	/* 把当前进程的寄存器拷贝到新创建进程的tss中 */
+	copyTSS(&(dst->tss),tss);
+	
+	dst->forked = 1; /* 标志为通过fork创建的 */
+	dst->parent_pid = src->pid; /* 设置父进程 */
 	
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	
-	//初始keyboard buf
+	/* 初始keyboard按键接收缓冲*/
 	int *kb_buf_fifo32 = (int *) memman_alloc_4k(memman, 128 * 4);
-	fifo32_init(&new_task->ch_buf, 128, kb_buf_fifo32, new_task);
-
-	/* duplicate the process table */
-	copyTSS(&(new_task->tss),tss);
-	debug("do_fork_elf1");
+	fifo32_init(&(dst->ch_buf), 128, kb_buf_fifo32, dst);
+	
+    /* 初始化新进程的内核栈 */
+	dst->cons_stack = memman_alloc_4k(memman, 64 * 1024);
+	dst->tss.esp0 = dst->cons_stack + 64 * 1024 - 12;
+	//*((int *) (dst->tss.esp0 + 4)) = (int) src->cons->sht;  /* 设置 */
+	//*((int *) (dst->tss.esp0 + 8)) = 32 * 1024 * 1024;
+	
+	/* 初始化新进程的中断等产生的信息队列 */
 	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
-	new_task->cons_stack = memman_alloc_4k(memman, 64 * 1024);
-	new_task->tss.esp0 = new_task->cons_stack + 64 * 1024 - 12;
+	fifo32_init(&(dst->fifo), 128, cons_fifo, dst);
+}
 
-	//debug("new_task->tss.esp0 + 4 = %d", (int)(new_task->tss.esp0) + 4);
-	*((int *) (new_task->tss.esp0 + 4)) = (int) task_parent->cons->sht;
-	*((int *) (new_task->tss.esp0 + 8)) = 32 * 1024 * 1024;
-	fifo32_init(&new_task->fifo, 128, cons_fifo, new_task);
-	debug("do_fork_elf2");
-	new_task->level = task_parent->level;
-	new_task->priority = task_parent->priority;
-	new_task->fhandle = task_parent->fhandle;
-	new_task->fat = task_parent->fat;
-	//使用和task_parnent同一个控制台
-	new_task->cons = task_parent->cons;
-
+static void copy_mem(struct TASK *dst)
+{
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	struct TASK *src = current;
+	
 	/* duplicate the process: T, D & S */
-	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task_parent->ldt;
-	debug("do_fork_elf3");
+	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)src->ldt;
+
 	/* Text segment */
 	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
 	debug("codelimit = %d", codeLimit);
@@ -173,29 +112,15 @@ PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
 	if(code_seg == 0){
 		panic("no memory");
 	}
-	debug("text size = %d, src = %d, dest = %d",codeLimit, codeBase, (int)code_seg);
-	set_segmdesc(new_task->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
+	debug("text size = %d, src = %d, dest = %d", codeLimit, codeBase, (int)code_seg);
+	set_segmdesc(dst->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
 	phys_copy((void *)code_seg,(void *)codeBase, codeLimit);
-	new_task->cs_base = (int)code_seg;
+	dst->cs_base = (int)code_seg;
 	
 	/* Data segment */
-	set_segmdesc(new_task->ldt + 1, codeLimit - 1, (int) code_seg, AR_DATA32_RW + 0x60);
-	new_task->ds_base = (int)code_seg;
-	
-	struct file **filp_parent = task_parent->filp, **filp_new = new_task->filp;
-	int i;
-	for (i = 0; i < NR_FILES; i++) {
-		filp_new[i] = filp_parent[i];
-		if (filp_new[i]) {
-			filp_new[i]->f_count++;
-			filp_new[i]->f_inode->i_count++;
-		}
-	}
-	return new_task;
+	set_segmdesc(dst->ldt + 1, codeLimit - 1, (int) code_seg, AR_DATA32_RW + 0x60);
+	dst->ds_base = (int)code_seg;
 }
-
-static void copy_task(struct TASK *dst, struct TASK *src);
-static void copy_mem(struct TASK *dst, struct TASK *src);
 
 
 /*****************************************************************************
@@ -274,10 +199,12 @@ PUBLIC void do_exit(struct TASK *p, int status)
 	}
  
 	struct TASK  *parent_task = get_task(p->parent_pid);
+	//debug("parent task[%d]",parent_task->pid);
 	if (parent_task->flags == TASK_STATUS_WAITING) { /* parent is waiting */
 		debug("process[%d] will go to UNUSED status!", p->pid);
 		//父进程可以进入运行状态
 		parent_task->wait_return_task = p;
+		debug("wake up parent task[%d]",parent_task->pid);
 		task_add(parent_task);
 		/* 释放该进程的内存 */
 		free_mem(p);
@@ -291,9 +218,6 @@ PUBLIC void do_exit(struct TASK *p, int status)
 		task_exit(p, TASK_STATUS_HANGING);
 	}
 }
-
-
-
 
 /*****************************************************************************
  *                                do_wait
@@ -343,6 +267,7 @@ PUBLIC int do_wait(struct TASK *task, int *status)
 		
 		struct TASK *wait_return_task = task->wait_return_task;
 		*status = wait_return_task->exit_status;
+
 		debug("wait_return_task->exit_status = %d",wait_return_task->exit_status);
 		return wait_return_task->pid;
 	}
@@ -383,4 +308,9 @@ PRIVATE void free_mem(struct TASK *task)
 	/* TODO: CONSOLE */
 }
 
+/**********************************************************************************************/
 
+PUBLIC struct TASK* do_fork( struct TSS32 *tss)
+{
+	panic("don't support");
+}

@@ -1,6 +1,6 @@
 #include "bootpack.h"
 #define LOG_BUF_COUNT 50
-#define LOG_ENTRY_SIZE 512
+
 
 void 
 init_logmgr(struct LogBufferMgr *log_mgr)

@@ -137,7 +137,6 @@ PUBLIC void string_memory(u8 *mem, int size, char *buf){
 	for(i = 0; i < size; i++){
 		sprintf(buf+strlen(buf),"%2.2x ",(u8)mem[i]);
 	}
-	
 }
 
 

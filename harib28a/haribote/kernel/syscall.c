@@ -87,7 +87,7 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 		tss.gs = gs;
 		debug("eip = %d", eip);
 		debug("ss = %d, ds = %d, cs = %d", user_ss, ds, cs);
-		struct TASK * new_task = do_fork_elf(task, &tss);
+		struct TASK * new_task = do_fork_elf(&tss);
 		debug("has create child process[%d]",new_task->pid);
 		reg[7] = new_task->pid;
 		task_add(new_task);
@@ -196,7 +196,7 @@ int *linux_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, in
 		tss.gs = gs;
 		debug("eip = %d", eip);
 		debug("ss = %d, ds = %d, cs = %d", user_ss, ds, cs);
-		struct TASK * new_task = do_fork_elf(task, &tss);
+		struct TASK * new_task = do_fork_elf(&tss);
 		debug("has create child process[%d]",new_task->pid);
 		reg[7] = new_task->pid;
 		task_add(new_task);
@@ -573,7 +573,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		tss.gs = gs;
 		debug("eip = %d", eip);
 		debug("ss = %d, ds = %d, cs = %d", user_ss, ds, cs);
-		struct TASK * new_task = do_fork(task, &tss);
+		struct TASK * new_task = do_fork(&tss);
 		debug("has create child process[%d]",new_task->pid);
 		reg[7] = new_task->pid;
 		task_add(new_task);

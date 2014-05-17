@@ -31,7 +31,11 @@ void task_add(struct TASK *task)
 
 struct TASK * get_task(int pid)
 {
-	return &taskctl->tasks0[pid];
+	int i;
+	for(i=0 ; i<MAX_TASKS ; i++)
+		if (taskctl->tasks0[i].flags != 0 && taskctl->tasks0[i].pid ==pid) 
+			return &taskctl->tasks0[i];
+	return NULL;
 }
 
 void task_remove(struct TASK *task, enum TASK_STATUS task_status)
@@ -88,6 +92,20 @@ void task_idle(void)
 	}
 }
 
+////检查当前pid是否被使用
+//返回：当前进程号正在被使用时返回1，否则返回0
+int 
+check_pid(int pid)
+{
+	int i;
+	for(i=0 ; i<MAX_TASKS ; i++)
+		if (taskctl->tasks0[i].flags != 0 && taskctl->tasks0[i].pid ==pid) 
+			return 1;
+	return 0;
+}
+
+////初始化进程管理器
+//返回：内核进程task_a
 struct TASK *task_init(struct MEMMAN *memman)
 {
 	int i,j;
@@ -97,12 +115,12 @@ struct TASK *task_init(struct MEMMAN *memman)
 	taskctl = (struct TASKCTL *) memman_alloc_4k(memman, sizeof (struct TASKCTL));
 	//事先将全部的TASK结构的TSS和LDT、文件描述符都设置好
 	for (i = 0; i < MAX_TASKS; i++) {
-		taskctl->tasks0[i].pid = i;
+		taskctl->tasks0[i].pid = -1;
 		taskctl->tasks0[i].forked = 0;
 		strcpy(taskctl->tasks0[i].name,"anony");
 		taskctl->tasks0[i].flags = 0; //标志未使用
 		taskctl->tasks0[i].sel = (TASK_GDT0 + i) * 8; //设置TSS的seletor, 当进行任务切换的时候，是跳转到这个段上的。
-		taskctl->tasks0[i].tss.ldtr = (TASK_GDT0 + MAX_TASKS + i) * 8; 
+		taskctl->tasks0[i].tss.ldtr = (TASK_GDT0 + MAX_TASKS + i) * 8; //任务号
 		set_segmdesc(gdt + TASK_GDT0 + i, 103, (int) &taskctl->tasks0[i].tss, AR_TSS32);  //TSS段 
 		set_segmdesc(gdt + TASK_GDT0 + MAX_TASKS + i, 15, (int) taskctl->tasks0[i].ldt, AR_LDT); //LDT段
 		//设置任务的文件描述符
@@ -110,6 +128,7 @@ struct TASK *task_init(struct MEMMAN *memman)
 			taskctl->tasks0[i].filp[j] = 0;
 		}
 		
+		/* TODO: 初始化进程的键盘输入缓冲，这里的内存可能没有被释放*/
 		int bufCount = 100;
 		int *fifobuf = (int *)memman_alloc(memman,sizeof(int)*bufCount);
 		taskctl->tasks0[i].ch_buf.task = &taskctl->tasks0[i];
@@ -150,13 +169,27 @@ struct TASK *task_init(struct MEMMAN *memman)
 	return task;
 }
 
+static int  get_new_pid()
+{
+	static int last_pid = 0;
+	int i;
+repeat:
+	if ((++last_pid)<0) last_pid=1;
+	for(i=0 ; i<MAX_TASKS ; i++)
+		if (taskctl->tasks0[i].flags != 0 && taskctl->tasks0[i].pid == last_pid) 
+			goto repeat;
+	return last_pid;
+}
+
 struct TASK *task_alloc(void)
 {
 	int i;
-	struct TASK *task;
+	struct TASK *task = NULL;
 	for (i = 0; i < MAX_TASKS; i++) {
 		if (taskctl->tasks0[i].flags == 0) {
 			task = &taskctl->tasks0[i];
+			task->pid = get_new_pid();
+			debug("alloc pid = %d",task->pid);
 			task->flags = 1; /* 正在使用的标志 */
 			task->tss.eflags = 0x00000202; /* IF = 1; */
 			task->tss.eax = 0; /* 这里先设置为0 */
@@ -180,7 +213,10 @@ struct TASK *task_alloc(void)
 			task->root = get_root_inode();
 			
 			task->readKeyboard = 0;
+			
+			/* 打开标准文件：STDIN, STDOUT, STDERR */
 			open_std_files(task);
+			
 			return task;
 		}
 	}

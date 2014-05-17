@@ -345,7 +345,6 @@ void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
 void make_wtitle8(unsigned char *buf, int xsize, char *title, char act);
 void change_wtitle8(struct SHEET *sht, char act);
 
-
 /* console.c */
 struct CONSOLE {
 	struct SHEET *sht;
@@ -424,8 +423,8 @@ int do_exec(char *name, char *argv[], int *fat, int *reg_push_by_interrupt);
 
 /* forkexit.c */
 void do_exit(struct TASK *p, int status);
-struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss);
-struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss);
+struct TASK* do_fork_elf(struct TSS32 *tss);
+struct TASK* do_fork(struct TSS32 *tss);
 int do_wait(struct TASK *task, int *status);
 
 /* apploader.c */
@@ -575,7 +574,7 @@ typedef int (*fn_ptr)();
 
 /****** log buffer manager ***/
 
-
+#define LOG_ENTRY_SIZE 512
 /* logBufferMgr维护一个log buffer的池，每当debug需要记日志时，需要从这里获取到一个缓冲，然后放到log输出的一个队列中
  * log_console任务会从这个队列中获取log缓冲的地址，显示完成之后，再把缓冲返回到池中 */
 struct LogBufferMgr{

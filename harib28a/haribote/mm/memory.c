@@ -197,7 +197,7 @@ mem_init()
 		page_bit_map[i] = 0;
 	}
 	prepare_page_dir_and_page_table();
-	open_page();
+	//open_page();
 }
 
 
