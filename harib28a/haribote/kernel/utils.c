@@ -5,6 +5,9 @@
 
 extern struct SHEET  *log_win;
 extern struct FIFO32 *log_fifo_buffer;
+
+extern int log_ready;
+extern struct LogBufferMgr *log_buf_mgr;
 /* bmp.nasm */
 struct DLL_STRPICENV {	/* 64KB */
 	int work[64 * 1024 / 4];
@@ -21,6 +24,8 @@ int decode0_BMP(struct DLL_STRPICENV *env, int size, char *fp, int b_type, char 
 int info_JPEG(struct DLL_STRPICENV *env, int *info, int size, char *fp);
 int decode0_JPEG(struct DLL_STRPICENV *env, int size, char *fp, int b_type, char *buf, int skip);
 PRIVATE unsigned char rgb2pal(int r, int g, int b, int x, int y);
+
+
 
 PUBLIC void panic(const char *fmt, ...)
 {
@@ -58,44 +63,65 @@ PUBLIC void printTSSInfo(struct TSS32 *src)
 
 //是否是异步log
 int is_async_log = 1;
-void debug(const char *fmt, ...){
-	static int invoke_level = 0;
-	invoke_level++;
+
+////输出到控制台窗口的调试日志
+void debug(const char *fmt, ...)
+{
+	if(!log_ready)
+		return;
 	
-	//if(invoke_level > 1){
-	//	panic("debug nested call happen");
-	//}
-	int i;
-	char buf[1024];
+	//return;
+	static int invoke = 0; /* 为了检测debug是否已经被嵌套调用了 */
+	invoke++;
+	
+	/* 申请日志的缓冲 */
+	cli();
+	char * buf=get_log_buf(log_buf_mgr);
+	sti();
+	if(buf == NULL){
+		print_on_screen3("no log buf");
+		invoke--;
+		return;
+	}
 	
 	va_list arg = (va_list)((char *)(&fmt) + 4);
+	int len = vsprintf(buf,fmt,arg);
+	buf[len++] = '\n';
+	buf[len++] = 0;
 	
-	i = vsprintf(buf,fmt,arg);
+	if(strlen(buf) + 2 > LOG_ENTRY_SIZE){
+		panic("log is too log: %s", buf);
+	}
 	
-	char buf2[1025];
-	sprintf(buf2,"%s\n",buf);
+	if(invoke > 10){
+		panic("debug may invoke recursively: %s",buf);
+	}
 	
-	if(log_win != 0){
-		if(is_async_log && log_fifo_buffer != 0){
+	if(is_async_log){
+		if(log_win != 0){
 			io_cli();
-			//print_on_screen("is_async_log");
-			for(i=0; i<300; i++){
-				if(buf2[i]){
-					//char msg[100];
-					//sprintf(msg,"utls: add log process[%d,%s]",log_fifo_buffer->task->pid,log_fifo_buffer->task->name);
-					//print_on_screen(msg);
-					fifo32_put(log_fifo_buffer,buf2[i]);
-				}else{
-					break;
-				}
+			//print_on_screen3("utls: add log process[%d,%s]",log_fifo_buffer->task->pid,log_fifo_buffer->task->name);
+			int retval = fifo32_put(log_fifo_buffer,(int)buf);
+			if(retval == -1){  /* fifo已满 */
+				//释放日志缓冲
+				put_log_buf(log_buf_mgr,buf);
 			}
 			io_sti();
 		}else{
-			cons_putstr0(log_win->task->cons,buf2);
+			/* 释放日志缓冲 */
+			io_cli();
+			put_log_buf(log_buf_mgr,buf);
+			io_sti();
 		}
+	}else{
+		cons_putstr0(log_win->task->cons,buf);
+		/* 释放日志缓冲 */
+		io_cli();
+		put_log_buf(log_buf_mgr,buf);
+		io_sti();
 	}
-	
-	invoke_level--;
+
+	invoke--;
 	return;
 }
 

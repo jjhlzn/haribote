@@ -1,4 +1,4 @@
-OBJS_BOOTPACK = kernel/bootpack.obj kernel/naskfunc.obj kernel/hankaku.obj kernel/dsctbl.obj kernel/int.obj kernel/fifo.obj \
+OBJS_BOOTPACK = kernel/bootpack.obj kernel/naskfunc.obj kernel/hankaku.obj kernel/dsctbl.obj kernel/int.obj kernel/fifo.obj kernel/logbufmgr.obj \
 				kernel/keyboard.obj kernel/mouse.obj kernel/mtask.obj kernel/console.obj kernel/file.obj kernel/tek.obj kernel/utils.obj kernel/syscall.obj \
 				kernel/bmp.obj kernel/jpeg.obj kernel/blk_drv/hd.obj kernel/blk_drv/ll_rw_blk.obj kernel/exec.obj kernel/linkedlist.obj kernel/timer.obj kernel/forkexit.obj kernel/apploader.obj \
 				window/graphic.obj  window/window.obj window/sheet.obj \

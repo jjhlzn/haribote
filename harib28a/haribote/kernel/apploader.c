@@ -166,6 +166,120 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	task->langbyte1 = 0;
 }
 
+
+
+ void load_elf(char *p, struct Node *list)
+{
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	struct TASK *task = task_now();
+	int esp;
+	
+	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
+	//debug_Elf32_Ehd(elf_hdr);
+	
+	int i;
+	
+	//加载字符串表
+	Elf32_Shdr* str_section = (Elf32_Shdr*)(p + elf_hdr->e_shoff + elf_hdr->e_shstrndx * elf_hdr->e_shentsize);
+	char *str_contents = (char *)(p + str_section->sh_offset);
+	
+	for (i = 0; i<elf_hdr->e_shnum; i++) {
+		Elf32_Shdr *elf_shdr = (Elf32_Shdr*)(p + elf_hdr->e_shoff + i * elf_hdr->e_shentsize);
+		char *sh_name = str_contents+elf_shdr->sh_name;
+		if(strlen(sh_name) == 0)
+			continue;
+		//debug("name = %s",sh_name);
+	}
+	
+	int data_limit = 1024 * 512;
+	u8 *cod_seg =  (u8 *)memman_alloc_4k(memman, data_limit); //TODO: 代码固定尺寸
+	task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
+	task->cs_base = (int) cod_seg;
+	
+	set_segmdesc(task->ldt + 0, data_limit - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
+	set_segmdesc(task->ldt + 1, data_limit - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
+	//加载数据段、代码段
+	//debug("elf_hdr->e_phnum = %d",elf_hdr->e_phnum);
+	for (i=0; i<elf_hdr->e_phnum; i++){
+		Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
+		//debug("p_type = %d",elf_phdr->p_type);
+		if(elf_phdr->p_type == PT_LOAD){
+			//debug("see PT_LOAD section");
+			//debug_Elf32_Phdr(elf_phdr);
+			//char msg[1024];
+			//int j=0;
+			//for(j=0; j<1024; j++)
+			//	msg[j] = 0;
+			//string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
+			//debug(msg);
+			//debug("\n");
+			if( (u32)elf_phdr->p_vaddr > 32 * 1024 * 1024){
+				debug("WARN: virtual addr > 32MB, ignore the section");
+			}else{
+				phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
+			}
+			
+			//sprintf(msg,"");
+			//string_memory(cod_seg +(int)elf_phdr->p_vaddr,elf_phdr->p_filesz,msg);
+			//debug(msg);
+		}
+	}
+	
+	int argc = GetSize(list);
+	esp = prepare_args(cod_seg, data_limit, list);
+	
+	start_app_elf((int)elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
+}
+
+//PRIVATE void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr)
+//{
+//	debug("-------------------Elf32 header-------------------");
+//	debug("e_ident = %s", elf_hdr->e_ident);
+//	debug("e_type = %d",elf_hdr->e_type);
+//	debug("e_machine = %d",elf_hdr->e_machine);
+//	debug("e_version = %d",elf_hdr->e_version);
+//	debug("e_entry = %d",elf_hdr->e_entry);
+//	debug("e_phoff = %d",elf_hdr->e_phoff);
+//	debug("e_shoff = %d",elf_hdr->e_shoff);
+//	debug("e_flags = %d",elf_hdr->e_flags);
+//	debug("e_ehsize = %d",elf_hdr->e_ehsize);
+//	debug("e_phentsize = %d",elf_hdr->e_phentsize);
+//	debug("e_phnum = %d",elf_hdr->e_phnum);
+//	debug("e_shentsize = %d",elf_hdr->e_shentsize);
+//	debug("e_shnum = %d",elf_hdr->e_shnum);
+//	debug("e_shstrndx = %d",elf_hdr->e_shstrndx);
+//	debug("--------------------------------------------------");
+//}
+//PRIVATE void debug_Elf32_Phdr(Elf32_Phdr *phdr)
+//{
+//	debug("-----------------Program header-------------------");
+//	debug("p_type = %d", phdr->p_type);
+//	debug("p_offset = %d", phdr->p_offset);
+//	debug("p_vaddr = %d", phdr->p_vaddr);
+//	debug("p_paddr = %d", phdr->p_paddr);
+//	debug("p_filesz = %d", phdr->p_filesz);
+//	debug("p_memsz = %d", phdr->p_memsz);
+//	debug("p_flags = %d", phdr->p_flags);
+//	debug("p_align = %d", phdr->p_align);
+//	debug("--------------------------------------------------");
+//}
+
+//PRIVATE void debug_Elf32_Shdr(Elf32_Shdr *phdr)
+//{
+//	debug("-----------------Section header-------------------");
+//	debug("sh_name = %s", phdr->sh_name);
+//	debug("sh_type = %d", phdr->sh_type);
+//	debug("sh_flags = %d", phdr->sh_flags);
+//	debug("sh_addr = %d", phdr->sh_addr);
+//	debug("sh_offset = %d", phdr->sh_offset);
+//	debug("sh_size = %d", phdr->sh_size);
+//	debug("sh_link = %d", phdr->sh_link);
+//	debug("sh_info = %d", phdr->sh_info);
+//	debug("sh_addralign = %d", phdr->sh_addralign);
+//	debug("sh_entsize = %d", phdr->sh_entsize);
+//	debug("--------------------------------------------------");
+//}
+
 int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
@@ -264,122 +378,6 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 	
 	return esp;
 }
-
- void load_elf(char *p, struct Node *list)
-{
-	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-	struct TASK *task = task_now();
-	int esp;
-	
-	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
-	//debug_Elf32_Ehd(elf_hdr);
-	
-	int i;
-	
-	//加载字符串表
-	Elf32_Shdr* str_section = (Elf32_Shdr*)(p + elf_hdr->e_shoff + elf_hdr->e_shstrndx * elf_hdr->e_shentsize);
-	char *str_contents = (char *)(p + str_section->sh_offset);
-	
-	for (i = 0; i<elf_hdr->e_shnum; i++) {
-		Elf32_Shdr *elf_shdr = (Elf32_Shdr*)(p + elf_hdr->e_shoff + i * elf_hdr->e_shentsize);
-		char *sh_name = str_contents+elf_shdr->sh_name;
-		if(strlen(sh_name) == 0)
-			continue;
-		//debug("name = %s",sh_name);
-	}
-	
-	int data_limit = 1024 * 512;
-	u8 *cod_seg =  (u8 *)memman_alloc_4k(memman, data_limit); //TODO: 代码固定尺寸
-	task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
-	task->cs_base = (int) cod_seg;
-	
-	//for(i=0; i<200; i++)
-	//	msg[i] = 0;
-	//string_memory(cod_seg+esp, 20, msg);
-	//debug(msg);
-	
-	set_segmdesc(task->ldt + 0, data_limit - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
-	set_segmdesc(task->ldt + 1, data_limit - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
-	//加载数据段、代码段
-	//debug("elf_hdr->e_phnum = %d",elf_hdr->e_phnum);
-	for (i=0; i<elf_hdr->e_phnum; i++){
-		Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
-		//debug("p_type = %d",elf_phdr->p_type);
-		if(elf_phdr->p_type == PT_LOAD){
-			
-			
-			//debug("see PT_LOAD section");
-			//debug_Elf32_Phdr(elf_phdr);
-			//char msg[1024];
-			//int j=0;
-			//for(j=0; j<1024; j++)
-			//	msg[j] = 0;
-			//string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
-			//debug(msg);
-			//debug("\n");
-			
-			phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
-			
-			//sprintf(msg,"");
-			//string_memory(cod_seg +(int)elf_phdr->p_vaddr,elf_phdr->p_filesz,msg);
-			//debug(msg);
-		}
-	}
-	
-	int argc = GetSize(list);
-	esp = prepare_args(cod_seg, data_limit, list);
-	
-	start_app_elf((int)elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
-}
-
-//PRIVATE void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr)
-//{
-//	debug("-------------------Elf32 header-------------------");
-//	debug("e_ident = %s", elf_hdr->e_ident);
-//	debug("e_type = %d",elf_hdr->e_type);
-//	debug("e_machine = %d",elf_hdr->e_machine);
-//	debug("e_version = %d",elf_hdr->e_version);
-//	debug("e_entry = %d",elf_hdr->e_entry);
-//	debug("e_phoff = %d",elf_hdr->e_phoff);
-//	debug("e_shoff = %d",elf_hdr->e_shoff);
-//	debug("e_flags = %d",elf_hdr->e_flags);
-//	debug("e_ehsize = %d",elf_hdr->e_ehsize);
-//	debug("e_phentsize = %d",elf_hdr->e_phentsize);
-//	debug("e_phnum = %d",elf_hdr->e_phnum);
-//	debug("e_shentsize = %d",elf_hdr->e_shentsize);
-//	debug("e_shnum = %d",elf_hdr->e_shnum);
-//	debug("e_shstrndx = %d",elf_hdr->e_shstrndx);
-//	debug("--------------------------------------------------");
-//}
-//PRIVATE void debug_Elf32_Phdr(Elf32_Phdr *phdr)
-//{
-//	debug("-----------------Program header-------------------");
-//	debug("p_type = %d", phdr->p_type);
-//	debug("p_offset = %d", phdr->p_offset);
-//	debug("p_vaddr = %d", phdr->p_vaddr);
-//	debug("p_paddr = %d", phdr->p_paddr);
-//	debug("p_filesz = %d", phdr->p_filesz);
-//	debug("p_memsz = %d", phdr->p_memsz);
-//	debug("p_flags = %d", phdr->p_flags);
-//	debug("p_align = %d", phdr->p_align);
-//	debug("--------------------------------------------------");
-//}
-
-//PRIVATE void debug_Elf32_Shdr(Elf32_Shdr *phdr)
-//{
-//	debug("-----------------Section header-------------------");
-//	debug("sh_name = %s", phdr->sh_name);
-//	debug("sh_type = %d", phdr->sh_type);
-//	debug("sh_flags = %d", phdr->sh_flags);
-//	debug("sh_addr = %d", phdr->sh_addr);
-//	debug("sh_offset = %d", phdr->sh_offset);
-//	debug("sh_size = %d", phdr->sh_size);
-//	debug("sh_link = %d", phdr->sh_link);
-//	debug("sh_info = %d", phdr->sh_info);
-//	debug("sh_addralign = %d", phdr->sh_addralign);
-//	debug("sh_entsize = %d", phdr->sh_entsize);
-//	debug("--------------------------------------------------");
-//}
 
 PRIVATE char *get_next_arg(char *cmdline, int *skip)
 {

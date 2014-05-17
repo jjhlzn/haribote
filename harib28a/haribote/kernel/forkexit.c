@@ -132,9 +132,8 @@ PUBLIC struct TASK* do_fork(struct TASK *task_parent, struct TSS32 *tss)
 
 PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
 {
+	debug("do_fork_elf");
 	/* find a free slot in proc_table */
-	//创建一个新任务
-	//debug("do_fork");
 	struct TASK *new_task = task_alloc();
 	
 	if (new_task == 0) {/* no free slot */
@@ -152,7 +151,7 @@ PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
 
 	/* duplicate the process table */
 	copyTSS(&(new_task->tss),tss);
-
+	debug("do_fork_elf1");
 	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
 	new_task->cons_stack = memman_alloc_4k(memman, 64 * 1024);
 	new_task->tss.esp0 = new_task->cons_stack + 64 * 1024 - 12;
@@ -161,7 +160,7 @@ PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
 	*((int *) (new_task->tss.esp0 + 4)) = (int) task_parent->cons->sht;
 	*((int *) (new_task->tss.esp0 + 8)) = 32 * 1024 * 1024;
 	fifo32_init(&new_task->fifo, 128, cons_fifo, new_task);
-	
+	debug("do_fork_elf2");
 	new_task->level = task_parent->level;
 	new_task->priority = task_parent->priority;
 	new_task->fhandle = task_parent->fhandle;
@@ -171,12 +170,15 @@ PUBLIC struct TASK* do_fork_elf(struct TASK *task_parent, struct TSS32 *tss)
 
 	/* duplicate the process: T, D & S */
 	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task_parent->ldt;
-
-	
+	debug("do_fork_elf3");
 	/* Text segment */
 	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
+	debug("codelimit = %d", codeLimit);
 	u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
-	//debug("text size = %d, src = %d, dest = %d",codeLimit, codeBase, (int)code_seg);
+	if(code_seg == 0){
+		panic("no memory");
+	}
+	debug("text size = %d, src = %d, dest = %d",codeLimit, codeBase, (int)code_seg);
 	set_segmdesc(new_task->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
 	phys_copy((void *)code_seg,(void *)codeBase, codeLimit);
 	new_task->cs_base = (int)code_seg;

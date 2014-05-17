@@ -570,4 +570,26 @@ void hd_init(void);
 
 void print_hdinfo(char * str);
 typedef int (*fn_ptr)();
+
+
+
+/****** log buffer manager ***/
+
+
+/* logBufferMgr维护一个log buffer的池，每当debug需要记日志时，需要从这里获取到一个缓冲，然后放到log输出的一个队列中
+ * log_console任务会从这个队列中获取log缓冲的地址，显示完成之后，再把缓冲返回到池中 */
+struct LogBufferMgr{
+	/* 总的缓冲个数 */
+	int buf_count;
+	/* 空闲缓冲个数 */
+	int frees;
+	/* 空闲缓冲块头 */
+	int nr_free_buf;
+	/* buf是一块连续的内存，每块日志的内存地址就是buf + i*/
+	char *buf;
+};
+
+void init_logmgr(struct LogBufferMgr *log_mgr);
+char * get_log_buf(struct LogBufferMgr *log_mgr);
+void put_log_buf(struct LogBufferMgr *log_mgr, char *buf);
 #endif

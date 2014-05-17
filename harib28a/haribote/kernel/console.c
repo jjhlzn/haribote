@@ -34,6 +34,11 @@ extern struct SHTCTL *SHEET_CTRL;
 
 static struct CONSOLE *cons_debug;
 static int lineNo = 1;
+
+char *log_buf;
+int log_ready = 0;
+struct LogBufferMgr *log_buf_mgr = NULL;
+
 void log_task(struct SHEET *sheet, int memtotal)
 {
 	struct TASK *task = task_now();
@@ -74,23 +79,31 @@ void log_task(struct SHEET *sheet, int memtotal)
 	
 	//初始化log缓冲区
 	int char_count = 4096;
-	int *log_buffer = (int *)memman_alloc_4k(memman,4 * char_count);
-	fifo32_init(log_fifo_buffer,char_count,log_buffer, task);
-
+	int *log_fifo_buf = (int *)memman_alloc_4k(memman,4 * char_count);
+	fifo32_init(log_fifo_buffer,char_count,log_fifo_buf, task);
+	struct LogBufferMgr logBufMgr;
+	init_logmgr(&logBufMgr);
+	log_buf_mgr = &logBufMgr;
+	
+	/* 日志准备好 */
+	log_ready = 1;
 	for (;;) {
-		//print_on_screen("log");
 		io_cli();
-		
 		if (fifo32_status(log_fifo_buffer) == 0) {
 			//print_on_screen("go to sleep");
 			task_sleep(task);
 			io_sti();
 		} else{
-			char ch;
-			ch = (char)fifo32_get(log_fifo_buffer);
+			//char ch;
+			char *buf = (char *)fifo32_get(log_fifo_buffer);
 			io_sti();
+
+			cons_putstr0(&cons,buf);
 			
-			cons_putchar(&cons, ch, 1);
+			/* 释放日志缓冲 */
+			io_cli();
+			put_log_buf(log_buf_mgr,buf);
+			io_sti();
 		}
 	}
 }
@@ -142,6 +155,8 @@ void console_task(struct SHEET *sheet, int memtotal)
 	console_loop(task,memtotal,last_cmdline);
 }
 
+
+////初始化控制台的显示缓冲
 static void init_cons_buf(struct CONSOLE *cons)
 {	
 	struct SHEET *sht_buf = sheet_alloc(SHEET_CTRL);
@@ -233,7 +248,7 @@ static void console_loop(struct TASK *task, int memtotal, char *last_cmdline)
 				}
 			}
 			if ( i >= 0x80000000 ){
-				debug("i = %x", i);
+				//debug("i = %x", i);
 			}
 			
 			/* 僇乕僜儖嵞昞帵 */

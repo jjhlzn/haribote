@@ -25,6 +25,8 @@ extern int ROOT_DEV;
 void cons_key_up(struct CONSOLE *cons);
 void cons_key_down(struct CONSOLE *cons);
 
+extern int log_ready;
+
 void HariMain(void)
 {
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
@@ -174,6 +176,7 @@ void HariMain(void)
 	}
 	*((int *) 0x0fe8) = (int) nihongo;
 	memman_free_4k(memman, (int) fat, 4 * 2880);
+	
 	
 
 	for (;;) {

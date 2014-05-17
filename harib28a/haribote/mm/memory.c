@@ -161,6 +161,7 @@ memman_alloc_4k(struct MEMMAN *man, unsigned int size)
 {
 	unsigned int a;
 	size = (size + 0xfff) & 0xfffff000;
+	//print_on_screen3("memman_alloc_4k: size = %d",size);
 	a = memman_alloc(man, size);
 	return a;
 }
@@ -213,8 +214,7 @@ static void prepare_page_dir_and_page_table()
 		page_dir_base_addr[i] = 0;
 	}
 	
-	
-	unsigned int kernel_pages = 0x00e00000 / 0x1000;
+	unsigned int kernel_pages = 0x01000000 / 0x1000;
 	//unsigned int kernel_pages = 0xFFe00000 / 0x1000;
 	end_addr_mapped = kernel_pages * 4 * 1024 -1;
 	map_kernel(0x00000000, kernel_pages);  //映射内核空间
@@ -313,7 +313,7 @@ static void map_user(unsigned int addr_start)
 /*  处理Page Fault */
 void do_no_page(unsigned long error_code, unsigned long address) 
 {
-     debug("-----do_no_page----: error_code = %d, address = %d",error_code, address);
+     //debug("-do_no_page-: errcode = %d, addr = %d(0x%08.8x)",error_code, address,address);
 	//unsigned int laddr = address & 0xFFC00000;
 	//map_kernel(laddr, 1024);
 	map_user(address);
