@@ -91,6 +91,11 @@ void HariMain(void)
 	/* 初始化键盘,中断号1 */
 	init_keyboard(&fifo, 256); 
 	
+	/* 控制键盘灯信号的队列初始化 */
+	fifo32_init(&keycmd, 32, keycmd_buf, 0);
+	fifo32_put(&keycmd, KEYCMD_LED);
+	fifo32_put(&keycmd, key_leds);
+	
 	/* 初始化鼠标，中断号12 */
 	enable_mouse(&fifo, 512, &mdec);
 	
@@ -98,8 +103,6 @@ void HariMain(void)
 	io_out8(PIC0_IMR, 0xf8); /* 开始以下中断：系统定时器、键盘、可编程中断控制器2 (11111000) */
 	io_out8(PIC1_IMR, 0xaf); /* 开始以下中断：硬盘、鼠标 (10101111) */ 
 	
-	fifo32_init(&keycmd, 32, keycmd_buf, 0);
-
 	/* 初始化硬盘和高速缓冲区: TODO: 如果将初始化硬盘和文件系统移到下面去，会出现异常 */
 	ROOT_DEV = 0x301;
 	blk_dev_init();
@@ -148,10 +151,6 @@ void HariMain(void)
 	sheet_updown(sht_mouse, 3);
 	keywin_on(key_win);
 
-	/* 嵟弶偵僉乕儃乕僪忬懺偲偺怘偄堘偄偑側偄傛偆偵丄愝掕偟偰偍偔偙偲偵偡傞 */
-	fifo32_put(&keycmd, KEYCMD_LED);
-	fifo32_put(&keycmd, key_leds);
-
 	/* nihongo.fnt偺撉傒崬傒 */
 	fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 	file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
@@ -159,7 +158,6 @@ void HariMain(void)
 	/*  加载壁纸 */
 	//load_background_pic(buf_back, fat);
 	//sheet_slide(sht_back,  0,  0); //刷新壁纸
-	
 	
 	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {
@@ -179,8 +177,8 @@ void HariMain(void)
 	
 
 	for (;;) {
+		/* 控制键盘灯 */
 		if (fifo32_status(&keycmd) > 0 && keycmd_wait < 0) {
-			/* 僉乕儃乕僪僐儞僩儘乕儔偵憲傞僨乕僞偑偁傟偽丄憲傞 */
 			keycmd_wait = fifo32_get(&keycmd);
 			wait_KBC_sendready();
 			io_out8(PORT_KEYDAT, keycmd_wait);
@@ -203,8 +201,8 @@ void HariMain(void)
 		} else {
 			i = fifo32_get(&fifo);
 			io_sti();
-			if (key_win != 0 && key_win->flags == 0) {	/* 僂傿儞僪僂偑暵偠傜傟偨 */
-				if (shtctl->top == 1) {	/* 傕偆儅僂僗偲攚宨偟偐側偄 */
+			if (key_win != 0 && key_win->flags == 0) {	/* 当前有活动的窗口 */
+				if (shtctl->top == 1) {	/* 此时，只有背景和鼠标两层 */
 					key_win = 0;
 				} else {
 					key_win = shtctl->sheets[shtctl->top - 1];
@@ -221,7 +219,6 @@ void HariMain(void)
 				} else {
 					s[0] = 0;
 				} 
-				//debug("%d",i-256);
 				if ('A' <= s[0] && s[0] <= 'Z') {	/* 根据shift键和caps键, 进行小写转换(默认是大写的) */
 					if (((key_leds & 4) == 0 && key_shift == 0) ||
 							((key_leds & 4) != 0 && key_shift != 0)) {
@@ -304,7 +301,7 @@ void HariMain(void)
 						task->tss.eax = (int) &(task->tss.esp0);
 						task->tss.eip = (int) asm_end_app;
 						io_sti();
-						task_run(task, -1, 0);	/* 廔椆張棟傪妋幚偵傗傜偣傞偨傔偵丄怮偰偄偨傜婲偙偡 */
+						task_run(task, -1, 0);	
 					}
 				}
 				if (i == 256 + 0x3c && key_shift != 0) {	/* Shift+F2 */
@@ -320,7 +317,7 @@ void HariMain(void)
 				if (i == 256 + 0x57) {	/* F11 */
 					sheet_updown(shtctl->sheets[1], shtctl->top - 1);
 				}
-				if (i == 256 + 0xfa) {	/* 僉乕儃乕僪偑僨乕僞傪柍帠偵庴偗庢偭偨 */
+				if (i == 256 + 0xfa) {	/* 键盘ACK */
 					keycmd_wait = -1;
 				}
 				if (i == 256 + 0xfe) {	/* 僉乕儃乕僪偑僨乕僞傪柍帠偵庴偗庢傟側偐偭偨 */
@@ -560,10 +557,3 @@ void close_console(struct SHEET *sht)
 	close_constask(task);
 	return;
 }
-
-
-
-
-
-
-

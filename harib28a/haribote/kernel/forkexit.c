@@ -15,20 +15,6 @@ PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src);
 PRIVATE void free_mem(struct TASK *task);
 
 
-//int sys_exit(int errcode)
-//{
-//	struct TASK *task = current;
-//	if(task->forked == 1){
-//		debug("pocess[%d, forked] die!", task->pid);
-//		do_exit(task,0);
-//	}else{
-//		return &(task->tss.esp0);
-//	}
-//	return 0;
-//}
-//PRIVATE void cleanup(struct proc * proc);
-
-
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
 	dst->backlink = src->backlink;
     dst->esp0 = src->esp0;
@@ -268,8 +254,6 @@ PUBLIC void do_exit(struct TASK *p, int status)
 		}
 	}
 
-	
-
 	/* 保存该进程的退出状态 */
 	p->exit_status = status;
 	debug("set exit_status of process[%d] = %d",p->pid, status);
@@ -367,8 +351,6 @@ PUBLIC int do_wait(struct TASK *task, int *status)
 		return -1;
 	}
 }
-
-
 
 PRIVATE void free_mem(struct TASK *task)
 {

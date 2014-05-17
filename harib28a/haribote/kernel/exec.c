@@ -1,4 +1,3 @@
-
 #include "bootpack.h"
 #include "elf.h"
 #include <string.h>

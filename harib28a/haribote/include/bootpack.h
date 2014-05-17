@@ -302,8 +302,8 @@ enum TASK_STATUS {
 	TASK_STATUS_SLEEP = 1,   //该进程已经睡眠了，或者该进程在创建中，但还不可以运行
 	TASK_STATUS_RUNNING = 2, //该进程可以运行
 	TASK_STATUS_HANGING = 3, //该进程是僵尸进程，等待父进程调用wait()系统调用
-	TASK_STATUS_WAITING = 4,   //该进程在等待子进程结束
-	TASK_STATUS_UNINTERRUPTIBLE = 5
+	TASK_STATUS_WAITING = 4, //该进程在等待子进程结束
+	TASK_STATUS_UNINTERRUPTIBLE = 5 //该进程不能被中断
 };
 
 #define TASK_UNINTERRUPTIBLE TASK_STATUS_UNINTERRUPTIBLE
@@ -558,10 +558,7 @@ void assertion_failure(char *exp, char *file, char *base_file, int line);
 #define assert(exp)
 #endif
 
-
 #define	DIOCTL_GET_GEO	1
-
-
 
 #define	PROC_IMAGE_SIZE_DEFAULT	0x100000 /*  1 MB */
 
