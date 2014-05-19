@@ -39,6 +39,8 @@ char *log_buf;
 int log_ready = 0;
 struct LogBufferMgr *log_buf_mgr = NULL;
 
+int has_console_buf = 0;
+
 void log_task(struct SHEET *sheet, int memtotal)
 {
 	struct TASK *task = task_now();
@@ -310,6 +312,10 @@ void cons_putchar(struct CONSOLE *cons, int chr, char move)
 
 static void buf_putchar(struct CONSOLE *cons, int chr, char move)
 {
+	/* 没有屏幕缓冲 */
+	if(!has_console_buf)
+		return;
+	
 	//有输出的情况下，先滚动屏幕到最底部
 	cons_scroll_buttom(cons);
 	
@@ -398,6 +404,10 @@ void cons_newline2(struct CONSOLE *cons)
 }
 static void buf_newline(struct CONSOLE *cons)
 {
+	/* 没有屏幕缓冲 */
+	if(!has_console_buf)
+		return;
+	
 	//有输出的情况下，先滚动屏幕到最底部
 	cons_scroll_buttom(cons);
 	
@@ -850,10 +860,20 @@ void cmd_langmode(struct CONSOLE *cons, char *cmdline)
 	return;
 }
 
+
+char *TASK_STATUS_MSG[] = {
+	"UNUSED",
+	"SLEEP",
+	"RUNNING",
+	"HANGING(ZOMBIE)",
+	"WAITING",
+	"UNINTERRUPTIBLE"
+};
+
 void cmd_ps(struct CONSOLE *cons){
 	char msg[200];
 	
-	sprintf(msg,"%s    %s\n", "PID", "NAME");
+	sprintf(msg,"%4.4s    %10.10s    %16.16s\n", "PID", "NAME", "STATUS");
 	cons_putstr0(cons, msg);
 	
 	struct Node *head = get_all_running_tasks();
@@ -862,7 +882,7 @@ void cmd_ps(struct CONSOLE *cons){
 	
 	while(head != NULL){
 		task = (struct TASK *)(head->data);
-		sprintf(msg, "%d    %s\n", task->pid, task->name);
+		sprintf(msg, "%4.4d    %10.10s    %16.16s\n", task->pid, task->name, TASK_STATUS_MSG[task->flags]);
 		//debug("pid = %d",task->pid);
 		cons_putstr0(cons,msg);
 		tmp = head;

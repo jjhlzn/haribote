@@ -62,13 +62,35 @@ PUBLIC void printTSSInfo(struct TSS32 *src)
 }
 
 //是否是异步log
-int is_async_log = 1;
+int is_async_log = 0;
+int debug_running = 0;
 
 ////输出到控制台窗口的调试日志
 void debug(const char *fmt, ...)
 {
 	if(!log_ready)
 		return;
+	
+	va_list arg = (va_list)((char *)(&fmt) + 4);
+	/* 同步log */
+	if(!is_async_log){  
+		char buf[512];
+		int len = vsprintf(buf,fmt,arg);
+		buf[len++] = '\n';
+		buf[len++] = 0;
+		int wait_count = 10000;
+		while(debug_running && wait_count--){
+			//print_on_screen3("other debug is running");
+			//nothing
+		}
+		if(wait_count == 0){
+			panic("debug wait timeout: %s",buf);
+		}
+		debug_running = 1;
+		cons_putstr0(log_win->task->cons,buf);
+		debug_running = 0;
+		return;
+	}
 	
 	//return;
 	static int invoke = 0; /* 为了检测debug是否已经被嵌套调用了 */
@@ -84,7 +106,7 @@ void debug(const char *fmt, ...)
 		return;
 	}
 	
-	va_list arg = (va_list)((char *)(&fmt) + 4);
+	
 	int len = vsprintf(buf,fmt,arg);
 	buf[len++] = '\n';
 	buf[len++] = 0;
@@ -113,12 +135,6 @@ void debug(const char *fmt, ...)
 			put_log_buf(log_buf_mgr,buf);
 			io_sti();
 		}
-	}else{
-		cons_putstr0(log_win->task->cons,buf);
-		/* 释放日志缓冲 */
-		io_cli();
-		put_log_buf(log_buf_mgr,buf);
-		io_sti();
 	}
 
 	invoke--;
