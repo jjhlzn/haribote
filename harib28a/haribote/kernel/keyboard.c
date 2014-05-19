@@ -64,7 +64,7 @@ read_from_keyboard(char *buf, int len)
 			break;
 		}
 		ch = read_char_from_keyboard(i);
-		debug("ch = %d",ch);
+		//debug("ch = %d",ch);
 		
 		switch(ch){
 			case -1:  //read error
