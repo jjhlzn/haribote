@@ -293,6 +293,7 @@ struct TASK {
 	unsigned short umask;
 	long leader, pgrp;
 	int tty;
+	int signal;
 };
 
 #define task_struct TASK

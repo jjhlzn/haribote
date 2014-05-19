@@ -1,11 +1,13 @@
 #include "bootpack.h"
 #include <string.h>
-#include "fs.h"
+#include <fs.h>
+#include <signal.h>
 
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src);
 PRIVATE void free_mem(struct TASK *task);
 static void copy_task(struct TASK *dst, struct TSS32 *tss);
 static void copy_mem(struct TASK *dst);
+static void tell_father(int pid);
 
 
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src){
@@ -122,48 +124,26 @@ static void copy_mem(struct TASK *dst)
 	dst->ds_base = (int)code_seg;
 }
 
+static void tell_father(int pid)
+{
+	int i;
 
-/*****************************************************************************
- *                                do_exit
- *****************************************************************************/
-/**
- * Perform the exit() syscall.
- *
- * If proc A calls exit(), then MM will do the following in this routine:
- *     <1> inform FS so that the fd-related things will be cleaned up
- *     <2> free A's memory
- *     <3> set A.exit_status, which is for the parent
- *     <4> depends on parent's status. if parent (say P) is:
- *           (1) WAITING
- *                 - clean P's WAITING bit, and
- *                 - send P a message to unblock it
- *                 - release A's proc_table[] slot
- *           (2) not WAITING
- *                 - set A's HANGING bit
- *     <5> iterate proc_table[], if proc B is found as A's child, then:
- *           (1) make INIT the new parent of B, and
- *           (2) if INIT is WAITING and B is HANGING, then:
- *                 - clean INIT's WAITING bit, and
- *                 - send INIT a message to unblock it
- *                 - release B's proc_table[] slot
- *               else
- *                 if INIT is WAITING but B is not HANGING, then
- *                     - B will call exit()
- *                 if B is HANGING but INIT is not WAITING, then
- *                     - INIT will call wait()
- *
- * TERMs:
- *     - HANGING: everything except the proc_table entry has been cleaned up.
- *     - WAITING: a proc has at least one child, and it is waiting for the
- *                child(ren) to exit()
- *     - zombie: say P has a child A, A will become a zombie if
- *         - A exit(), and
- *         - P does not wait(), neither does it exit(). that is to say, P just
- *           keeps running without terminating itself or its child
- * 
- * @param status  Exiting status for parent.
- * 
- *****************************************************************************/
+	if (pid)
+		for (i = 0; i < MAX_TASKS; i++) {
+			struct TASK *task = &(taskctl->tasks0[i]);
+			if (task->flags == 0)
+				continue;
+			if (task->pid != pid)
+				continue;
+			task->signal |= (1<<(SIGCHLD-1));
+			return;
+		}
+	/* if we don't find any fathers, we just release ourselves */
+	/* This is not really OK. Must change it to make father 1 */
+	printk("BAD BAD - no father found\n\r");
+}
+
+////退出当前任务的执行，并设置退出状态, 注意：该函数不会返回
 PUBLIC void do_exit(struct TASK *p, int status)
 {
 	int i;
@@ -198,25 +178,37 @@ PUBLIC void do_exit(struct TASK *p, int status)
 		}
 	}
  
-	struct TASK  *parent_task = get_task(p->parent_pid);
-	//debug("parent task[%d]",parent_task->pid);
-	if (parent_task->flags == TASK_STATUS_WAITING) { /* parent is waiting */
-		debug("process[%d] will go to UNUSED status!", p->pid);
-		//父进程可以进入运行状态
-		parent_task->wait_return_task = p;
-		debug("wake up parent task[%d]",parent_task->pid);
-		task_add(parent_task);
-		/* 释放该进程的内存 */
-		free_mem(p);
-		task_exit(p, TASK_STATUS_UNUSED);
+	//struct TASK  *parent_task = get_task(p->parent_pid);
+	
+	/* 释放该进程的内存 */
+	debug("TASK[%d]: go to HANGING status!", p->pid);
+	free_mem(p);
+	tell_father(p->parent_pid);
+	/* 当前进程退出，并且执行任务切换 */
+	task_exit(p, TASK_STATUS_HANGING);
 		
-	}
-	else { /* parent is not waiting */
-		debug("process[%d] will go to HANGING status!", p->pid);
-		/* 释放该进程的内存 */
-		free_mem(p);
-		task_exit(p, TASK_STATUS_HANGING);
-	}
+	////debug("parent task[%d]",parent_task->pid);
+	//if (parent_task->flags == TASK_STATUS_WAITING) { /* parent is waiting */
+	//	debug("process[%d] will go to UNUSED status!", p->pid);
+	//	//父进程可以进入运行状态
+	//	parent_task->wait_return_task = p;
+	//	debug("wake up parent task[%d]",parent_task->pid);
+	//	task_add(parent_task);
+	//	/* 释放该进程的内存 */
+	//	free_mem(p);
+	//	
+	//	/* 当前进程退出，并且执行任务切换 */
+	//	task_exit(p, TASK_STATUS_UNUSED);
+	//}
+	//else { /* parent is not waiting */
+	//	debug("process[%d] will go to HANGING status!", p->pid);
+	//	
+	//	/* 释放该进程的内存 */
+	//	free_mem(p);
+	//	tell_father(p->parent_pid);
+	//	/* 当前进程退出，并且执行任务切换 */
+	//	task_exit(p, TASK_STATUS_HANGING);
+	//}
 }
 
 /*****************************************************************************
@@ -243,12 +235,12 @@ PUBLIC int do_wait(struct TASK *task, int *status)
 	int pid = task->pid;
 	
 	int i;
-	int children = 0;
-
+	int has_childen = 0;
+repeat:
 	for (i = 0; i < MAX_TASKS; i++) {
 		struct TASK *tmp_task = get_task(i);
 		if (tmp_task->parent_pid == pid) {
-			children++;
+			has_childen = 1;
 			if (tmp_task->flags == TASK_STATUS_HANGING) {
 				*status = tmp_task->exit_status;
 				debug("tmp_task->exit_status = %d",tmp_task->exit_status);
@@ -259,20 +251,21 @@ PUBLIC int do_wait(struct TASK *task, int *status)
 		}
 	}
 
-	if (children) {
+	if (has_childen) {
 		/* has children, but no child is HANGING */
 		debug("process[%d] will go to wait status!",task->pid);
+		/* 进入wait状态，执行进程调度 */
 		task_wait(task);
 		debug("process[%d] recover from wait status", task->pid);
-		
-		struct TASK *wait_return_task = task->wait_return_task;
-		*status = wait_return_task->exit_status;
+		goto repeat;
+		//struct TASK *wait_return_task = task->wait_return_task;
+		//*status = wait_return_task->exit_status;
 
-		debug("wait_return_task->exit_status = %d",wait_return_task->exit_status);
-		return wait_return_task->pid;
+		//debug("wait_return_task->exit_status = %d",wait_return_task->exit_status);
+		//return wait_return_task->pid;
 	}
 	else {
-		panic("this task has no children!");
+		debug("BAD BAD, this task has no children!");
 		return -1;
 	}
 }

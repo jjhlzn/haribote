@@ -3,32 +3,42 @@
 #include "fs.h"
 #include "memory.h"
 #include <string.h>
+#include <signal.h>
 
 struct TASKCTL *taskctl;
 struct TIMER *task_timer;
 struct m_inode * get_root_inode();
+static int  get_new_pid();
+static void _task_change_status(struct TASK *task, enum TASK_STATUS task_status);
+static void check_sigchld_signal();
 
 int sys_getpid()
 {
 	return current->pid;
 }
 
+////获取当前正在运行的任务
+//返回：当前在运行的任务
 struct TASK *task_now(void)
 {
 	struct TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];
 	return tl->tasks[tl->now];
 }
 
+////将任务放到可运行队列中
+//参数：需要被放到可运行的任务
 void task_add(struct TASK *task)
 {
 	struct TASKLEVEL *tl = &taskctl->level[task->level];
 	tl->tasks[tl->running] = task;
 	tl->running++;
-	task->flags = 2; /* 活动中 */
+	task->flags = TASK_STATUS_RUNNING; /* 活动中 */
 	return;
 }
 
-
+////获取任务结构，这个结构必须要在使用中
+//参数:pid -- 任务的pid
+//返回：成功找到在使用的任务结构，返回这个任务结构，否则返回NULL
 struct TASK * get_task(int pid)
 {
 	int i;
@@ -38,6 +48,8 @@ struct TASK * get_task(int pid)
 	return NULL;
 }
 
+////把该任务从可运行队列中删除，并且将它设置为指定的状态
+//参数：task -- 从可运行队列中被删除的任务，task_status -- 设成的目标状态
 void task_remove(struct TASK *task, enum TASK_STATUS task_status)
 {
 	int i;
@@ -59,7 +71,8 @@ void task_remove(struct TASK *task, enum TASK_STATUS task_status)
 		/* 如果now的值出现异常，则进行修正 */
 		tl->now = 0;
 	}
-	//task->flags = 1; /* 休眠中 */
+
+	/* 设置成参数指定的状态 */
 	task->flags = task_status;
 
 	/* 移动 */
@@ -70,7 +83,7 @@ void task_remove(struct TASK *task, enum TASK_STATUS task_status)
 	return;
 }
 
-/* 切换到最高优先级的LEVEL  */
+//// 切换到最高优先级的LEVEL
 void task_switchsub(void)
 {
 	int i;
@@ -85,23 +98,12 @@ void task_switchsub(void)
 	return;
 }
 
+////idle进程的运行主函数
 void task_idle(void)
 {
 	for (;;) {
 		io_hlt();
 	}
-}
-
-////检查当前pid是否被使用
-//返回：当前进程号正在被使用时返回1，否则返回0
-int 
-check_pid(int pid)
-{
-	int i;
-	for(i=0 ; i<MAX_TASKS ; i++)
-		if (taskctl->tasks0[i].flags != 0 && taskctl->tasks0[i].pid ==pid) 
-			return 1;
-	return 0;
 }
 
 ////初始化进程管理器
@@ -169,18 +171,8 @@ struct TASK *task_init(struct MEMMAN *memman)
 	return task;
 }
 
-static int  get_new_pid()
-{
-	static int last_pid = 0;
-	int i;
-repeat:
-	if ((++last_pid)<0) last_pid=1;
-	for(i=0 ; i<MAX_TASKS ; i++)
-		if (taskctl->tasks0[i].flags != 0 && taskctl->tasks0[i].pid == last_pid) 
-			goto repeat;
-	return last_pid;
-}
-
+////分配一个未使用的任务结构
+//返回：未使用的任务结构
 struct TASK *task_alloc(void)
 {
 	int i;
@@ -188,6 +180,7 @@ struct TASK *task_alloc(void)
 	for (i = 0; i < MAX_TASKS; i++) {
 		if (taskctl->tasks0[i].flags == 0) {
 			task = &taskctl->tasks0[i];
+			task->signal = 0;
 			task->pid = get_new_pid();
 			debug("alloc pid = %d",task->pid);
 			task->flags = 1; /* 正在使用的标志 */
@@ -222,10 +215,13 @@ struct TASK *task_alloc(void)
 	}
 	return 0; /* 全部正在使用 */
 }
+
+////将task的放到可运行队列中，并且重新设置level和priority
+//参数：task -- 被操作的任务，level -- 目的level, priority -- 目的优先级
 void task_run(struct TASK *task, int level, int priority)
 {
-	if (level < 0) {
-		level = task->level; /* 不改变LEVEL */
+	if (level < 0) {   /* 不改变LEVEL */
+		level = task->level;
 	}
 	if (priority > 0) {
 		task->priority = priority;
@@ -238,6 +234,7 @@ void task_run(struct TASK *task, int level, int priority)
 		
 		/* 从休眠状态唤醒的情形 */
 		task->level = level;
+		/* 放置到可运行的队列中 */
 		task_add(task);
 	}
 
@@ -245,49 +242,31 @@ void task_run(struct TASK *task, int level, int priority)
 	return;
 }
 
+////将该任务从可运行队列中移除，并且设置为睡眠状态
+//参数: task -- 需要睡眠的任务
 void task_sleep(struct TASK *task)
 {
-	struct TASK *now_task;
-	if (task->flags == 2) {
-		/* 如果处于活动状态 */
-		now_task = task_now();
-		task_remove(task,TASK_STATUS_SLEEP); /* 执行此语句的话flags将变为1 */
-		if (task == now_task) {
-			/* 如果是让自己休眠，则需要进行任务切换 */
-			task_switchsub();
-			now_task = task_now(); /* 在设定后获取当前任务的值 */
-			//debug("process[%d,%s] go to sleep, process[%d,%s] is running",task->pid,task->name,now_task->pid,now_task->name);
-			farjmp(0, now_task->sel);
-		}
-	}
-	return;
+	_task_change_status(task, TASK_STATUS_SLEEP);
 }
 
+////将该任务从可裕兴队列中移除，同时设置为TASK_STATUS_WAITING状态
+//参数: task -- 需要设为等待的任务
 void task_wait(struct TASK *task)
 {
-	struct TASK *now_task;
-	if (task->flags == TASK_STATUS_RUNNING) {
-		/* 如果处于活动状态 */
-		now_task = task_now();
-		//debug("task->pid = %d, now_task->pid = %d",task->pid, now_task->pid);
-		task_remove(task,TASK_STATUS_WAITING); /* 执行此语句的话flags将变为1 */
-		if (task == now_task) {
-			/* 如果是让自己休眠，则需要进行任务切换 */
-			task_switchsub();
-			now_task = task_now(); /* 在设定后获取当前任务的值 */
-			//debug("proc[%d,%s] go to wait, proc[%d,%s] will run",task->pid,task->name,now_task->pid,now_task->name);
-			//debug("now_task[%d]->tss.eip = %d",now_task->pid,now_task->tss.eip);
-			farjmp(0, now_task->sel);
-		}
-	}
-	return;
+	_task_change_status(task, TASK_STATUS_WAITING);
 }
-
 
 void task_exit(struct TASK *task, enum TASK_STATUS task_status)
 {
+	_task_change_status(task, task_status);
+}
+
+////将该任务从可裕兴队列中移除，同时设置为参数指定的状态
+//参数：task -- 需要操作的任务, task_status -- task被设成这个任务状态
+static void _task_change_status(struct TASK *task, enum TASK_STATUS task_status)
+{
 	struct TASK *now_task;
-	if (task->flags == 2) {
+	if (task->flags == TASK_STATUS_RUNNING) {
 		/* 如果处于活动状态 */
 		now_task = task_now();
 		task_remove(task, task_status); 
@@ -297,39 +276,58 @@ void task_exit(struct TASK *task, enum TASK_STATUS task_status)
 			now_task = task_now(); /* 在设定后获取当前任务的值 */
 			//debug("process[%d,%s] go to sleep, process[%d,%s] is running",task->pid,task->name,now_task->pid,now_task->name);
 			farjmp(0, now_task->sel);
+			
+			//task_switch();
 		}
 	}
 	return;
 }
 
-void task_hang(struct TASK *task)
+////检查状态未WAIT的任务，一旦发现这些任务有子进程结束信号，将这些放到可运行的状态
+static void check_sigchld_signal()
 {
+	int i;
+	struct TASK *task = NULL;
+	for (i = 0; i < MAX_TASKS; i++) {
+		if (taskctl->tasks0[i].flags == TASK_STATUS_WAITING) {
+			task = &taskctl->tasks0[i];
+			if( (task->signal >> (SIGCHLD-1)) & 0x01 ){
+				/* 复位信号 */
+				task->signal &= ~(1<<(SIGCHLD-1));
+				/* 检测到子进程结束信号，重新进入可执行状态 */
+				task_run(task, -1, 0);
+			}
+		}
+	}
 }
 
+////执行任务切换
 void task_switch(void)
 {
+	/* 检查子进程结束信号 */
+	check_sigchld_signal();
+	
 	struct TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];
 	struct TASK *new_task, *now_task = tl->tasks[tl->now];
 	tl->now++;
 	if (tl->now == tl->running) {
 		tl->now = 0;
 	}
-	if (taskctl->lv_change != 0) { //任务控制器的LEVEL已经发现过变化
+	
+	/* 任务控制器的LEVEL已经发现过变化 */
+	if (taskctl->lv_change != 0) { 
 		task_switchsub();
 		tl = &taskctl->level[taskctl->now_lv];
 	}
 	new_task = tl->tasks[tl->now];
 	timer_settime(task_timer, new_task->priority);
 	if (new_task != now_task) {
-		//debug("switch from process[%d,%s] to process[%d,%s]",now_task->pid,now_task->name,new_task->pid,new_task->name);
-		//if(now_task->pid == 4)
-		//	debug("now_task[%d]->tss.eip = %d", now_task->pid, now_task->tss.eip);
 		farjmp(0, new_task->sel);
 	}
 	return;
 }
 
-/*  获取所有可运行的进程 */
+////  获取所有可运行的进程 
 struct Node* get_all_running_tasks(){
 	int i;
 	struct Node *head = NULL;
@@ -347,9 +345,37 @@ struct Node* get_all_running_tasks(){
 			}
 		}
 	}
-	
 	return head;
 }
+
+/*******************************文件系统升级修改*****************************/
+////让当前任务等待指定的任务，在指定的任务未唤醒当前任务之前，当前任务要一直保持睡眠状态
+//参数：p -- 当前任务要等待的任务
+void sleep_on(struct task_struct **p)
+{
+	struct task_struct *tmp;
+
+	if (!p)
+		return;
+	tmp = *p;
+	*p = current;
+	current->flags = TASK_UNINTERRUPTIBLE;
+	task_switch();
+	if (tmp)
+		tmp->flags= TASK_STATUS_RUNNING;
+}
+
+////唤醒等待当前任务的任务
+//参数: p -- 需要被唤醒的任务
+void wake_up(struct task_struct **p)
+{
+	if (p && *p) {
+		(**p).flags=TASK_STATUS_RUNNING;
+		*p=NULL;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////
 
 
 /*****************************************************************************
@@ -369,31 +395,17 @@ PUBLIC void* va2la(int pid, void* va)
 }
 
 
-
-/*******************************文件系统升级修改*****************************/
-void sleep_on(struct task_struct **p)
+/**********************************************PRIVATE FUNCITONS*********************************************************/
+static int  get_new_pid()
 {
-	struct task_struct *tmp;
-
-	if (!p)
-		return;
-	tmp = *p;
-	*p = current;
-	current->flags = TASK_UNINTERRUPTIBLE;
-	task_switch();
-	if (tmp)
-		tmp->flags= TASK_STATUS_RUNNING;
+	static int last_pid = 0;
+	int i;
+repeat:
+	if ((++last_pid)<0) last_pid=1;
+	for(i=0 ; i<MAX_TASKS ; i++)
+		if (taskctl->tasks0[i].flags != 0 && taskctl->tasks0[i].pid == last_pid) 
+			goto repeat;
+	return last_pid;
 }
-
-void wake_up(struct task_struct **p)
-{
-	if (p && *p) {
-		(**p).flags=TASK_STATUS_RUNNING;
-		*p=NULL;
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////
-
 
 
