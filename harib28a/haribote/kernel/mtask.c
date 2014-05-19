@@ -249,11 +249,13 @@ void task_sleep(struct TASK *task)
 	_task_change_status(task, TASK_STATUS_SLEEP);
 }
 
-////将该任务从可裕兴队列中移除，同时设置为TASK_STATUS_WAITING状态
+////将当前任务从可裕兴队列中移除，同时设置为TASK_STATUS_WAITING状态
 //参数: task -- 需要设为等待的任务
-void task_wait(struct TASK *task)
+void task_wait()
 {
-	_task_change_status(task, TASK_STATUS_WAITING);
+	/* has children, but no child is HANGING */
+	debug("TASK[%d]: wait child!",current->pid);
+	_task_change_status(current, TASK_STATUS_WAITING);
 }
 
 void task_exit(struct TASK *task, enum TASK_STATUS task_status)
@@ -277,7 +279,6 @@ static void _task_change_status(struct TASK *task, enum TASK_STATUS task_status)
 			//debug("process[%d,%s] go to sleep, process[%d,%s] is running",task->pid,task->name,now_task->pid,now_task->name);
 			farjmp(0, now_task->sel);
 			
-			//task_switch();
 		}
 	}
 	return;

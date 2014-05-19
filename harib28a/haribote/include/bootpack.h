@@ -335,7 +335,7 @@ struct Node* get_all_running_tasks();
 struct TASK * get_task(int pid);
 void task_add(struct TASK *task);
 void task_exit(struct TASK *task, enum TASK_STATUS task_status);
-void task_wait(struct TASK *task);
+void task_wait();
 void sleep_on(struct task_struct **p);
 void wake_up(struct task_struct **p);
 

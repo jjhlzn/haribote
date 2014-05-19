@@ -252,10 +252,8 @@ repeat:
 	}
 
 	if (has_childen) {
-		/* has children, but no child is HANGING */
-		debug("process[%d] will go to wait status!",task->pid);
 		/* 进入wait状态，执行进程调度 */
-		task_wait(task);
+		task_wait();
 		debug("process[%d] recover from wait status", task->pid);
 		goto repeat;
 		//struct TASK *wait_return_task = task->wait_return_task;
