@@ -1,5 +1,3 @@
-/* 儊儌儕娭學 */
-
 #include "bootpack.h"
 #include "memory.h"
 
@@ -8,7 +6,10 @@
 
 
 static void prepare_page_dir_and_page_table();
-static void map_kernel(unsigned int addr_start, int page_count);
+static void map_kernel_page(unsigned int addr_start, int page_count);
+static void map_user_page(unsigned int addr_start);
+static void oom();
+
 
 /**
   用于计算计算机内存大小。方法：通过不断的测试来获取计算机内存大小。
@@ -177,6 +178,15 @@ memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
 
 
 /***********************************分页相关**************************************************/
+/*  处理Page Fault */
+void do_no_page(unsigned long error_code, unsigned long address) 
+{
+     debug("-do_no_page-: errcode = %d, addr = %d(0x%08.8x)",error_code, address,address);
+	//unsigned int laddr = address & 0xFFC00000;
+	//map_kernel(laddr, 1024);
+	map_user_page(address);
+}
+
 //初始化内存, 测试内存大小，将内存划分成物理页, 分配和映射内核使用的物理页
 void 
 mem_init()
@@ -197,9 +207,8 @@ mem_init()
 		page_bit_map[i] = 0;
 	}
 	prepare_page_dir_and_page_table();
-	//open_page();
+	open_page();
 }
-
 
 /****准备页目录和页表***
  ***先把线性地址映射成物理地址
@@ -214,19 +223,39 @@ static void prepare_page_dir_and_page_table()
 		page_dir_base_addr[i] = 0;
 	}
 	
-	unsigned int kernel_pages = 0x01000000 / 0x1000;
+	unsigned int kernel_pages = 0x00f00000 / 0x1000;
 	//unsigned int kernel_pages = 0xFFe00000 / 0x1000;
 	end_addr_mapped = kernel_pages * 4 * 1024 -1;
-	map_kernel(0x00000000, kernel_pages);  //映射内核空间
+	map_kernel_page(0x00000000, kernel_pages);  //映射内核空间
     int vram_pages = 4 * 1024 * 1024 / 0x1000;
-	map_kernel(0xe0000000, vram_pages);  //映射显存空间
+	map_kernel_page(0xe0000000, vram_pages);  //映射显存空间
 	
 	//页表最后一项指向它自己
 	page_dir_base_addr[1023] = PAGE_DIR_ADDR | 0x7;
 }
 
+/** 分配一页物理页  */
+static unsigned int alloc_free_page()
+{
+	int i;
+	int has_free_page = 0;
+	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	for( i = 0; i < get_count_of_total_pages(); i++ ){
+		if(page_bit_map[i] == 0){
+			has_free_page = 1;
+			break;
+		}
+	}
+	if( has_free_page ){
+		page_bit_map[i] = 1;
+		//debug("alloc a new page, addr = 0x%08.8x", i * 4 * 1024);
+		return i * 4 * 1024;
+	}
+	else
+		return NO_FREE_PAGE_ADDR;
+}
 
-static void map_kernel(unsigned int addr_start, int page_count)
+static void map_kernel_page(unsigned int addr_start, int page_count)
 {
 	int i, j, index = 0;
 	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
@@ -253,33 +282,7 @@ static void map_kernel(unsigned int addr_start, int page_count)
 	}
 }
 
-/**   分配一页物理页  */
-static unsigned int alloc_free_page()
-{
-	int i;
-	int has_free_page = 0;
-	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
-	for( i = 0; i < get_count_of_total_pages(); i++ ){
-		if(page_bit_map[i] == 0){
-			has_free_page = 1;
-			break;
-		}
-	}
-	if( has_free_page ){
-		page_bit_map[i] = 1;
-		//debug("alloc a new page, addr = 0x%08.8x", i * 4 * 1024);
-		return i * 4 * 1024;
-	}
-	else
-		return NO_FREE_PAGE_ADDR;
-}
-
-static void oom(){
-	panic("out of memory!");
-}
-
-
-static void map_user(unsigned int addr_start)
+static void map_user_page(unsigned int addr_start)
 {
 	//debug("laddr = 0x%08.8x",addr_start); 
 	//这里应该使用页表的线性地址，而不应该是物理地址。不过对于PAGE_DIR_ADDR线性地址刚好是物理地址。
@@ -310,37 +313,7 @@ static void map_user(unsigned int addr_start)
 	*pagetable_item =  page | 0x7;
 }
 
-/*  处理Page Fault */
-void do_no_page(unsigned long error_code, unsigned long address) 
-{
-     //debug("-do_no_page-: errcode = %d, addr = %d(0x%08.8x)",error_code, address,address);
-	//unsigned int laddr = address & 0xFFC00000;
-	//map_kernel(laddr, 1024);
-	map_user(address);
-}
-
-
-
-
-
-
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-int test_page(unsigned x)
-{
-	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
-	int page_dir_index = x >> 22;
-	debug("page_dir_index = %d", page_dir_index);
-	unsigned int page_add =  *(page_dir_base_addr + page_dir_index) & 0xFFFFF000;
-	debug("page_add = %8.8x", page_add);
-	int page_index = x >> 12 & 0x000003FF;
-	debug("page_index = %d", page_index);
-	int *add = (int *)((*((int *)page_add + page_index)  & 0xFFFFF000) + (x & 0x00000FFF));
-	debug("Page(0x%08.8x) = 0x%08.8x",x,(int) add);
-	return (int) add;
-}
-
+/*------------------------------------------辅助函数-----------------------------------------------*/
 int get_count_of_free_pages(){
 	int i;
 	int count_of_free_pages = 0;
@@ -367,37 +340,25 @@ int get_count_of_used_pages(){
 	return count_of_pages;
 }
 
+int test_page(unsigned x)
+{
+	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
+	int page_dir_index = x >> 22;
+	debug("page_dir_index = %d", page_dir_index);
+	unsigned int page_add =  *(page_dir_base_addr + page_dir_index) & 0xFFFFF000;
+	debug("page_add = %8.8x", page_add);
+	int page_index = x >> 12 & 0x000003FF;
+	debug("page_index = %d", page_index);
+	int *add = (int *)((*((int *)page_add + page_index)  & 0xFFFFF000) + (x & 0x00000FFF));
+	debug("Page(0x%08.8x) = 0x%08.8x",x,(int) add);
+	return (int) add;
+}
+
 void print_page_config()
 {
-	//prepare_page_dir_and_page_table();
-	//int i, j;
-	//int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
-	//清空1024个页目录项
-	//for(i=0; i<10; i++){
-	//	debug("0x%08.8x",page_dir_base_addr[i]);
-	//}
-	//设置页表
-	//for(i = 0; i < 4; i++){
-	//	int *the_page_table = page_dir_base_addr + (i + 1) * 1024;
-	//	for(j=0; j < 1024; j++){
-	//		debug("0x%08.8x",the_page_table[j]);
-	//	}
-	//}
-	//for(i = 0; i<16 * 1024 * 1024 ; i++){
-	//	int result = test_page(i);
-	//	if(result != i)
-	//		debug("find fault");
-	//}
-	//test_page(0x00600010);
-	//test_page(0x00000000);
-	//test_page(0x00001000);
-	//test_page(0x00400000);
-	//test_page(16 * 1024 * 1024-1);
-	//test_page(4 * 1024 * 1024 * 1024-1);
 	test_page(0xe0000000);
 	test_page(0xe0001000);
-	
-	//debug("mapped addr: 0x%08.8x -- 0x%08.8x", start_addr_mapped, end_addr_mapped);
+
 	debug("mapped addr: %d -- %d", start_addr_mapped, end_addr_mapped);
 	
 	debug("total_pages = %d", get_count_of_total_pages());
@@ -410,6 +371,10 @@ void print_page_config()
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 	int cyls = binfo->cyls;
 	debug("cyls = %d",cyls);
+}
+
+static void oom(){
+	panic("out of memory!");
 }
 
 

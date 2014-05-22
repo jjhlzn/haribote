@@ -167,7 +167,6 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 }
 
 
-
  void load_elf(char *p, struct Node *list)
 {
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
@@ -228,6 +227,7 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	int argc = GetSize(list);
 	esp = prepare_args(cod_seg, data_limit, list);
 	
+	debug("invoke start_app_elf");
 	start_app_elf((int)elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
 }
 
