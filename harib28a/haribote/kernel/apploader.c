@@ -169,58 +169,37 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 
  void load_elf(char *p, struct Node *list)
 {
+	
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct TASK *task = task_now();
-	int esp;
+	int esp,i;
 	
 	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
 	//debug_Elf32_Ehd(elf_hdr);
-	
-	int i;
-	
-	//加载字符串表
-	Elf32_Shdr* str_section = (Elf32_Shdr*)(p + elf_hdr->e_shoff + elf_hdr->e_shstrndx * elf_hdr->e_shentsize);
-	char *str_contents = (char *)(p + str_section->sh_offset);
-	
-	for (i = 0; i<elf_hdr->e_shnum; i++) {
-		Elf32_Shdr *elf_shdr = (Elf32_Shdr*)(p + elf_hdr->e_shoff + i * elf_hdr->e_shentsize);
-		char *sh_name = str_contents+elf_shdr->sh_name;
-		if(strlen(sh_name) == 0)
-			continue;
-		//debug("name = %s",sh_name);
-	}
-	
-	int data_limit = 1024 * 512;
+
+	int data_limit = 1024 * 50;
+	debug("data_limit = %d(0x%08.8x)",data_limit,data_limit);
 	u8 *cod_seg =  (u8 *)memman_alloc_4k(memman, data_limit); //TODO: 代码固定尺寸
+	debug("segment_addr = %d(0x%08.8x)", (u32)cod_seg, (u32)cod_seg);
+	
 	task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
 	task->cs_base = (int) cod_seg;
 	
 	set_segmdesc(task->ldt + 0, data_limit - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
 	set_segmdesc(task->ldt + 1, data_limit - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
+	
 	//加载数据段、代码段
-	//debug("elf_hdr->e_phnum = %d",elf_hdr->e_phnum);
 	for (i=0; i<elf_hdr->e_phnum; i++){
 		Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
 		//debug("p_type = %d",elf_phdr->p_type);
 		if(elf_phdr->p_type == PT_LOAD){
-			//debug("see PT_LOAD section");
-			//debug_Elf32_Phdr(elf_phdr);
-			//char msg[1024];
-			//int j=0;
-			//for(j=0; j<1024; j++)
-			//	msg[j] = 0;
-			//string_memory(p + elf_phdr->p_offset,elf_phdr->p_filesz,msg);
-			//debug(msg);
-			//debug("\n");
 			if( (u32)elf_phdr->p_vaddr > 32 * 1024 * 1024){
 				debug("WARN: virtual addr > 32MB, ignore the section");
 			}else{
+				debug("copy to addr %d(0x%08.8x)", (unsigned int)elf_phdr->p_vaddr,(unsigned int)elf_phdr->p_vaddr);
 				phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
+				debug("copy PT_LOAD finished");
 			}
-			
-			//sprintf(msg,"");
-			//string_memory(cod_seg +(int)elf_phdr->p_vaddr,elf_phdr->p_filesz,msg);
-			//debug(msg);
 		}
 	}
 	

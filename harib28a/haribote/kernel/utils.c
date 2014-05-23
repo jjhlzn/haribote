@@ -78,7 +78,7 @@ void debug(const char *fmt, ...)
 		int len = vsprintf(buf,fmt,arg);
 		buf[len++] = '\n';
 		buf[len++] = 0;
-		int wait_count = 10000;
+		int wait_count = 100000;
 		while(debug_running && wait_count--){
 			//print_on_screen3("other debug is running");
 			//nothing
@@ -205,14 +205,11 @@ void print_on_screen(char *msg)
 void print_on_screen3(char *fmt, ...)
 {
 	int i;
-	char buf[1023];
+	char buf[512];
 	va_list arg = (va_list)((char *)(&fmt) + 4);
 	i = vsprintf(buf,fmt,arg);
 	
-	char buf2[1024];
-	sprintf(buf2,"%s\n",buf);
-	
-	print_on_screen(buf2);
+	print_on_screen(buf);
 }
 
 

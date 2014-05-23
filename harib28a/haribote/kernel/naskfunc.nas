@@ -576,7 +576,7 @@ _start_app:		; void start_app(int eip, int cs, int esp, int ds, int *tss_esp0, i
 		MOV		DS,BX
 		MOV		FS,BX
 		MOV		GS,BX
-;	下面调整栈，已免用RETF跳转到应用程序。RETF将会将CS和EIP设置成应用程序的CS和EIP。但是，栈是如何进行切换的？ 我怀疑是编译器生成HRB可执行文件的时候，会首先做这个SS和ESP的设置。
+		;下面调整栈，已免用RETF跳转到应用程序。RETF将会将CS和EIP设置成应用程序的CS和EIP。
 		OR		ECX,3			; 将应用程序用段号和3进行OR运算, 将应用程序的段选择子+3, 即CS+3
 		OR		EBX,3			; 将应用程序用段号和3进行OR运算, 将应用程序的段选择子+3, 即SS+3
 		

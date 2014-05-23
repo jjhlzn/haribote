@@ -354,19 +354,10 @@ static void buf_putchar(struct CONSOLE *cons, int chr, char move)
 	return;
 }
 
-
-
 void cons_newline(struct CONSOLE *cons)
 {
 	buf_newline(cons);
 	cons_newline2(cons);
-	//char msg[100];
-	//memset(msg,0,100);
-	//sprintf(msg,"cur_x = %d, cur_y = %d",cons->cur_x, cons->cur_y);
-	//print_on_screen(msg);
-	//memset(msg,0,100);
-	//sprintf(msg,"buf_x = %d, buf_y = %d",cons->buf_x, cons->buf_y);
-	//print_on_screen(msg);
 	return;
 }
 void cons_newline2(struct CONSOLE *cons)

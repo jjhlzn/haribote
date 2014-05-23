@@ -32,7 +32,7 @@ int fifo32_put(struct FIFO32 *fifo, int data)
 	}
 	fifo->free--;
 	if (fifo->task != 0) {
-		if (fifo->task->flags != 2) { /* 如果任务处于休眠状态 */
+		if (fifo->task->flags == TASK_STATUS_SLEEP) { /* 如果任务处于休眠状态 */
 			task_run(fifo->task, -1, 0); /* 将任务唤醒 */
 		}
 	}
@@ -55,7 +55,7 @@ int fifo32_put2(struct FIFO32 *fifo, int data)
 	}
 	
 	if (fifo->task != 0) {
-		if (fifo->task->flags != 2) { /* 如果任务处于休眠状态 */
+		if (fifo->task->flags == TASK_STATUS_SLEEP) { /* 如果任务处于休眠状态 */
 			//debug("fifo32_put2: wakeup pid: %d, data=%d",fifo->task->pid,data);
 			task_run(fifo->task, -1, 0); /* 将任务唤醒 */
 		}

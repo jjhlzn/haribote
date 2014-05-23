@@ -176,15 +176,17 @@ memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
 	return i;
 }
 
-
+int NO_PAGE_EXP_COUNT = 0;
 /***********************************分页相关**************************************************/
 /*  处理Page Fault */
 void do_no_page(unsigned long error_code, unsigned long address) 
 {
-     debug("-do_no_page-: errcode = %d, addr = %d(0x%08.8x)",error_code, address,address);
+	NO_PAGE_EXP_COUNT++;
+    debug("do_no_page(%d): code=%d, addr=%d(0x%08.8x)",NO_PAGE_EXP_COUNT,error_code, address,address);
 	//unsigned int laddr = address & 0xFFC00000;
 	//map_kernel(laddr, 1024);
 	map_user_page(address);
+	//while(1);
 }
 
 //初始化内存, 测试内存大小，将内存划分成物理页, 分配和映射内核使用的物理页
@@ -223,7 +225,7 @@ static void prepare_page_dir_and_page_table()
 		page_dir_base_addr[i] = 0;
 	}
 	
-	unsigned int kernel_pages = 0x00f00000 / 0x1000;
+	unsigned int kernel_pages = 0xf0f00000 / 0x1000;
 	//unsigned int kernel_pages = 0xFFe00000 / 0x1000;
 	end_addr_mapped = kernel_pages * 4 * 1024 -1;
 	map_kernel_page(0x00000000, kernel_pages);  //映射内核空间
@@ -248,7 +250,7 @@ static unsigned int alloc_free_page()
 	}
 	if( has_free_page ){
 		page_bit_map[i] = 1;
-		//debug("alloc a new page, addr = 0x%08.8x", i * 4 * 1024);
+		debug("alloc a new page, addr = 0x%08.8x", i * 4 * 1024);
 		return i * 4 * 1024;
 	}
 	else
@@ -289,28 +291,31 @@ static void map_user_page(unsigned int addr_start)
 	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;  
 	unsigned int dir_index = addr_start >> 22; //页目录开始项
 	
-	//debug("page_dir_base_addr[%d] = 0x%08.8x", dir_index, page_dir_base_addr[dir_index]);
+	debug("page_dir_base_addr[%d] = 0x%08.8x", dir_index, page_dir_base_addr[dir_index]);
 	int *pagetable_item = NULL;
 	if(page_dir_base_addr[dir_index] == 0){  //页表没有分配
 		unsigned int page = alloc_free_page();
 		if(page == NO_FREE_PAGE_ADDR)
 			oom();
 		page_dir_base_addr[dir_index] = ( page & 0xFFFFFC00 ) | 0x7; //设置页目录项的页表物理地址
-		//debug("paddr of page table = 0x%08.8x", page);
+		debug("paddr of page table = 0x%08.8x", page);
 		debug("allocate page dir");
 	}
 	//现在需要修改页表
 	int offset = (addr_start >> 12 & 0x3FF) * 4;   //页表的线性地址的最低12位
 	int page_offset = (addr_start >> 22) << 12;            //页表的线性地址的中间10位
 	int page_dir_offset = 0x3FF << 22;
-	//debug("page_dir_offset = %d, page_offset = %d, offset = %d", page_dir_offset, page_offset, offset);
+	debug("pdir_offset = %d, page_offset = %d, offset = %d", (u32)page_dir_offset, page_offset, offset);
 	pagetable_item = (int *)(page_dir_offset + page_offset + offset); //页表的线性地址
-	//debug("laddr of page table item = 0x%08.8x", (int)pagetable_item);
+	debug("laddr of page table item = 0x%08.8x", (int)pagetable_item);
 		
 	unsigned int page = alloc_free_page();
 	if(page == NO_FREE_PAGE_ADDR)
 		oom();
+	//page -= 0x2000;
 	*pagetable_item =  page | 0x7;
+	
+	debug("map ladd[%08.8x] to paddr[%08.8x]",addr_start,page);
 }
 
 /*------------------------------------------辅助函数-----------------------------------------------*/
