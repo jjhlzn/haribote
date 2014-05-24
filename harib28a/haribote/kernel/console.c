@@ -25,6 +25,7 @@ void cons_key_down(struct CONSOLE *cons);
 static void cons_key_down0(struct CONSOLE *cons, int lines);
 static void cons_scroll_buttom(struct CONSOLE *cons);
 void cmd_cp0(struct CONSOLE *cons, char *cmdline, int *fat);
+void print_page_tables();
 
 void update_scroll_bar(struct CONSOLE *cons);
 
@@ -568,6 +569,8 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 		print_page_config();
 	} else if(strncmp(cmdline, "cp0 ", 4) == 0){               //从软盘映像中拷贝文件到硬盘的特定目录
 	   cmd_cp0(cons,cmdline, fat);
+	} else if(strcmp(cmdline, "pt") == 0){
+		print_page_tables();
 	}else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
 			/* 无法找到该命令和文件 */

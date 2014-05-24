@@ -9,7 +9,7 @@ static void prepare_page_dir_and_page_table();
 static void map_kernel_page(unsigned int addr_start, int page_count);
 static void map_user_page(unsigned int addr_start);
 static void oom();
-
+void print_page_tables();
 
 /**
   用于计算计算机内存大小。方法：通过不断的测试来获取计算机内存大小。
@@ -182,10 +182,16 @@ int NO_PAGE_EXP_COUNT = 0;
 void do_no_page(unsigned long error_code, unsigned long address) 
 {
 	NO_PAGE_EXP_COUNT++;
+	int p = error_code & 0x01;
+	int w_r = (error_code & 0x02) >> 1;
+	int u_s = (error_code & 0x04) >> 2;
     debug("do_no_page(%d): code=%d, addr=%d(0x%08.8x)",NO_PAGE_EXP_COUNT,error_code, address,address);
+	debug("P = %d, W/R = %d, U/S = %d",p,w_r,u_s);
 	//unsigned int laddr = address & 0xFFC00000;
 	//map_kernel(laddr, 1024);
-	map_user_page(address);
+	if( p == 0 )
+		map_user_page(address);
+	debug("-----------------------------------------");
 	//while(1);
 }
 
@@ -225,7 +231,7 @@ static void prepare_page_dir_and_page_table()
 		page_dir_base_addr[i] = 0;
 	}
 	
-	unsigned int kernel_pages = 0xf0f00000 / 0x1000;
+	unsigned int kernel_pages = 0x00b10000 / 0x1000;
 	//unsigned int kernel_pages = 0xFFe00000 / 0x1000;
 	end_addr_mapped = kernel_pages * 4 * 1024 -1;
 	map_kernel_page(0x00000000, kernel_pages);  //映射内核空间
@@ -250,7 +256,7 @@ static unsigned int alloc_free_page()
 	}
 	if( has_free_page ){
 		page_bit_map[i] = 1;
-		debug("alloc a new page, addr = 0x%08.8x", i * 4 * 1024);
+		//debug("alloc a new page, addr = 0x%08.8x", i * 4 * 1024);
 		return i * 4 * 1024;
 	}
 	else
@@ -284,6 +290,37 @@ static void map_kernel_page(unsigned int addr_start, int page_count)
 	}
 }
 
+////获取该线性地址的页表地址
+static  int get_page_table_laddr(unsigned int addr_start)
+{
+	int offset = (addr_start >> 12 & 0x3FF) * 4;           //页表的线性地址的最低12位
+	int page_offset = (addr_start >> 22) << 12;            //页表的线性地址的中间10位
+	int page_dir_offset = 0x3FF << 22;
+	//debug("pdir_offset=%d,page_offset=%d, offset=%d", (u32)page_dir_offset, page_offset, offset);
+	return (page_dir_offset + page_offset + offset); //页表的线性地址
+}
+
+
+
+////打印页表映射 laddr->paddr
+void print_page_tables()
+{
+	u32 laddr = 0;
+	for(laddr=0; laddr < 0x00d10000; laddr += 0x1000){
+		
+		int page_table_laddr = get_page_table_laddr(laddr);
+		if( *(int *)page_table_laddr & 0x01 ){
+			int page_base_paddr = *(int *)page_table_laddr & 0xFFFFFFF000;
+			if(laddr != (u32)page_base_paddr)
+				debug("%08.8x --> %08.8x",laddr,(u32)page_base_paddr);
+			//debug("%08.8x --> %08.8x",laddr,(u32)page_base_paddr);
+		}else{
+			//debug("%08.8x --> ",laddr);
+		}
+	}
+}
+
+
 static void map_user_page(unsigned int addr_start)
 {
 	//debug("laddr = 0x%08.8x",addr_start); 
@@ -291,7 +328,6 @@ static void map_user_page(unsigned int addr_start)
 	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;  
 	unsigned int dir_index = addr_start >> 22; //页目录开始项
 	
-	debug("page_dir_base_addr[%d] = 0x%08.8x", dir_index, page_dir_base_addr[dir_index]);
 	int *pagetable_item = NULL;
 	if(page_dir_base_addr[dir_index] == 0){  //页表没有分配
 		unsigned int page = alloc_free_page();
@@ -302,11 +338,7 @@ static void map_user_page(unsigned int addr_start)
 		debug("allocate page dir");
 	}
 	//现在需要修改页表
-	int offset = (addr_start >> 12 & 0x3FF) * 4;   //页表的线性地址的最低12位
-	int page_offset = (addr_start >> 22) << 12;            //页表的线性地址的中间10位
-	int page_dir_offset = 0x3FF << 22;
-	debug("pdir_offset = %d, page_offset = %d, offset = %d", (u32)page_dir_offset, page_offset, offset);
-	pagetable_item = (int *)(page_dir_offset + page_offset + offset); //页表的线性地址
+	pagetable_item = (int *)get_page_table_laddr(addr_start); //页表的线性地址
 	debug("laddr of page table item = 0x%08.8x", (int)pagetable_item);
 		
 	unsigned int page = alloc_free_page();

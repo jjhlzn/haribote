@@ -24,6 +24,7 @@ extern struct FIFO32* log_fifo_buffer;
 extern int ROOT_DEV;
 void cons_key_up(struct CONSOLE *cons);
 void cons_key_down(struct CONSOLE *cons);
+void add_print_flag();
 
 extern int log_ready;
 
@@ -559,4 +560,10 @@ void close_console(struct SHEET *sht)
 	}
 	close_constask(task);
 	return;
+}
+
+void add_print_flag()
+{
+	static int i = 0;
+	debug("print_flag: i = %i",i);
 }

@@ -27,7 +27,7 @@
 		EXTERN	_inthandler2c, _inthandler0d
 		EXTERN 	_inthandler2e
 		EXTERN	_inthandler0c
-		EXTERN	_hrb_api, _linux_api, _linux_api2, _do_no_page
+		EXTERN	_hrb_api, _linux_api, _linux_api2, _do_no_page, _add_print_flag
 
 [SECTION .text]
 
@@ -615,6 +615,7 @@ _start_app_elf:		; void start_app_elf(int eip, int cs, int esp, int ds, int *tss
 		PUSH	EAX				; 应用程序的EIP
 		;MOV EDX, [ESP+56+16]       ; argc
 		;MOV EBX, [ESP+60+16]       ; argv
+		
 		RETF
 ;	应用程序结束后不会回到这里
 

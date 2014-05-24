@@ -177,10 +177,10 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
 	//debug_Elf32_Ehd(elf_hdr);
 
-	int data_limit = 1024 * 50;
+	int data_limit = 1024 * 100; //TODO: 代码固定尺寸
 	debug("data_limit = %d(0x%08.8x)",data_limit,data_limit);
-	u8 *cod_seg =  (u8 *)memman_alloc_4k(memman, data_limit); //TODO: 代码固定尺寸
-	debug("segment_addr = %d(0x%08.8x)", (u32)cod_seg, (u32)cod_seg);
+	u8 *cod_seg =  (u8 *)memman_alloc_4k(memman, data_limit); 
+	debug("cod_seg = %d(0x%08.8x)", (u32)cod_seg, (u32)cod_seg);
 	
 	task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
 	task->cs_base = (int) cod_seg;
@@ -196,17 +196,20 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 			if( (u32)elf_phdr->p_vaddr > 32 * 1024 * 1024){
 				debug("WARN: virtual addr > 32MB, ignore the section");
 			}else{
-				debug("copy to addr %d(0x%08.8x)", (unsigned int)elf_phdr->p_vaddr,(unsigned int)elf_phdr->p_vaddr);
+				//debug("copy to addr %d(0x%08.8x)", (unsigned int)elf_phdr->p_vaddr,(unsigned int)elf_phdr->p_vaddr);
 				phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
-				debug("copy PT_LOAD finished");
+				//debug("copy PT_LOAD finished");
 			}
 		}
 	}
 	
 	int argc = GetSize(list);
 	esp = prepare_args(cod_seg, data_limit, list);
+	//esp = data_limit - 512;
 	
 	debug("invoke start_app_elf");
+	
+	/* cs = 0 * 8 + 4表示第0个ldt */
 	start_app_elf((int)elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
 }
 
@@ -298,6 +301,7 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 	}
 	debug("argc = %d",argc);
 	
+	
 	*((int *)(&arg_stack[stack_len])) = 0;
 	stack_len += sizeof(char *);
 	
@@ -310,6 +314,8 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 		stack_len++;
 	}
 	
+	debug("here1");
+	
 	//释放准备参数时的内存
 	memman_free(memman, (u32)argv, sizeof(char **) * (count+1));
 	struct Node *tmp = NULL;
@@ -320,6 +326,8 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 		FreeNode(list);
 	}
 	
+	debug("here2");
+	
     esp = data_limit - PROC_ORIGIN_STACK;
 
 	phys_copy(cod_seg+esp, arg_stack, stack_len);
@@ -328,11 +336,13 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 	u8 *stack = (u8 *)(cod_seg+esp);
 	char *argv_contents = (char *)(stack + (argc + 1) * 4);
 	for(i = 0; i<argc; i++){
-		//debug("argv_contents = %d",argv_contents);
+		debug("argv_contents = %d",argv_contents);
 		*((char **)stack) = (char *)((int)argv_contents - (int)cod_seg);  //等级argv[i]的地址
 		argv_contents += strlen(argv_contents) + 1;
 		stack += 4;
 	}
+	
+	debug("here3");
 	
 	stack = (u8 *)(cod_seg+esp);
 	string_memory(cod_seg+esp-4, stack_len, msg);
