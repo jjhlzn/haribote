@@ -571,6 +571,9 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 	   cmd_cp0(cons,cmdline, fat);
 	} else if(strcmp(cmdline, "pt") == 0){
 		print_page_tables();
+	} else if(strcmp(cmdline, "show_display") == 0){
+		struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
+		debug("vram = 0x%x, scrnx = %d, scrny = %d", binfo->vram, binfo->scrnx, binfo->scrny);
 	}else if (cmdline[0] != 0) {
 		if (cmd_app(cons, fat, cmdline) == 0) {
 			/* 无法找到该命令和文件 */

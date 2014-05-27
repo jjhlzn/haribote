@@ -7,7 +7,7 @@
 
 static void prepare_page_dir_and_page_table();
 static void map_kernel_page(unsigned int addr_start, int page_count);
-static void map_user_page(unsigned int addr_start);
+static void get_empty_page(unsigned int addr_start);
 static void oom();
 void print_page_tables();
 
@@ -190,7 +190,7 @@ void do_no_page(unsigned long error_code, unsigned long address)
 	//unsigned int laddr = address & 0xFFC00000;
 	//map_kernel(laddr, 1024);
 	if( p == 0 )
-		map_user_page(address);
+		get_empty_page(address);
 	debug("-----------------------------------------");
 	//while(1);
 }
@@ -205,7 +205,7 @@ mem_init()
 	memman_init(memman);
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
 	//0x00400000-0x00900000放页表，0x00900000-0x00a00000存放分页是否空闲
-	//0x00a00000-0x00b00000为高速缓冲
+	//0x00a00000-0x00b00000为高速缓冲 (1MB)
 	memman_free(memman, 0x00b00000, memtotal - 0x00b00000); 
 	
 	int mem_pages = memtotal / (4 * 1024);
@@ -243,7 +243,7 @@ static void prepare_page_dir_and_page_table()
 }
 
 /** 分配一页物理页  */
-static unsigned int alloc_free_page()
+static unsigned int get_free_page()
 {
 	int i;
 	int has_free_page = 0;
@@ -301,7 +301,6 @@ static  int get_page_table_laddr(unsigned int addr_start)
 }
 
 
-
 ////打印页表映射 laddr->paddr
 void print_page_tables()
 {
@@ -321,7 +320,7 @@ void print_page_tables()
 }
 
 
-static void map_user_page(unsigned int addr_start)
+static u32 put_page(unsigned int page, unsigned int addr_start)
 {
 	//debug("laddr = 0x%08.8x",addr_start); 
 	//这里应该使用页表的线性地址，而不应该是物理地址。不过对于PAGE_DIR_ADDR线性地址刚好是物理地址。
@@ -330,9 +329,11 @@ static void map_user_page(unsigned int addr_start)
 	
 	int *pagetable_item = NULL;
 	if(page_dir_base_addr[dir_index] == 0){  //页表没有分配
-		unsigned int page = alloc_free_page();
-		if(page == NO_FREE_PAGE_ADDR)
+		unsigned int page = get_free_page();
+		if(page == NO_FREE_PAGE_ADDR){
 			oom();
+			return 0;
+		}
 		page_dir_base_addr[dir_index] = ( page & 0xFFFFFC00 ) | 0x7; //设置页目录项的页表物理地址
 		debug("paddr of page table = 0x%08.8x", page);
 		debug("allocate page dir");
@@ -341,13 +342,21 @@ static void map_user_page(unsigned int addr_start)
 	pagetable_item = (int *)get_page_table_laddr(addr_start); //页表的线性地址
 	debug("laddr of page table item = 0x%08.8x", (int)pagetable_item);
 		
-	unsigned int page = alloc_free_page();
-	if(page == NO_FREE_PAGE_ADDR)
-		oom();
-	//page -= 0x2000;
 	*pagetable_item =  page | 0x7;
 	
 	debug("map ladd[%08.8x] to paddr[%08.8x]",addr_start,page);
+	
+	return page;
+}
+
+
+static void get_empty_page(unsigned int addr_start)
+{
+	u32 page;
+	if (  (page=get_free_page()) == NO_FREE_PAGE_ADDR
+	   || !put_page(page,addr_start) ){
+		oom();
+	}
 }
 
 /*------------------------------------------辅助函数-----------------------------------------------*/

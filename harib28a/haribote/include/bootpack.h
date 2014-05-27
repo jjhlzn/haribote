@@ -20,8 +20,8 @@ struct BOOTINFO { /* 0x0ff0-0x0fff */
 	char leds; /* ブート時のキーボードのLEDの状態 */
 	char vmode; /* ビデオモード  何ビットカラーか */
 	char reserve;
-	short scrnx, scrny; /* 画面解像度 */
-	char *vram;
+	short scrnx, scrny; /* ｷﾖｱ貭ﾊ */
+	char *vram;        /*  ﾏﾔｴ豬ﾄﾆｼｵﾘﾖｷ */
 	int hd0;
 	char hd1[16];
 	//struct hd_i_struct hd_info;
