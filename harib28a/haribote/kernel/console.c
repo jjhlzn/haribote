@@ -570,7 +570,7 @@ void cons_runcmd(char *cmdline, struct CONSOLE *cons, int *fat, int memtotal)
 	} else if(strncmp(cmdline, "cp0 ", 4) == 0){               //从软盘映像中拷贝文件到硬盘的特定目录
 	   cmd_cp0(cons,cmdline, fat);
 	} else if(strcmp(cmdline, "pt") == 0){
-		print_page_tables();
+		//print_page_tables();
 	} else if(strcmp(cmdline, "show_display") == 0){
 		struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 		debug("vram = 0x%x, scrnx = %d, scrny = %d", binfo->vram, binfo->scrnx, binfo->scrny);

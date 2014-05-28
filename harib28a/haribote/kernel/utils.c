@@ -268,7 +268,6 @@ void load_background_pic(char* buf_back, int *fat)
 	
 	int  i, j, fsize, info[8];
 	struct RGB picbuf[300*300], *q;	 //这里的空间不能太大，否则内核的栈不够用了
-	//picbuf = memman_alloc((struct MEMMAN *) MEMMAN_ADDR, 1024 * 768 * sizeof(struct RGB));
 	if(picbuf == 0)
 	{
 		return;

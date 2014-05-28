@@ -246,7 +246,7 @@ int timer_cancel(struct TIMER *timer);
 void timer_cancelall(struct FIFO32 *fifo);
 
 /* mtask.c */
-#define MAX_TASKS		1000	/* 嵟戝僞僗僋悢 */
+#define MAX_TASKS		64	/* 嵟戝僞僗僋悢 */
 #define TASK_GDT0		3		/* TSS傪GDT偺壗斣偐傜妱傝摉偰傞偺偐 */
 #define MAX_TASKS_LV	100   /*        每层最多容纳的进程         */
 #define MAX_TASKLEVELS	10    /*  进程管理的最多层级 */
@@ -294,6 +294,7 @@ struct TASK {
 	long leader, pgrp;
 	int tty;
 	int signal;
+	int nr;
 };
 
 #define task_struct TASK

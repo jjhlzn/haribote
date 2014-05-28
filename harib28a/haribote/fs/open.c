@@ -289,56 +289,7 @@ PUBLIC void open_std_files(struct TASK *task)
 	(task->filp[fd]=f)->f_count++;
 	//debug("open fd[%d]",fd);
 	
-	//struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	
-	//int i;
-	//for (i = 0; i < NR_FILE_DESC; i++)
-	//	if (f_desc_table[i].fd_inode == 0)
-	//		break;
-	//if (i >= NR_FILE_DESC)
-	//	panic("f_desc_table[] is full (PID:%d)", task->pid);
-	//task->filp[STDIN] = &f_desc_table[i];
-	
-	//task->filp[STDIN]->fd_mode = O_RDONLY;
-	//task->filp[STDIN]->fd_pos = 0;
-	//task->filp[STDIN]->fd_cnt = 1;
-	//struct inode* STDIN_node = (struct inode*)memman_alloc(memman, sizeof(struct inode));
-	//STDIN_node->i_mode = 1; //I_CHAR_SPECIAL;
-	//STDIN_node->i_size = task->pid;
-	//task->filp[STDIN]->fd_inode = STDIN_node;
-	
-	//for (i = 0; i < NR_FILE_DESC; i++)
-	//	if (f_desc_table[i].fd_inode == 0)
-	//		break;
-	//if (i >= NR_FILE_DESC)
-	//	panic("f_desc_table[] is full (PID:%d)", task->pid);
-	//task->filp[STDOUT] = &f_desc_table[i];
-	
-	//task->filp[STDOUT]->fd_mode = O_WRONLY;
-	//task->filp[STDOUT]->fd_pos = 2;
-	//task->filp[STDOUT]->fd_cnt = 1;
-	//struct inode* STDOUT_node = (struct inode*)memman_alloc(memman, sizeof(struct inode));
-	//STDOUT_node->i_mode = 1; //I_CHAR_SPECIAL;
-	////debug("STDOUT_node->i_mode = %x", STDOUT_node->i_mode);
-	//STDOUT_node->i_size = task->pid;
-	//task->filp[STDOUT]->fd_inode = STDOUT_node;
-	
-	//for (i = 0; i < NR_FILE_DESC; i++)
-	//	if (f_desc_table[i].fd_inode == 0)
-	//		break;
-	//if (i >= NR_FILE_DESC)
-	//	panic("f_desc_table[] is full (PID:%d)", task->pid);
-	//task->filp[STDERR] = &f_desc_table[i];
-	
-	//task->filp[STDERR]->fd_mode = O_WRONLY;
-	//task->filp[STDERR]->fd_pos = 0;
-	//task->filp[STDERR]->fd_cnt = 1;
-	//struct inode* STDERR_node = (struct inode*)memman_alloc(memman, sizeof(struct inode));
-	//STDERR_node->i_mode = 1; //I_CHAR_SPECIAL;
-	////STDERR_node->i_size = task->pid;
-	//task->filp[STDERR]->fd_inode = STDERR_node;
-	
-	//panic("open_std_files");
 }
 
 

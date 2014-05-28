@@ -6,10 +6,12 @@
 
 
 static void prepare_page_dir_and_page_table();
-//static void map_kernel_page(unsigned int addr_start, int page_count);
 static void get_empty_page(unsigned int addr_start);
 static void oom();
 void print_page_tables();
+unsigned int get_and_map_cont_free_page(u32 addr, int n);
+static unsigned int get_cont_free_pages(int n);
+static u32 put_page(unsigned int page, unsigned int addr_start);
 
 /**
   用于计算计算机内存大小。方法：通过不断的测试来获取计算机内存大小。
@@ -70,130 +72,55 @@ unsigned int memman_total(struct MEMMAN *man)
 	}
 	return t;
 }
-
 unsigned int memman_alloc(struct MEMMAN *man, unsigned int size)
-/* 内存分配 */
 {
-	unsigned int i, a;
-	for (i = 0; i < man->frees; i++) {
-		if (man->free[i].size >= size) {
-			/* 找到了足够大的内存 */
-			a = man->free[i].addr;
-			man->free[i].addr += size;
-			man->free[i].size -= size;
-			if (man->free[i].size == 0) {
-				/* 如果free[i]变成了0，就减掉一条可用信息 */
-				man->frees--;
-				for (; i < man->frees; i++) {
-					man->free[i] = man->free[i + 1]; 
-				}
-			}
-			return a;
-		}
-	}
-	return 0; /* 没有可用空间 */
+	return memman_alloc_4k(man,size);
 }
 
 int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size)
 /* 释放内存 */
 {
-	int i, j;
-	 /* 为便于归纳内存，将free[]按照addr的顺序排列 */    
-	/* 所以，先决定应该放在哪里 */
-	for (i = 0; i < man->frees; i++) {
-		if (man->free[i].addr > addr) {
-			break;
-		}
-	}
-	/* free[i - 1].addr < addr < free[i].addr */
-	if (i > 0) {
-		/* 前面有可用内存 */
-		if (man->free[i - 1].addr + man->free[i - 1].size == addr) {
-			/* 可以预前面的可用内存归纳到一起 */
-			man->free[i - 1].size += size;
-			if (i < man->frees) {
-				/* 后面也有 */
-				if (addr + size == man->free[i].addr) {
-					/* 也可以与后面的可用内存归纳到一起 */
-					man->free[i - 1].size += man->free[i].size;
-					/* man->free[i]删除*/
-					/* free[i]变成0后归纳到前面去 */
-					man->frees--;
-					for (; i < man->frees; i++) {
-						man->free[i] = man->free[i + 1]; /* 结构体赋值 */
-					}
-				}
-			}
-			return 0; /* 成功完成 */
-		}
-	}
-	/* 不能与前面归纳到一起*/
-	if (i < man->frees) {
-		/* 后面还有*/
-		if (addr + size == man->free[i].addr) {
-			/* 可以与后面的内容归纳到一起 */
-			man->free[i].addr = addr;
-			man->free[i].size += size;
-			return 0; /* 成功完成 */
-		}
-	}
-	/* 不能与前面归纳到一起，也不能与后面归纳到一起 */
-	if (man->frees < MEMMAN_FREES) {
-		/* free[i]之后的，向后移动，腾出一点可用空间 */
-		for (j = man->frees; j > i; j--) {
-			man->free[j] = man->free[j - 1];
-		}
-		man->frees++;
-		if (man->maxfrees < man->frees) {
-			man->maxfrees = man->frees; /* 更新最大值 */
-		}
-		man->free[i].addr = addr;
-		man->free[i].size = size;
-		return 0; /* 成功完成 */
-	}
-	/* 不能往后移动 */
-	man->losts++;
-	man->lostsize += size;
-	return -1; /* 失败 */
+	return 0;
 }
 
+////分配连续页数的物理内存
+//参数：man - 无用， size - 需要内存的字节数
 unsigned int 
 memman_alloc_4k(struct MEMMAN *man, unsigned int size)
 {
-	unsigned int a;
+	man = (struct MEMMAN *)NULL; //unuserd code
+	unsigned int page;
 	size = (size + 0xfff) & 0xfffff000;
-	//print_on_screen3("memman_alloc_4k: size = %d",size);
-	a = memman_alloc(man, size);
-	return a;
+	page = get_cont_free_pages(size/4096);
+	return page;
 }
 
 int 
 memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
 {
-	int i;
-	size = (size + 0xfff) & 0xfffff000;
-	i = memman_free(man, addr, size);
-	return i;
+	//int i;
+	//size = (size + 0xfff) & 0xfffff000;
+	//i = memman_free(man, addr, size);
+	//return i;
+	return 0;
 }
 
 int NO_PAGE_EXP_COUNT = 0;
-unsigned long _error_code = 0,_address = 0;
 /***********************************分页相关**************************************************/
 /*  处理Page Fault */
 void do_no_page(unsigned long error_code, unsigned long address) 
 {
 	NO_PAGE_EXP_COUNT++;
-	_error_code = error_code;
-	_address = address;
 	int p = error_code & 0x01;
 	int w_r = (error_code & 0x02) >> 1;
 	int u_s = (error_code & 0x04) >> 2;
-    debug("do_no_page(%d): code=%d, addr=%d(0x%08.8x)",NO_PAGE_EXP_COUNT,error_code, address, address);
+    debug("do_no_page(%d): code=%d, addr=%d(0x%08.8x)",NO_PAGE_EXP_COUNT,error_code, address,address);
 	debug("P = %d, W/R = %d, U/S = %d",p,w_r,u_s);
 	//unsigned int laddr = address & 0xFFC00000;
 	//map_kernel(laddr, 1024);
-	if( p == 0 )
+	if( !p ){
 		get_empty_page(address);
+	}
 	debug("-----------------------------------------");
 	//while(1);
 }
@@ -222,41 +149,37 @@ mem_init()
 }
 
 ////准备页目录和页表
-static void prepare_page_dir_and_page_table()
+static void 
+prepare_page_dir_and_page_table()
 {
 	int i;
 	u32 laddr;
+	
 	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
-	//清空1024个页目录项
-	for(i=0; i<1024; i++){
-		page_dir_base_addr[i] = 0;
-	}
 	
 	//清空1024个页目录项
 	for(i=0; i<1024; i++)
 		page_dir_base_addr[i] = 0;
+		
 	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
-	for(i = 0; i < 0x04000000 / 0x1000; i++)
+	for(i = 0; i < 64 * 1024 * 1024 / 0x1000; i++)
 		page_bit_map[i] = 0;
 	
 	/*  低端的线性地址只有内核会用到的，对于内核用到的地址，线性地址=物理地址 */
 	for(i=0; i<16; i++) 
 		page_dir_base_addr[i] = (((int)page_dir_base_addr + 4096 * (i+1)) & 0xFFFFFC00) | 0x7;
-	page_dir_base_addr[0xe0000000/0x400000] = (( (int)page_dir_base_addr + 4096 * 17) & 0xFFFFFC00) | 0x7;
+	page_dir_base_addr[0xe0000000/0x400000] = (( (int)page_dir_base_addr + 4096 * (16+1)) & 0xFFFFFC00) | 0x7;
 	int *page_table = (int *)PAGE_DIR_ADDR + 1024;
-	for(laddr = 0, i= 0; laddr < 0x04000000; laddr += 0x1000, i++)
-		page_table[i] =  laddr | 0x7;
-	
+	for(laddr = 0, i= 0; laddr < 0x4000000; laddr += 0x1000, i++)
+		page_table[i] = (laddr & 0xFFFFFC00) | 0x7;
 	/* 显存 */
-	for(laddr = 0xe0000000; laddr < 0xe0000000 + 192 * 0x1000; laddr += 0x1000, i++) //从3G开始
-		page_table[i] = laddr | 0x7;
+	for(laddr = 0xe0000000; laddr < 0xe0000000 + 768 * 0x1000; laddr += 0x1000) //从3G开始
+		page_table[i] = (laddr & 0xFFFFFC00) | 0x7;
 	
 	/* 设置已经使用的内存 */
-	for( i = 0; i < 0x00b00000 / 0x1000; i++ )
+	for( i = 0; i < 0x00b00000 / 0x1000; i++ ){
 		page_bit_map[i] = 1;
-	
-	//页表最后一项指向它自己
-	page_dir_base_addr[1023] = PAGE_DIR_ADDR | 0x7;
+	}
 }
 
 /** 分配一页物理页  */
@@ -276,9 +199,54 @@ static unsigned int get_free_page()
 		return i * 4 * 1024;
 	}
 	else
-		return NO_FREE_PAGE_ADDR;
+		return 0;
 }
 
+////分配物理上连续的n页内存
+//参数：内存页数
+static unsigned int get_cont_free_pages(int n)
+{
+	if (!n)
+		debug("WARN: alloc 0 pages");
+	int i, cont_pages =0, start_index = 0, has_free_pages = 0;
+	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	for( i = 0; i < get_count_of_total_pages(); i++ ){
+		if(!page_bit_map[i]){
+			if(has_free_pages){
+				cont_pages++;
+			}else{
+				has_free_pages = 1;
+				cont_pages = 1;
+				start_index = i;
+			}
+			if( n == cont_pages )
+				break;
+		}else{
+			has_free_pages = 0;
+		}
+	}
+	if( has_free_pages ){
+		for(i=start_index; i<n; i++)
+			page_bit_map[i] = 1;
+		return start_index * 4 * 1024;
+	}
+	else
+		return 0;
+}
+
+////分配n页连续物理内存，并把它映射到线性地址
+//参数：addr -- 线性地址， n --  需要分配的内存页数
+//返回：物理地址
+unsigned int get_and_map_cont_free_page(u32 addr, int n)
+{
+	u32 page = get_cont_free_pages(n);
+	if(!page)
+		oom();
+	int i;
+	for(i = 0; i<n; i++)
+		put_page(page + i * 0x1000,addr + i * 0x1000);
+	return page;
+}
 
 static u32 put_page(unsigned int page, unsigned int address)
 {
@@ -290,7 +258,7 @@ static u32 put_page(unsigned int page, unsigned int address)
 	//	printk("Trying to put page %p at %p\n",page,address);
 	//if (mem_map[(page-LOW_MEM)>>12] != 1)
 	//	printk("mem_map disagrees with %p at %p\n",page,address);
-	page_table = (unsigned long *) (((address>>20) & 0xffc) + PAGE_DIR_ADDR);
+	page_table = (unsigned long *) ((address>>20) & 0xffc);
 	if ((*page_table)&1)
 		page_table = (unsigned long *) (0xfffff000 & *page_table);
 	else {
@@ -372,7 +340,6 @@ void print_page_config()
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
 	int cyls = binfo->cyls;
 	debug("cyls = %d",cyls);
-	debug("NO_PAGE_EXP_COUNT = %d, error_code = %d, address = %d(0x%x)",NO_PAGE_EXP_COUNT, _error_code, _address, _address);
 }
 
 static void oom(){

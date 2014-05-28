@@ -182,6 +182,7 @@ struct TASK *task_alloc(void)
 			task = &taskctl->tasks0[i];
 			task->signal = 0;
 			task->pid = get_new_pid();
+			task->nr = i;
 			debug("alloc pid = %d",task->pid);
 			task->flags = 1; /* 正在使用的标志 */
 			task->tss.eflags = 0x00000202; /* IF = 1; */
