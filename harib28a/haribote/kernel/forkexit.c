@@ -272,27 +272,27 @@ PRIVATE void free_mem(struct TASK *task)
 {
 	debug("-----------free memory-------------------");
 	
-	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	//struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	
-	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task->ldt;
+	//struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task->ldt;
 	
-	/* Text segment */
-	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
-	memman_free_4k(memman, codeBase, codeLimit);
-	debug("free text segment: add = %d, size = %d", codeBase, codeLimit);
+	///* Text segment */
+	//int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
+	//memman_free_4k(memman, codeBase, codeLimit);
+	//debug("free text segment: add = %d, size = %d", codeBase, codeLimit);
 	
-	/* Data segment */
-	int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
-	memman_free_4k(memman, dataBase, dataLimit);
-	debug("free data segment: add = %d, size = %d", dataBase, dataLimit);
+	///* Data segment */
+	//int dataLimit = DESCRIPTOR_LIMIT(pldt[1]), dataBase = DESCRIPTOR_BASE(pldt[1]);
+	//memman_free_4k(memman, dataBase, dataLimit);
+	//debug("free data segment: add = %d, size = %d", dataBase, dataLimit);
 	
-	/* stack: TODO 这时候还不能释放自己的栈 */
-	memman_free_4k(memman, task->cons_stack, 64 * 1024);
-	debug("free console stack: add = %d, size = %d", task->cons_stack, 64 * 1024);
+	///* stack: TODO 这时候还不能释放自己的栈 */
+	//memman_free_4k(memman, task->cons_stack, 64 * 1024);
+	//debug("free console stack: add = %d, size = %d", task->cons_stack, 64 * 1024);
 	
-	/* cons fifo：TODO 这时候能不能释放*/
-	memman_free_4k(memman, (u32)task->fifo.buf, 128*4);
-	debug("free FIFO buf: add = %d, size = %d", task->fifo.buf, 128 * 4);
+	///* cons fifo：TODO 这时候能不能释放*/
+	//memman_free_4k(memman, (u32)task->fifo.buf, 128*4);
+	//debug("free FIFO buf: add = %d, size = %d", task->fifo.buf, 128 * 4);
 	
 	debug("-----------------------------------------");
 	

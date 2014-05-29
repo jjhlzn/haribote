@@ -7,6 +7,7 @@
 #include "linkedlist.h"
 #include "elf.h"
 #include <fcntl.h>
+#include "memory.h"
 
  void load_hrb(char *p, int appsiz, struct Node *list);
  void load_elf(char *p, struct Node *list);
@@ -169,24 +170,29 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 
  void load_elf(char *p, struct Node *list)
 {
-	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct TASK *task = task_now();
 	int esp,i;
+	struct SHTCTL *shtctl;
+	struct SHEET *sht;
 	
 	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
-
-	int data_limit = 1024 * 100; //TODO: 代码固定尺寸
-	debug("data_limit = %d(0x%08.8x)",data_limit,data_limit);
-	u8 *cod_seg =  (u8 *)memman_alloc_4k(memman, data_limit); 
-	debug("cod_seg = %d(0x%08.8x)", (u32)cod_seg, (u32)cod_seg);
 	
-	task->ds_base = (int) cod_seg;  //代码和数据段用同一个段
-	task->cs_base = (int) cod_seg;
+	u32 laddr_base = task->nr * 64 MB;
+	u32 laddr_limit = 64 MB;
 	
-	set_segmdesc(task->ldt + 0, data_limit - 1, (int) cod_seg, AR_CODE32_ER + 0x60); //代码和数据段其实指向同一个空间
-	set_segmdesc(task->ldt + 1, data_limit - 1, (int) cod_seg, AR_DATA32_RW + 0x60);
+	/* TODO: 应用程序所用物理内存大小固定，并且都在加载的时候全部分配 */
+	int paddr_mem = 4 MB; 
+	u8 * seg_paddr = (u8 *)get_and_map_free_pages(laddr_base, paddr_mem);
+	debug("seg_paddr = %d(0x%08.8x)", (u32)seg_paddr, (u32)seg_paddr);
 	
-	//加载数据段、代码段
+	task->ds_base = (int) laddr_base;  
+	task->cs_base = (int) laddr_base;
+	
+	/* 代码和数据段其实指向同一个空间 */
+	set_segmdesc(task->ldt + 0, laddr_limit - 1, (int) laddr_base, AR_CODE32_ER + 0x60);
+	set_segmdesc(task->ldt + 1, laddr_limit - 1, (int) laddr_base, AR_DATA32_RW + 0x60);
+	
+	/* 从ELF文件中加载PT_LOAD段 */
 	for (i=0; i<elf_hdr->e_phnum; i++){
 		Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
 		//debug("p_type = %d",elf_phdr->p_type);
@@ -195,70 +201,41 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 				debug("WARN: virtual addr > 32MB, ignore the section");
 			}else{
 				//debug("copy to addr %d(0x%08.8x)", (unsigned int)elf_phdr->p_vaddr,(unsigned int)elf_phdr->p_vaddr);
-				phys_copy(cod_seg +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
+				phys_copy(seg_paddr +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
 				//debug("copy PT_LOAD finished");
 			}
 		}
 	}
 	
 	int argc = GetSize(list);
-	esp = prepare_args(cod_seg, data_limit, list);
-	//esp = data_limit - 512;
+	esp = prepare_args(seg_paddr, paddr_mem, list);
 	
 	debug("invoke start_app_elf");
-	
 	/* cs = 0 * 8 + 4表示第0个ldt */
 	start_app_elf((int)elf_hdr->e_entry, 0 * 8 + 4, esp-4, 1 * 8 + 4, &(task->tss.esp0), argc, esp); 
+	
+	/* 应用程序结束后的处理：释放sheet, 释放代码和数据的空间等 */
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
+	for (i = 0; i < MAX_SHEETS; i++) {
+		sht = &(shtctl->sheets0[i]);
+		if ((sht->flags & 0x11) == 0x11 && sht->task == task) {
+			/* 释放程序对应的sht */
+			sheet_free(sht);	
+		}
+	}
+	for (i = 0; i < 8; i++) {	/* 僋儘乕僘偟偰側偄僼傽僀儖傪僋儘乕僘 */
+		if (task->fhandle[i].buf != 0) {
+			memman_free_4k(memman, (int) task->fhandle[i].buf, task->fhandle[i].size);
+			task->fhandle[i].buf = 0;
+		}
+	}
+	timer_cancelall(&task->fifo);
+	//memman_free_4k(memman, (int) q, segsiz);
+	free_page_tables(laddr_base, paddr_mem);
+	task->langbyte1 = 0;
 }
 
-//PRIVATE void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr)
-//{
-//	debug("-------------------Elf32 header-------------------");
-//	debug("e_ident = %s", elf_hdr->e_ident);
-//	debug("e_type = %d",elf_hdr->e_type);
-//	debug("e_machine = %d",elf_hdr->e_machine);
-//	debug("e_version = %d",elf_hdr->e_version);
-//	debug("e_entry = %d",elf_hdr->e_entry);
-//	debug("e_phoff = %d",elf_hdr->e_phoff);
-//	debug("e_shoff = %d",elf_hdr->e_shoff);
-//	debug("e_flags = %d",elf_hdr->e_flags);
-//	debug("e_ehsize = %d",elf_hdr->e_ehsize);
-//	debug("e_phentsize = %d",elf_hdr->e_phentsize);
-//	debug("e_phnum = %d",elf_hdr->e_phnum);
-//	debug("e_shentsize = %d",elf_hdr->e_shentsize);
-//	debug("e_shnum = %d",elf_hdr->e_shnum);
-//	debug("e_shstrndx = %d",elf_hdr->e_shstrndx);
-//	debug("--------------------------------------------------");
-//}
-//PRIVATE void debug_Elf32_Phdr(Elf32_Phdr *phdr)
-//{
-//	debug("-----------------Program header-------------------");
-//	debug("p_type = %d", phdr->p_type);
-//	debug("p_offset = %d", phdr->p_offset);
-//	debug("p_vaddr = %d", phdr->p_vaddr);
-//	debug("p_paddr = %d", phdr->p_paddr);
-//	debug("p_filesz = %d", phdr->p_filesz);
-//	debug("p_memsz = %d", phdr->p_memsz);
-//	debug("p_flags = %d", phdr->p_flags);
-//	debug("p_align = %d", phdr->p_align);
-//	debug("--------------------------------------------------");
-//}
-
-//PRIVATE void debug_Elf32_Shdr(Elf32_Shdr *phdr)
-//{
-//	debug("-----------------Section header-------------------");
-//	debug("sh_name = %s", phdr->sh_name);
-//	debug("sh_type = %d", phdr->sh_type);
-//	debug("sh_flags = %d", phdr->sh_flags);
-//	debug("sh_addr = %d", phdr->sh_addr);
-//	debug("sh_offset = %d", phdr->sh_offset);
-//	debug("sh_size = %d", phdr->sh_size);
-//	debug("sh_link = %d", phdr->sh_link);
-//	debug("sh_info = %d", phdr->sh_info);
-//	debug("sh_addralign = %d", phdr->sh_addralign);
-//	debug("sh_entsize = %d", phdr->sh_entsize);
-//	debug("--------------------------------------------------");
-//}
 
 int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 {
@@ -392,3 +369,52 @@ PRIVATE char *get_next_arg(char *cmdline, int *skip)
 	}
 }
 
+
+//PRIVATE void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr)
+//{
+//	debug("-------------------Elf32 header-------------------");
+//	debug("e_ident = %s", elf_hdr->e_ident);
+//	debug("e_type = %d",elf_hdr->e_type);
+//	debug("e_machine = %d",elf_hdr->e_machine);
+//	debug("e_version = %d",elf_hdr->e_version);
+//	debug("e_entry = %d",elf_hdr->e_entry);
+//	debug("e_phoff = %d",elf_hdr->e_phoff);
+//	debug("e_shoff = %d",elf_hdr->e_shoff);
+//	debug("e_flags = %d",elf_hdr->e_flags);
+//	debug("e_ehsize = %d",elf_hdr->e_ehsize);
+//	debug("e_phentsize = %d",elf_hdr->e_phentsize);
+//	debug("e_phnum = %d",elf_hdr->e_phnum);
+//	debug("e_shentsize = %d",elf_hdr->e_shentsize);
+//	debug("e_shnum = %d",elf_hdr->e_shnum);
+//	debug("e_shstrndx = %d",elf_hdr->e_shstrndx);
+//	debug("--------------------------------------------------");
+//}
+//PRIVATE void debug_Elf32_Phdr(Elf32_Phdr *phdr)
+//{
+//	debug("-----------------Program header-------------------");
+//	debug("p_type = %d", phdr->p_type);
+//	debug("p_offset = %d", phdr->p_offset);
+//	debug("p_vaddr = %d", phdr->p_vaddr);
+//	debug("p_paddr = %d", phdr->p_paddr);
+//	debug("p_filesz = %d", phdr->p_filesz);
+//	debug("p_memsz = %d", phdr->p_memsz);
+//	debug("p_flags = %d", phdr->p_flags);
+//	debug("p_align = %d", phdr->p_align);
+//	debug("--------------------------------------------------");
+//}
+
+//PRIVATE void debug_Elf32_Shdr(Elf32_Shdr *phdr)
+//{
+//	debug("-----------------Section header-------------------");
+//	debug("sh_name = %s", phdr->sh_name);
+//	debug("sh_type = %d", phdr->sh_type);
+//	debug("sh_flags = %d", phdr->sh_flags);
+//	debug("sh_addr = %d", phdr->sh_addr);
+//	debug("sh_offset = %d", phdr->sh_offset);
+//	debug("sh_size = %d", phdr->sh_size);
+//	debug("sh_link = %d", phdr->sh_link);
+//	debug("sh_info = %d", phdr->sh_info);
+//	debug("sh_addralign = %d", phdr->sh_addralign);
+//	debug("sh_entsize = %d", phdr->sh_entsize);
+//	debug("--------------------------------------------------");
+//}

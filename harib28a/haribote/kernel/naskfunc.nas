@@ -613,8 +613,8 @@ _start_app_elf:		; void start_app_elf(int eip, int cs, int esp, int ds, int *tss
 		PUSH	EDX				; 应用程序的ESP
 		PUSH	ECX				; 应用程序的CS
 		PUSH	EAX				; 应用程序的EIP
-		;MOV EDX, [ESP+56+16]       ; argc
-		;MOV EBX, [ESP+60+16]       ; argv
+		MOV EDX, [ESP+56+16]       ; argc
+		MOV EBX, [ESP+60+16]       ; argv
 		
 		RETF
 ;	应用程序结束后不会回到这里

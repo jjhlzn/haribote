@@ -35,15 +35,14 @@ $(APP).bim : $(APP).obj $(APILIBPATH)apilib.lib Makefile ../app_make.txt
 		$(APP).obj $(APILIBPATH)apilib.lib
 
 haribote.img : ../haribote/boot/ipl09.bin ../haribote/haribote.sys $(APP).hrb \
-		Makefile ../app_make.txt hello hello2 fork printf fopen lower scanf cat shell
+		Makefile ../app_make.txt hello fork lower scanf cat shell args
 	$(EDIMG)   imgin:../../../tolset/z_tools/fdimg0at.tek \
 		wbinimg src:../haribote/boot/ipl09.bin len:512 from:0 to:0 \
 		copy from:../haribote/haribote.sys to:@: \
 		copy from:$(APP).hrb to:@: \
 		copy from:fork to:@: \
 		copy from:hello to:@: \
-		copy from:printf to:@: \
-		copy from:fopen to:@: \
+		copy from:args to:@: \
 		copy from:lower to:@: \
 		copy from:scanf to:@: \
 		copy from:cat to:@: \

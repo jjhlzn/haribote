@@ -6,10 +6,17 @@
 
 
 static void prepare_for_open_page();
-//static void map_kernel_page(unsigned int addr_start, int page_count);
 static void get_empty_page(unsigned int addr_start);
 static void oom();
 void print_page_tables();
+static u32 put_page(unsigned int page, unsigned int address);
+char *mem_map = (char *)PAGE_BIT_MAP_ADDR;
+
+////刷新页变换高速缓冲宏函数
+//为了提高地址转换的效率，CPU将最近使用的页表数据存放在芯片中高速缓冲中(TLB)。在修改过页表信息后，
+//就需要重新刷新该缓冲区。这里使用重新加载页目录基址寄存器CR3的方法来进行刷新。下面eax = PAGE_DIR_ADDR，是页目录的地址
+#define invalidate() \
+__asm__("movl %%eax,%%cr3"::"a" (PAGE_DIR_ADDR))
 
 /**
   用于计算计算机内存大小。方法：通过不断的测试来获取计算机内存大小。
@@ -173,9 +180,10 @@ memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
 	return i;
 }
 
-int NO_PAGE_EXP_COUNT = 0;
-unsigned long _error_code = 0,_address = 0;
+
 /***********************************分页相关**************************************************/
+int NO_PAGE_EXP_COUNT = 0;
+unsigned long _error_code = 0, _address = 0;
 /*  处理Page Fault */
 void do_no_page(unsigned long error_code, unsigned long address) 
 {
@@ -192,7 +200,7 @@ void do_no_page(unsigned long error_code, unsigned long address)
 	debug("-----------------------------------------");
 }
 
-//初始化内存, 测试内存大小，将内存划分成物理页, 分配和映射内核使用的物理页
+////初始化内存, 测试内存大小，将内存划分成物理页, 分配和映射内核使用的物理页
 void 
 mem_init()
 {
@@ -217,12 +225,13 @@ prepare_for_open_page()
 	u32 laddr;
 	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
 	
-	//清空1024个页目录项
+	/* 初始化物理页状态 */
+	for(i = 0; i < TOTAL_MEM / 0x1000; i++)
+		mem_map[i] = 0;
+	
+	/* 初始化1024个页目录项 */
 	for(i=0; i<1024; i++)
 		page_dir_base_addr[i] = 0;
-	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
-	for(i = 0; i < 0x04000000 / 0x1000; i++)
-		page_bit_map[i] = 0;
 	
 	/*  低端的线性地址只有内核会用到的，对于内核用到的地址，线性地址=物理地址 */
 	for(i=0; i<16; i++) 
@@ -230,18 +239,18 @@ prepare_for_open_page()
 	page_dir_base_addr[0xe0000000/0x400000] = (( (int)page_dir_base_addr + 4096 * 17) & 0xFFFFFC00) | 0x7;
 	int *page_table = (int *)PAGE_DIR_ADDR + 1024;
 	/* 映射物理内存 */
-	for(laddr = 0, i= 0; laddr < 0x04000000; laddr += 0x1000, i++)
+	for(laddr = 0, i= 0; laddr < TOTAL_MEM; laddr += 0x1000, i++)
 		page_table[i] =  laddr | 0x7;
 	/* 映射显存 */
 	for(laddr = 0xe0000000; laddr < 0xe0000000 + 192 * 0x1000; laddr += 0x1000, i++) //从3G开始
 		page_table[i] = laddr | 0x7;
 	
 	/* 设置已经使用的内存(内核的代码，数据＋供内核分配的存储空间) */
-	for( i = 0; i < (0x00b00000 + 0x01000000)/ 0x1000; i++ )
-		page_bit_map[i] = 1;
+	for( i = 0; i < LOW_MEM/ 0x1000; i++ )
+		mem_map[i] = 1;
 	
 	//页表最后一项指向它自己
-	page_dir_base_addr[1023] = PAGE_DIR_ADDR | 0x7;
+	//page_dir_base_addr[1023] = PAGE_DIR_ADDR | 0x7;
 }
 
 ////分配一页物理页
@@ -250,19 +259,82 @@ get_free_page()
 {
 	int i;
 	int has_free_page = 0;
-	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	char *mem_map = (char *)PAGE_BIT_MAP_ADDR;
 	for( i = 0; i < get_count_of_total_pages(); i++ ){
-		if(page_bit_map[i] == 0){
+		if(mem_map[i] == 0){
 			has_free_page = 1;
 			break;
 		}
 	}
 	if( has_free_page ){
-		page_bit_map[i] = 1;
+		mem_map[i] = 1;
 		return i * 4 * 1024;
 	}
 	else
 		return NO_FREE_PAGE_ADDR;
+}
+
+////分配物理上连续的n页内存,必须4M对齐
+//参数：n -- 字节数
+static unsigned int 
+get_free_pages(int size)
+{
+	if( size & 0x3fffff )
+		panic("get_cont_free_pages: size shoulbe align with 4M, but size = 0x%x", size);
+	
+	int n = size >> 22;
+	if( !n )
+		panic("size can't be zero");
+	
+	int i,j, start_index = 0, has_free_pages = 0;
+	for( i = 0; i < get_count_of_total_pages(); ){
+		if(!mem_map[i]){
+			has_free_pages = 1;
+			start_index = i;
+			for(j=0; j<1024*size; j++){
+				if(!mem_map[j]){
+					continue;
+				}else{
+					has_free_pages = 0;
+					break;
+				}
+			}
+			if(has_free_pages)
+				break;
+			else
+				i += 1024;
+		}else{
+			i += 1024;
+		}
+	}
+	if( has_free_pages ){
+		debug("alloc %d pages", n * 1024);
+		int tmp_index = start_index;
+		for(i=0; i<n * 1024; i++)
+			mem_map[tmp_index++] = 1;
+		return start_index * 4 * 1024;
+	}
+	else {
+		oom();
+		return 0;
+	}
+}
+
+////分配n页连续物理内存，并把它映射到线性地址
+//参数：addr -- 线性地址， n --  需要分配的内存页数
+//返回：物理地址
+unsigned int 
+get_and_map_free_pages(u32 addr, int size)
+{
+	u32 page = get_free_pages(size);
+	debug("page = 0x%x",page);
+	if(!page)
+		oom();
+	int i;
+    int n = size >> 12;
+	for(i = 0; i<n; i++)
+		put_page(page + i * 0x1000,addr + i * 0x1000);
+	return page;
 }
 
 ////将物理内存映射到线性地址上
@@ -273,10 +345,10 @@ put_page(unsigned int page, unsigned int address)
 
 	/* NOTE !!! This uses the fact that _pg_dir=0 */
 
-	//if (page < LOW_MEM || page >= HIGH_MEMORY)
-	//	printk("Trying to put page %p at %p\n",page,address);
-	//if (mem_map[(page-LOW_MEM)>>12] != 1)
-	//	printk("mem_map disagrees with %p at %p\n",page,address);
+	if (page < LOW_MEM || page >= HIGH_MEMORY)
+		printk("Trying to put page %p at %p\n",page,address);
+	if (mem_map[(page-LOW_MEM)>>12] != 1)
+		printk("mem_map disagrees with %p at %p\n",page,address);
 	page_table = (unsigned long *) (((address>>20) & 0xffc) + PAGE_DIR_ADDR);
 	if ((*page_table)&1)
 		page_table = (unsigned long *) (0xfffff000 & *page_table);
@@ -291,38 +363,86 @@ put_page(unsigned int page, unsigned int address)
 	return page;
 }
 
-
-static void get_empty_page(unsigned int addr_start)
+////分配一页物理内存，并且把这页内存映射到线性地址laddr处
+//参数：laddr -- 线性地址
+static void 
+get_empty_page(unsigned int laddr)
 {
 	u32 page;
 	if (  (page=get_free_page()) == NO_FREE_PAGE_ADDR
-	   || !put_page(page,addr_start) ){
+	   || !put_page(page,laddr) ){
 		oom();
 	}
+}
+
+////释放物理地址为addr处的一个内存，这个函数被free_page_table使用
+void 
+free_page(unsigned long addr)
+{
+	if (addr < LOW_MEM) return;
+	if (addr >= HIGH_MEMORY)
+		panic("trying to free nonexistent page");
+	addr -= LOW_MEM;
+	addr >>= 12;
+	
+	if (!mem_map[addr])
+		panic("trying to free free page");
+	mem_map[addr]=0;
+}
+
+//// 根据指定的线性地址和限长（页表个数），释放对应内存页表指定的内存块并闲置表项空闲。
+//参数：from -- 起始线性基地址， size -- 释放的字节长度
+int free_page_tables(unsigned long from,unsigned long size)
+{
+	unsigned long *pg_table;
+	unsigned long * dir, nr;
+
+	if (from & 0x3fffff)
+		panic("free_page_tables called with wrong alignment");
+	if (!from)
+		panic("Trying to free up swapper memory space");
+	size = (size + 0x3fffff) >> 22;
+	dir = (unsigned long *) (( (from>>20)  & 0xffc) + PAGE_DIR_ADDR); //页目录项地址
+	debug("dir = 0x%x, size = %d",dir,size);
+	for ( ; size-->0 ; dir++) {
+		if (!(1 & *dir))
+			continue;
+		pg_table = (unsigned long *) (0xfffff000 & *dir); //页表地址(物理地址）
+		for (nr=0 ; nr<1024 ; nr++) {
+			if (1 & *pg_table)
+				free_page(0xfffff000 & *pg_table); //释放该页
+			*pg_table = 0;
+			pg_table++;
+		}
+		free_page(0xfffff000 & *dir);
+		*dir = 0;
+	}
+	invalidate();
+	return 0;
 }
 
 /*------------------------------------------辅助函数-----------------------------------------------*/
 int get_count_of_free_pages(){
 	int i;
 	int count_of_free_pages = 0;
-	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	char *mem_map = (char *)PAGE_BIT_MAP_ADDR;
 	for(i = 0; i < get_count_of_total_pages(); i++){
-		if(page_bit_map[i] == 0)
+		if(mem_map[i] == 0)
 			count_of_free_pages++;
 	}
 	return count_of_free_pages;
 }
 
 int get_count_of_total_pages(){
-	return memtotal / (4 * 1024);
+	return memtotal / 0x1000;
 }
 
 int get_count_of_used_pages(){
 	int i;
 	int count_of_pages = 0;
-	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
+	char *mem_map = (char *)PAGE_BIT_MAP_ADDR;
 	for(i = 0; i < get_count_of_total_pages(); i++){
-		if(page_bit_map[i] == 1)
+		if(mem_map[i] == 1)
 			count_of_pages++;
 	}
 	return count_of_pages;
@@ -337,7 +457,7 @@ void print_page_config()
 	debug("cr3 = 0x%08.8x",get_cr3());
 	debug("cr0 = 0x%08.8x",get_cr0());
 	
-	debug("NO_PAGE_EXP_COUNT = %d, error_code = %d, address = %d(0x%x)",NO_PAGE_EXP_COUNT, _error_code, _address, _address);
+	debug("NO_PAGE_EXP_COUNT = %d, error_code = %d, address = %d(0x%x)",NO_PAGE_EXP_COUNT, (u32)_error_code, _address, _address);
 }
 
 static void oom(){
