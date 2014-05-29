@@ -382,7 +382,7 @@ free_page(unsigned long addr)
 	if (addr < LOW_MEM) return;
 	if (addr >= HIGH_MEMORY)
 		panic("trying to free nonexistent page");
-	addr -= LOW_MEM;
+	//addr -= LOW_MEM;
 	addr >>= 12;
 	
 	if (!mem_map[addr])
