@@ -91,8 +91,6 @@ copy_task(struct TASK *dst, struct TSS32 *tss)
     /* 初始化新进程的内核栈 */
 	dst->cons_stack = memman_alloc_4k(memman, 64 * 1024);
 	dst->tss.esp0 = dst->cons_stack + 64 * 1024 - 12;
-	//*((int *) (dst->tss.esp0 + 4)) = (int) src->cons->sht;  /* 设置 */
-	//*((int *) (dst->tss.esp0 + 8)) = 32 * 1024 * 1024;
 	
 	/* 初始化新进程的中断等产生的信息队列 */
 	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
@@ -186,29 +184,6 @@ PUBLIC void do_exit(struct TASK *p, int status)
 	tell_father(p->parent_pid);
 	/* 当前进程退出，并且执行任务切换 */
 	task_exit(p, TASK_STATUS_HANGING);
-		
-	////debug("parent task[%d]",parent_task->pid);
-	//if (parent_task->flags == TASK_STATUS_WAITING) { /* parent is waiting */
-	//	debug("process[%d] will go to UNUSED status!", p->pid);
-	//	//父进程可以进入运行状态
-	//	parent_task->wait_return_task = p;
-	//	debug("wake up parent task[%d]",parent_task->pid);
-	//	task_add(parent_task);
-	//	/* 释放该进程的内存 */
-	//	free_mem(p);
-	//	
-	//	/* 当前进程退出，并且执行任务切换 */
-	//	task_exit(p, TASK_STATUS_UNUSED);
-	//}
-	//else { /* parent is not waiting */
-	//	debug("process[%d] will go to HANGING status!", p->pid);
-	//	
-	//	/* 释放该进程的内存 */
-	//	free_mem(p);
-	//	tell_father(p->parent_pid);
-	//	/* 当前进程退出，并且执行任务切换 */
-	//	task_exit(p, TASK_STATUS_HANGING);
-	//}
 }
 
 /*****************************************************************************

@@ -1,5 +1,6 @@
 #include "bootpack.h"
 #include "memory.h"
+#include <string.h>
 
 #define EFLAGS_AC_BIT		0x00040000
 #define CR0_CACHE_DISABLE	0x60000000
@@ -268,7 +269,9 @@ get_free_page()
 	}
 	if( has_free_page ){
 		mem_map[i] = 1;
-		return i * 4 * 1024;
+		unsigned int page = i * 4 * 1024;
+		memset((void *)page, 0, 0x1000);
+		return page;
 	}
 	else
 		return NO_FREE_PAGE_ADDR;
@@ -312,7 +315,9 @@ get_free_pages(int size)
 		int tmp_index = start_index;
 		for(i=0; i<n * 1024; i++)
 			mem_map[tmp_index++] = 1;
-		return start_index * 4 * 1024;
+		unsigned int page = start_index * 4 * 1024;
+		memset((void *)page, 0, size);
+		return page;
 	}
 	else {
 		oom();
