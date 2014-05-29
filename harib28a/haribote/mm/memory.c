@@ -5,7 +5,7 @@
 #define CR0_CACHE_DISABLE	0x60000000
 
 
-static void prepare_page_dir_and_page_table();
+static void prepare_for_open_page();
 //static void map_kernel_page(unsigned int addr_start, int page_count);
 static void get_empty_page(unsigned int addr_start);
 static void oom();
@@ -15,9 +15,6 @@ void print_page_tables();
   用于计算计算机内存大小。方法：通过不断的测试来获取计算机内存大小。
 */
 int memtotal;
-/**  addr_start必须4M对其 */
-int start_addr_mapped = 0;
-int end_addr_mapped = 0;
 unsigned int memtest(unsigned int start, unsigned int end)
 {
 	char flg486 = 0;
@@ -190,12 +187,9 @@ void do_no_page(unsigned long error_code, unsigned long address)
 	int u_s = (error_code & 0x04) >> 2;
     debug("do_no_page(%d): code=%d, addr=%d(0x%08.8x)",NO_PAGE_EXP_COUNT,error_code, address, address);
 	debug("P = %d, W/R = %d, U/S = %d",p,w_r,u_s);
-	//unsigned int laddr = address & 0xFFC00000;
-	//map_kernel(laddr, 1024);
 	if( p == 0 )
 		get_empty_page(address);
 	debug("-----------------------------------------");
-	//while(1);
 }
 
 //初始化内存, 测试内存大小，将内存划分成物理页, 分配和映射内核使用的物理页
@@ -209,28 +203,19 @@ mem_init()
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
 	//0x00400000-0x00900000放页表，0x00900000-0x00a00000存放分页是否空闲
 	//0x00a00000-0x00b00000为高速缓冲 (1MB)
-	memman_free(memman, 0x00b00000, memtotal - 0x00b00000); 
+	memman_free(memman, 0x00b00000, 0x00b00000 + 16 * 1024 * 1024); /* 16M供内核分配 */ 
 	
-	int mem_pages = memtotal / (4 * 1024);
-	char *page_bit_map = (char *)PAGE_BIT_MAP_ADDR;
-	int i;
-	for(i = 0; i < mem_pages; i++){
-		page_bit_map[i] = 0;
-	}
-	prepare_page_dir_and_page_table();
+	prepare_for_open_page();
 	open_page();
 }
 
-////准备页目录和页表
-static void prepare_page_dir_and_page_table()
+////分页前的初始化功能，准备页目录和页表
+static void 
+prepare_for_open_page()
 {
 	int i;
 	u32 laddr;
 	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
-	//清空1024个页目录项
-	for(i=0; i<1024; i++){
-		page_dir_base_addr[i] = 0;
-	}
 	
 	//清空1024个页目录项
 	for(i=0; i<1024; i++)
@@ -244,23 +229,24 @@ static void prepare_page_dir_and_page_table()
 		page_dir_base_addr[i] = (((int)page_dir_base_addr + 4096 * (i+1)) & 0xFFFFFC00) | 0x7;
 	page_dir_base_addr[0xe0000000/0x400000] = (( (int)page_dir_base_addr + 4096 * 17) & 0xFFFFFC00) | 0x7;
 	int *page_table = (int *)PAGE_DIR_ADDR + 1024;
+	/* 映射物理内存 */
 	for(laddr = 0, i= 0; laddr < 0x04000000; laddr += 0x1000, i++)
 		page_table[i] =  laddr | 0x7;
-	
-	/* 显存 */
+	/* 映射显存 */
 	for(laddr = 0xe0000000; laddr < 0xe0000000 + 192 * 0x1000; laddr += 0x1000, i++) //从3G开始
 		page_table[i] = laddr | 0x7;
 	
-	/* 设置已经使用的内存 */
-	for( i = 0; i < 0x00b00000 / 0x1000; i++ )
+	/* 设置已经使用的内存(内核的代码，数据＋供内核分配的存储空间) */
+	for( i = 0; i < (0x00b00000 + 0x01000000)/ 0x1000; i++ )
 		page_bit_map[i] = 1;
 	
 	//页表最后一项指向它自己
 	page_dir_base_addr[1023] = PAGE_DIR_ADDR | 0x7;
 }
 
-/** 分配一页物理页  */
-static unsigned int get_free_page()
+////分配一页物理页
+static unsigned int 
+get_free_page()
 {
 	int i;
 	int has_free_page = 0;
@@ -279,8 +265,9 @@ static unsigned int get_free_page()
 		return NO_FREE_PAGE_ADDR;
 }
 
-
-static u32 put_page(unsigned int page, unsigned int address)
+////将物理内存映射到线性地址上
+static u32 
+put_page(unsigned int page, unsigned int address)
 {
 	unsigned long tmp, *page_table;
 
@@ -341,27 +328,8 @@ int get_count_of_used_pages(){
 	return count_of_pages;
 }
 
-int test_page(unsigned x)
-{
-	int *page_dir_base_addr = (int *)PAGE_DIR_ADDR;
-	int page_dir_index = x >> 22;
-	debug("page_dir_index = %d", page_dir_index);
-	unsigned int page_add =  *(page_dir_base_addr + page_dir_index) & 0xFFFFF000;
-	debug("page_add = %8.8x", page_add);
-	int page_index = x >> 12 & 0x000003FF;
-	debug("page_index = %d", page_index);
-	int *add = (int *)((*((int *)page_add + page_index)  & 0xFFFFF000) + (x & 0x00000FFF));
-	debug("Page(0x%08.8x) = 0x%08.8x",x,(int) add);
-	return (int) add;
-}
-
 void print_page_config()
 {
-	test_page(0xe0000000);
-	test_page(0xe0001000);
-
-	debug("mapped addr: %d -- %d", start_addr_mapped, end_addr_mapped);
-	
 	debug("total_pages = %d", get_count_of_total_pages());
 	debug("free_pages = %d",get_count_of_free_pages());
 	debug("used_pages = %d",get_count_of_used_pages());
@@ -369,9 +337,6 @@ void print_page_config()
 	debug("cr3 = 0x%08.8x",get_cr3());
 	debug("cr0 = 0x%08.8x",get_cr0());
 	
-	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-	int cyls = binfo->cyls;
-	debug("cyls = %d",cyls);
 	debug("NO_PAGE_EXP_COUNT = %d, error_code = %d, address = %d(0x%x)",NO_PAGE_EXP_COUNT, _error_code, _address, _address);
 }
 

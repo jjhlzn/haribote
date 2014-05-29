@@ -169,13 +169,11 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 
  void load_elf(char *p, struct Node *list)
 {
-	
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct TASK *task = task_now();
 	int esp,i;
 	
 	Elf32_Ehdr* elf_hdr = (Elf32_Ehdr*)p;
-	//debug_Elf32_Ehd(elf_hdr);
 
 	int data_limit = 1024 * 100; //TODO: ´úÂë¹Ì¶¨³ß´ç
 	debug("data_limit = %d(0x%08.8x)",data_limit,data_limit);
