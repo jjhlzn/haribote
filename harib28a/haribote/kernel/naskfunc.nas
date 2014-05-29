@@ -27,7 +27,7 @@
 		EXTERN	_inthandler2c, _inthandler0d
 		EXTERN 	_inthandler2e
 		EXTERN	_inthandler0c
-		EXTERN	_hrb_api, _linux_api, _linux_api2, _do_no_page, _add_print_flag
+		EXTERN	_hrb_api, _linux_api, _linux_api2, _do_page_fault, _add_print_flag
 
 [SECTION .text]
 
@@ -427,7 +427,7 @@ _asm_inthandler0e:
 		MOV  EDX, CR2
 		PUSH EDX
 		PUSH ECX
-		CALL   _do_no_page
+		CALL   _do_page_fault
 		ADD  ESP, 8
 		POPAD
 		POP  ES

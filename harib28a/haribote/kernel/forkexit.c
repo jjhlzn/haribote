@@ -2,6 +2,7 @@
 #include <string.h>
 #include <fs.h>
 #include <signal.h>
+#include "memory.h"
 
 PRIVATE void copyTSS(struct TSS32 *dst, struct TSS32 *src);
 PRIVATE void free_mem(struct TASK *task);
@@ -70,11 +71,13 @@ copy_task(struct TASK *dst, struct TSS32 *tss)
 	struct TASK *src = current;
 	int old_pid = dst->pid;
 	int old_sel = dst->sel;
+	int old_nr = dst->nr;
 	struct TSS32 old_tss32 = dst->tss;
 	*dst = *src;
 	dst->pid = old_pid;
 	dst->sel = old_sel;
 	dst->tss = old_tss32;
+	dst->nr = old_nr;
 	
 	/* 把当前进程的寄存器拷贝到新创建进程的tss中 */
 	copyTSS(&(dst->tss),tss);
@@ -99,7 +102,7 @@ copy_task(struct TASK *dst, struct TSS32 *tss)
 
 static void copy_mem(struct TASK *dst)
 {
-	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	//struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct TASK *src = current;
 	
 	/* duplicate the process: T, D & S */
@@ -108,18 +111,26 @@ static void copy_mem(struct TASK *dst)
 	/* Text segment */
 	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
 	debug("codelimit = %d", codeLimit);
-	u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
-	if(code_seg == 0){
-		panic("no memory");
+	
+	int to_laddr = dst->nr * 64 MB;
+	if(copy_page_tables((unsigned long)codeBase,(unsigned long)to_laddr,codeLimit) != 0){
+		panic("copy_page_tables error");
 	}
-	debug("text size = %d, src = %d, dest = %d", codeLimit, codeBase, (int)code_seg);
-	set_segmdesc(dst->ldt + 0, codeLimit - 1, (int) code_seg, AR_CODE32_ER + 0x60);
-	phys_copy((void *)code_seg,(void *)codeBase, codeLimit);
-	dst->cs_base = (int)code_seg;
+	
+	//u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
+	//if(code_seg == 0){
+	//	panic("no memory");
+	//}
+	//debug("text size = %d, src = %d, dest = %d", codeLimit, codeBase, (int)code_seg);
+	
+	
+	set_segmdesc(dst->ldt + 0, codeLimit - 1, (int) to_laddr, AR_CODE32_ER + 0x60);
+	//phys_copy((void *)code_seg,(void *)codeBase, codeLimit);
+	dst->cs_base = (int)to_laddr;
 	
 	/* Data segment */
-	set_segmdesc(dst->ldt + 1, codeLimit - 1, (int) code_seg, AR_DATA32_RW + 0x60);
-	dst->ds_base = (int)code_seg;
+	set_segmdesc(dst->ldt + 1, codeLimit - 1, (int) to_laddr, AR_DATA32_RW + 0x60);
+	dst->ds_base = (int)to_laddr;
 }
 
 static void tell_father(int pid)

@@ -9,6 +9,11 @@
 static void prepare_for_open_page();
 static void get_empty_page(unsigned int addr_start);
 static void oom();
+static void un_wp_page(unsigned long * table_entry);
+static void copy_page(unsigned long from_paddr, unsigned long to_paddr);
+static void do_wp_page(unsigned long error_code,unsigned long address);
+static void do_no_page(unsigned long error_code,unsigned long address);
+
 void print_page_tables();
 static u32 put_page(unsigned int page, unsigned int address);
 char *mem_map = (char *)PAGE_BIT_MAP_ADDR;
@@ -186,7 +191,7 @@ memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size)
 int NO_PAGE_EXP_COUNT = 0;
 unsigned long _error_code = 0, _address = 0;
 /*  处理Page Fault */
-void do_no_page(unsigned long error_code, unsigned long address) 
+void do_page_fault(unsigned long error_code, unsigned long address) 
 {
 	NO_PAGE_EXP_COUNT++;
 	_error_code = error_code;
@@ -197,8 +202,16 @@ void do_no_page(unsigned long error_code, unsigned long address)
     debug("do_no_page(%d): code=%d, addr=%d(0x%08.8x)",NO_PAGE_EXP_COUNT,error_code, address, address);
 	debug("P = %d, W/R = %d, U/S = %d",p,w_r,u_s);
 	if( p == 0 )
-		get_empty_page(address);
+		do_no_page(error_code, address);
+	else if ( p == 1 && w_r == 1)
+		do_wp_page(error_code, address);
 	debug("-----------------------------------------");
+}
+
+
+void do_no_page(unsigned long error_code, unsigned long address) 
+{
+	get_empty_page(address);
 }
 
 ////初始化内存, 测试内存大小，将内存划分成物理页, 分配和映射内核使用的物理页
@@ -451,12 +464,14 @@ copy_page_tables(unsigned long from,unsigned long to,long size)
 	size = ((unsigned) (size+0x3fffff)) >> 22;
 	for( ; size-->0 ; from_dir++,to_dir++) {
 		if (1 & *to_dir)
-			panic("copy_page_tables: already exist");
+			panic("copy_page_tables: already exist, to = 0x%x, size = 0x%x", to, size);
 		if (!(1 & *from_dir))
 			continue;
 		from_page_table = (unsigned long *) (0xfffff000 & *from_dir);
-		if (!(to_page_table = (unsigned long *) get_free_page()))
+		if (!(to_page_table = (unsigned long *) get_free_page())){
+			oom();       //add by jjh
 			return -1;	/* Out of memory, see freeing */
+		}
 		*to_dir = ((unsigned long) to_page_table) | 7;
 		nr = (from==0)?0xA0:1024;
 		for ( ; nr-- > 0 ; from_page_table++,to_page_table++) {
@@ -475,6 +490,56 @@ copy_page_tables(unsigned long from,unsigned long to,long size)
 	}
 	invalidate();
 	return 0;
+}
+
+////取消写保护页面函数。用于异常中断过程中写保护异常的处理（写时复制）
+static void 
+un_wp_page(unsigned long * table_entry)
+{
+	unsigned long old_page,new_page;
+
+	old_page = 0xfffff000 & *table_entry;
+	if (old_page >= LOW_MEM && mem_map[MAP_NR(old_page)]==1) {
+		*table_entry |= 2;
+		invalidate();
+		return;
+	}
+	if (!(new_page=get_free_page()))
+		oom();
+	if (old_page >= LOW_MEM)
+		mem_map[MAP_NR(old_page)]--;
+	*table_entry = new_page | 7;
+	invalidate();
+	copy_page(old_page,new_page);
+}	
+
+////拷贝一页内存
+//参数：from_paddr - 拷贝源物理地址，to_paddr -- 拷贝目的物理地址
+static void
+copy_page(unsigned long from_paddr, unsigned long to_paddr)
+{
+	unsigned long *from = (unsigned long *)from_paddr, *to = (unsigned long *)to_paddr;
+	int i;
+	for(i = 0; i < 0x1000 / sizeof(unsigned long); i++){
+		*(from++) = *(to++);
+	}
+}
+
+////执行写保护页面处理，当发生Page Fault异常，并且因为有页写保护引起，就会调用该函数
+static void 
+do_wp_page(unsigned long error_code,unsigned long address)
+{
+#if 0
+	/* we cannot do this yet: the estdio library writes to code space */
+	/* stupid, stupid. I really want the libc.a from GNU */
+	//if (CODE_SPACE(address))
+	//	do_exit(SIGSEGV);
+#endif
+	unsigned long * table_entry = (unsigned long *)
+								  (((address>>10) & 0xffc) + (0xfffff000 &
+										  *((unsigned long *) (((address>>20) &0xffc) + PAGE_DIR_ADDR) ))); //页表项地址
+	un_wp_page(table_entry);
+
 }
 
 /*------------------------------------------辅助函数-----------------------------------------------*/
