@@ -248,7 +248,7 @@ prepare_for_open_page()
 	
 	/* 设置已经使用的内存(内核的代码，数据＋供内核分配的存储空间) */
 	for( i = 0; i < LOW_MEM/ 0x1000; i++ )
-		mem_map[i] = 1;
+		mem_map[i] = USED;
 	
 	//页表最后一项指向它自己
 	//page_dir_base_addr[1023] = PAGE_DIR_ADDR | 0x7;
@@ -268,7 +268,7 @@ get_free_page()
 		}
 	}
 	if( has_free_page ){
-		mem_map[i] = 1;
+		mem_map[i]++;
 		unsigned int page = i * 4 * 1024;
 		memset((void *)page, 0, 0x1000);
 		return page;
@@ -352,7 +352,7 @@ put_page(unsigned int page, unsigned int address)
 
 	if (page < LOW_MEM || page >= HIGH_MEMORY)
 		printk("Trying to put page %p at %p\n",page,address);
-	if (mem_map[(page-LOW_MEM)>>12] != 1)
+	if (mem_map[page>>12] != 1)
 		printk("mem_map disagrees with %p at %p\n",page,address);
 	page_table = (unsigned long *) (((address>>20) & 0xffc) + PAGE_DIR_ADDR);
 	if ((*page_table)&1)
@@ -389,15 +389,15 @@ free_page(unsigned long addr)
 		panic("trying to free nonexistent page");
 	//addr -= LOW_MEM;
 	addr >>= 12;
-	
-	if (!mem_map[addr])
-		panic("trying to free free page");
+	if (mem_map[addr]--) return;
 	mem_map[addr]=0;
+	panic("trying to free free page");
 }
 
 //// 根据指定的线性地址和限长（页表个数），释放对应内存页表指定的内存块并闲置表项空闲。
 //参数：from -- 起始线性基地址， size -- 释放的字节长度
-int free_page_tables(unsigned long from,unsigned long size)
+int 
+free_page_tables(unsigned long from,unsigned long size)
 {
 	unsigned long *pg_table;
 	unsigned long * dir, nr;
@@ -421,6 +421,57 @@ int free_page_tables(unsigned long from,unsigned long size)
 		}
 		free_page(0xfffff000 & *dir);
 		*dir = 0;
+	}
+	invalidate();
+	return 0;
+}
+
+////复制页目录和页表项
+//注意1：这里并不复制任何内存块 - 内存块的地址需要是4Mb的倍数（正好一个页目录表项对应的内存
+//长度），因为这样处理可使函数很简单。不管怎样，它仅被fork()使用。
+//注意2: 关于复制内核空间
+//复制指定线性地址和长度内存对应的页目录项和页表项，从而被复制的页目录和页表对应的原物理内存
+//页面区被两套页表映射而共享使用。复制时，需申请新页面来存放新页表，原物理内存内存区将被共享。
+//此后两个进程（父进程和其子进程）将共享内存区，直到有一个进程执行写操作时，内核才会为写操作
+//进程分配新的内存也（写时复制机制）
+//参数：from、to - 线性地址， size - 需要复制的内存长度（单位：字节），
+int 
+copy_page_tables(unsigned long from,unsigned long to,long size)
+{
+	unsigned long * from_page_table;
+	unsigned long * to_page_table;
+	unsigned long this_page;
+	unsigned long * from_dir, * to_dir;
+	unsigned long nr;
+
+	if ((from&0x3fffff) || (to&0x3fffff))
+		panic("copy_page_tables called with wrong alignment");
+	from_dir = (unsigned long *) (((from>>20) & 0xffc) + PAGE_DIR_ADDR); 
+	to_dir = (unsigned long *) (((to>>20) & 0xffc) + PAGE_DIR_ADDR);
+	size = ((unsigned) (size+0x3fffff)) >> 22;
+	for( ; size-->0 ; from_dir++,to_dir++) {
+		if (1 & *to_dir)
+			panic("copy_page_tables: already exist");
+		if (!(1 & *from_dir))
+			continue;
+		from_page_table = (unsigned long *) (0xfffff000 & *from_dir);
+		if (!(to_page_table = (unsigned long *) get_free_page()))
+			return -1;	/* Out of memory, see freeing */
+		*to_dir = ((unsigned long) to_page_table) | 7;
+		nr = (from==0)?0xA0:1024;
+		for ( ; nr-- > 0 ; from_page_table++,to_page_table++) {
+			this_page = *from_page_table;
+			if (!(1 & this_page))
+				continue;
+			this_page &= ~2;
+			*to_page_table = this_page;
+			if (this_page > LOW_MEM) {
+				*from_page_table = this_page;
+				this_page -= LOW_MEM;
+				this_page >>= 12;
+				mem_map[this_page]++;
+			}
+		}
 	}
 	invalidate();
 	return 0;

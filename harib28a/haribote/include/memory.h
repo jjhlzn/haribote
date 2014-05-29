@@ -11,7 +11,9 @@
 										   //0x00b00000~0x01000000为内核动态可分配的内存
 										  
 #define HIGH_MEMORY  TOTAL_MEM   
+#define USED 100
 unsigned int get_and_map_free_pages(u32 addr, int n);
 int free_page_tables(unsigned long from,unsigned long size);
+
 
 #endif
