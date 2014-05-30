@@ -35,7 +35,9 @@ int *linux_api2(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, i
 		char msg[2048];
 		get_str_userspace1(buf,len,msg);
 		msg[len] = 0;
+		debug("pid[%d]: here1", task->pid);
 		cons_putstr0(task->cons,msg);
+		debug("pid[%d]: here2", task->pid);
 		debug("msg = [%s]",msg);
 		reg[7] = len;
 		return 0;
