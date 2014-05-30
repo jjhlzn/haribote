@@ -132,6 +132,7 @@ void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 #define AR_LDT			0x0082
 #define AR_TSS32		0x0089
 #define AR_INTGATE32	0x008e
+#define AR_TRAPGATE32	0x008F
 
 /* int.c */
 void init_pic(void);

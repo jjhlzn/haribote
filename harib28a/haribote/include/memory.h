@@ -13,7 +13,7 @@
 #define HIGH_MEMORY  TOTAL_MEM   
 #define USED 100
 #define MAP_NR(addr) ((addr)>>12)
-
+#define TASK_PMEM (4*1024*1024)
 
 unsigned int get_and_map_free_pages(u32 addr, int n);
 int free_page_tables(unsigned long from,unsigned long size);

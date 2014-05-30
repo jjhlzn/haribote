@@ -181,7 +181,7 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 	u32 laddr_limit = 64 MB;
 	
 	/* TODO: 应用程序所用物理内存大小固定，并且都在加载的时候全部分配 */
-	int paddr_mem = 4 MB; 
+	int paddr_mem = TASK_PMEM; 
 	u8 * seg_paddr = (u8 *)get_and_map_free_pages(laddr_base, paddr_mem);
 	debug("seg_paddr = %d(0x%08.8x)", (u32)seg_paddr, (u32)seg_paddr);
 	

@@ -359,7 +359,7 @@ _asm_inthandler2c:
 		POP		ES
 		IRETD
 
-_asm_inthandler0c:
+_asm_inthandler0c:      ;Stack Exception
 		STI
 		PUSH	ES
 		PUSH	DS
@@ -378,8 +378,8 @@ _asm_inthandler0c:
 		POP		ES
 		ADD		ESP,4			; INT 0x0c Ç≈Ç‡ÅAÇ±ÇÍÇ™ïKóv
 		IRETD
-		
-_asm_inthandler2e:
+		 
+_asm_inthandler2e:     ;hd
 		PUSH	ES
 		PUSH	DS
 		PUSHAD
@@ -395,7 +395,7 @@ _asm_inthandler2e:
 		POP		ES
 		IRETD
 
-_asm_inthandler0d:
+_asm_inthandler0d:      ;General Protected Exception
 		STI
 		PUSH	ES
 		PUSH	DS
@@ -416,7 +416,7 @@ _asm_inthandler0d:
 		IRETD
 		
 _asm_inthandler0e:
-		STI
+		;STI
 		XCHG   [ESP], ECX
 		PUSH   DS
 		PUSH   ES

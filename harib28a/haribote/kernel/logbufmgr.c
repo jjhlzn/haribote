@@ -1,5 +1,5 @@
 #include "bootpack.h"
-#define LOG_BUF_COUNT 50
+#define LOG_BUF_COUNT 1024
 
 
 void 

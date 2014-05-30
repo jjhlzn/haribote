@@ -69,6 +69,7 @@ static void
 copy_task(struct TASK *dst, struct TSS32 *tss)
 {
 	struct TASK *src = current;
+	dst->flags = TASK_STATUS_UNINTERRUPTIBLE;
 	int old_pid = dst->pid;
 	int old_sel = dst->sel;
 	int old_nr = dst->nr;
@@ -102,34 +103,22 @@ copy_task(struct TASK *dst, struct TSS32 *tss)
 
 static void copy_mem(struct TASK *dst)
 {
-	//struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct TASK *src = current;
 	
-	/* duplicate the process: T, D & S */
+	/* 拷贝页表共享页面 */
 	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)src->ldt;
-
-	/* Text segment */
 	int codeLimit = DESCRIPTOR_LIMIT(pldt[0]), codeBase = DESCRIPTOR_BASE(pldt[0]);
 	debug("codelimit = %d", codeLimit);
-	
 	int to_laddr = dst->nr * 64 MB;
-	if(copy_page_tables((unsigned long)codeBase,(unsigned long)to_laddr,codeLimit) != 0){
+	if(copy_page_tables((unsigned long)codeBase,(unsigned long)to_laddr,TASK_PMEM) != 0){
 		panic("copy_page_tables error");
 	}
 	
-	//u8 * code_seg = (u8 *)memman_alloc_4k(memman, codeLimit);
-	//if(code_seg == 0){
-	//	panic("no memory");
-	//}
-	//debug("text size = %d, src = %d, dest = %d", codeLimit, codeBase, (int)code_seg);
-	
-	
+
+	/* 设置段描述符 */
 	set_segmdesc(dst->ldt + 0, codeLimit - 1, (int) to_laddr, AR_CODE32_ER + 0x60);
-	//phys_copy((void *)code_seg,(void *)codeBase, codeLimit);
-	dst->cs_base = (int)to_laddr;
-	
-	/* Data segment */
 	set_segmdesc(dst->ldt + 1, codeLimit - 1, (int) to_laddr, AR_DATA32_RW + 0x60);
+	dst->cs_base = (int)to_laddr;
 	dst->ds_base = (int)to_laddr;
 }
 
@@ -186,8 +175,6 @@ PUBLIC void do_exit(struct TASK *p, int status)
 			}
 		}
 	}
- 
-	//struct TASK  *parent_task = get_task(p->parent_pid);
 	
 	/* 释放该进程的内存 */
 	debug("TASK[%d]: go to HANGING status!", p->pid);
@@ -231,7 +218,6 @@ repeat:
 				*status = tmp_task->exit_status;
 				debug("tmp_task->exit_status = %d",tmp_task->exit_status);
 				tmp_task->flags = TASK_STATUS_UNUSED;
-				
 				return tmp_task->pid;
 			}
 		}
@@ -242,11 +228,6 @@ repeat:
 		task_wait();
 		debug("process[%d] recover from wait status", task->pid);
 		goto repeat;
-		//struct TASK *wait_return_task = task->wait_return_task;
-		//*status = wait_return_task->exit_status;
-
-		//debug("wait_return_task->exit_status = %d",wait_return_task->exit_status);
-		//return wait_return_task->pid;
 	}
 	else {
 		debug("BAD BAD, this task has no children!");
@@ -257,6 +238,16 @@ repeat:
 PRIVATE void free_mem(struct TASK *task)
 {
 	debug("-----------free memory-------------------");
+	struct SEGMENT_DESCRIPTOR *pldt = (struct SEGMENT_DESCRIPTOR *)&task->ldt;
+	//int codeLimit = DESCRIPTOR_LIMIT(pldt[0]);
+	int laddr_base = DESCRIPTOR_BASE(pldt[0]);
+	free_page_tables(laddr_base, TASK_PMEM);
+	
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	debug("free console stack: add = %d, size = %d", task->cons_stack, 64 * 1024);
+	
+	memman_free_4k(memman, (u32)task->fifo.buf, 128*4);
+	debug("free FIFO buf: add = %d, size = %d", task->fifo.buf, 128 * 4);
 	
 	//struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	

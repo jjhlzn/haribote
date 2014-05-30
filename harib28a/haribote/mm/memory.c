@@ -199,13 +199,23 @@ void do_page_fault(unsigned long error_code, unsigned long address)
 	int p = error_code & 0x01;
 	int w_r = (error_code & 0x02) >> 1;
 	int u_s = (error_code & 0x04) >> 2;
-    debug("do_no_page(%d): code=%d, addr=%d(0x%08.8x)",NO_PAGE_EXP_COUNT,error_code, address, address);
+	int pid = -1;
+	//int eflags = io_load_eflags();
+	//debug("eflags = 0x%08.8x", eflags);
+	if (NO_PAGE_EXP_COUNT > 1){
+		pid = current->pid;
+	}
+    debug("do_page_fault:code=%d,addr=%d(0x%08.8x),pid=%d",error_code, address, address,pid);
+	
+	
+	//if (NO_PAGE_EXP_COUNT > 1)
+	//	while(1);
 	debug("P = %d, W/R = %d, U/S = %d",p,w_r,u_s);
 	if( p == 0 )
 		do_no_page(error_code, address);
 	else if ( p == 1 && w_r == 1)
 		do_wp_page(error_code, address);
-	debug("-----------------------------------------");
+	debug("--------------do_page_fault end-------------------");
 }
 
 
@@ -281,7 +291,7 @@ get_free_page()
 		}
 	}
 	if( has_free_page ){
-		mem_map[i]++;
+		mem_map[i] = 1;
 		unsigned int page = i * 4 * 1024;
 		memset((void *)page, 0, 0x1000);
 		return page;
@@ -397,6 +407,7 @@ get_empty_page(unsigned int laddr)
 void 
 free_page(unsigned long addr)
 {
+	unsigned long tmp = addr;
 	if (addr < LOW_MEM) return;
 	if (addr >= HIGH_MEMORY)
 		panic("trying to free nonexistent page");
@@ -404,7 +415,7 @@ free_page(unsigned long addr)
 	addr >>= 12;
 	if (mem_map[addr]--) return;
 	mem_map[addr]=0;
-	panic("trying to free free page");
+	panic("trying to free free page, addr = %d",tmp);
 }
 
 //// 根据指定的线性地址和限长（页表个数），释放对应内存页表指定的内存块并闲置表项空闲。
@@ -412,13 +423,14 @@ free_page(unsigned long addr)
 int 
 free_page_tables(unsigned long from,unsigned long size)
 {
+	debug("free_page_tables: from = 0x%x, size = 0x%x", from, size);
 	unsigned long *pg_table;
 	unsigned long * dir, nr;
 
 	if (from & 0x3fffff)
 		panic("free_page_tables called with wrong alignment");
 	if (!from)
-		panic("Trying to free up swapper memory space");
+		panic("Trying to free up swapper memory space: from = 0x%x, size = 0x%x", from, size);
 	size = (size + 0x3fffff) >> 22;
 	dir = (unsigned long *) (( (from>>20)  & 0xffc) + PAGE_DIR_ADDR); //页目录项地址
 	debug("dir = 0x%x, size = %d",dir,size);
@@ -460,7 +472,7 @@ copy_page_tables(unsigned long from,unsigned long to,long size)
 	if ((from&0x3fffff) || (to&0x3fffff))
 		panic("copy_page_tables called with wrong alignment");
 	from_dir = (unsigned long *) (((from>>20) & 0xffc) + PAGE_DIR_ADDR); 
-	to_dir = (unsigned long *) (((to>>20) & 0xffc) + PAGE_DIR_ADDR);
+	to_dir =   (unsigned long *) (((to>>20) & 0xffc) + PAGE_DIR_ADDR);
 	size = ((unsigned) (size+0x3fffff)) >> 22;
 	for( ; size-->0 ; from_dir++,to_dir++) {
 		if (1 & *to_dir)
@@ -474,19 +486,25 @@ copy_page_tables(unsigned long from,unsigned long to,long size)
 		}
 		*to_dir = ((unsigned long) to_page_table) | 7;
 		nr = (from==0)?0xA0:1024;
+		int handle_count = 0;
 		for ( ; nr-- > 0 ; from_page_table++,to_page_table++) {
 			this_page = *from_page_table;
 			if (!(1 & this_page))
 				continue;
+			
 			this_page &= ~2;
 			*to_page_table = this_page;
 			if (this_page > LOW_MEM) {
 				*from_page_table = this_page;
-				this_page -= LOW_MEM;
+				//this_page -= LOW_MEM;
 				this_page >>= 12;
 				mem_map[this_page]++;
+				if(this_page == 8191)
+					debug("mem_map[%d] = %d",this_page,mem_map[this_page]);
+				handle_count++;
 			}
 		}
+		debug("handle_count = %d",handle_count);
 	}
 	invalidate();
 	return 0;
@@ -500,14 +518,20 @@ un_wp_page(unsigned long * table_entry)
 
 	old_page = 0xfffff000 & *table_entry;
 	if (old_page >= LOW_MEM && mem_map[MAP_NR(old_page)]==1) {
+		//debug("mem_map[%d] = %d",MAP_NR(old_page),mem_map[MAP_NR(old_page)]);
+		//panic("the page is only used by 1 process");
 		*table_entry |= 2;
 		invalidate();
 		return;
 	}
 	if (!(new_page=get_free_page()))
 		oom();
-	if (old_page >= LOW_MEM)
+	if (old_page >= LOW_MEM){
+		//if(MAP_NR(old_page) == 8191){
+		//	debug("8191------------------");
+		//}
 		mem_map[MAP_NR(old_page)]--;
+	}
 	*table_entry = new_page | 7;
 	invalidate();
 	copy_page(old_page,new_page);
@@ -521,7 +545,7 @@ copy_page(unsigned long from_paddr, unsigned long to_paddr)
 	unsigned long *from = (unsigned long *)from_paddr, *to = (unsigned long *)to_paddr;
 	int i;
 	for(i = 0; i < 0x1000 / sizeof(unsigned long); i++){
-		*(from++) = *(to++);
+		*(to++) = *(from++);
 	}
 }
 

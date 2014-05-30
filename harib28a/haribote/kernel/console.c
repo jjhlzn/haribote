@@ -40,7 +40,7 @@ char *log_buf;
 int log_ready = 0;
 struct LogBufferMgr *log_buf_mgr = NULL;
 
-int has_console_buf = 0;
+int has_console_buf = OPEN_CONSOLE_BUF;
 
 void log_task(struct SHEET *sheet, int memtotal)
 {
@@ -83,7 +83,7 @@ void log_task(struct SHEET *sheet, int memtotal)
 	//³õÊ¼»¯log»º³åÇø
 	int char_count = 4096;
 	int *log_fifo_buf = (int *)memman_alloc_4k(memman,4 * char_count);
-	fifo32_init(log_fifo_buffer,char_count,log_fifo_buf, task);
+	fifo32_init(log_fifo_buffer,char_count,log_fifo_buf,task);
 	struct LogBufferMgr logBufMgr;
 	init_logmgr(&logBufMgr);
 	log_buf_mgr = &logBufMgr;

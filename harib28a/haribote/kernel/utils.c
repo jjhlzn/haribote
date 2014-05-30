@@ -62,7 +62,7 @@ PUBLIC void printTSSInfo(struct TSS32 *src)
 }
 
 //是否是异步log
-int is_async_log = 0;
+int is_async_log = 1;
 int debug_running = 0;
 
 ////输出到控制台窗口的调试日志

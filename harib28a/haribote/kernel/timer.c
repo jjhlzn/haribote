@@ -90,8 +90,10 @@ void timer_settime(struct TIMER *timer, unsigned int timeout)
 	}
 }
 
+int timer_interrupt_count = 0;
 void inthandler20(int *esp)
 {
+	timer_interrupt_count++;
 	struct TIMER *timer;
 	char ts = 0;
 	io_out8(PIC0_OCW2, 0x60);	/* 把IRQ-00信号接收完了信息通知给PIC */
@@ -117,6 +119,10 @@ void inthandler20(int *esp)
 	timerctl.t0 = timer;
 	timerctl.next = timer->timeout;
 	if (ts != 0) {
+		//debug("timer interrupt: %d",timer_interrupt_count);
+		//int eflags = io_load_eflags();
+		//debug("eflags = 0x%08.8x", eflags);
+		//while(1);
 		task_switch();
 	}
 	return;
