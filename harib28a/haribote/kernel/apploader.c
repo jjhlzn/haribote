@@ -122,6 +122,8 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 
  void load_hrb(char *p, int appsiz, struct Node *list)
 {
+	panic("don't support hrb");
+	
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct TASK *task = task_now();
 	char  *q;
@@ -197,12 +199,10 @@ int load_app(struct CONSOLE *cons, int *fat, char *cmdline)
 		Elf32_Phdr *elf_phdr = (Elf32_Phdr *)(p + elf_hdr->e_phoff + i * elf_hdr->e_phentsize);
 		//debug("p_type = %d",elf_phdr->p_type);
 		if(elf_phdr->p_type == PT_LOAD){
-			if( (u32)elf_phdr->p_vaddr > 32 * 1024 * 1024){
-				debug("WARN: virtual addr > 32MB, ignore the section");
+			if( (u32)elf_phdr->p_vaddr + elf_phdr->p_filesz > 4 MB ){
+				debug("WARN: virtual addr > 4MB, ignore the section, p->vaddr=0x%x, p->size=%d",(u32)elf_phdr->p_vaddr,elf_phdr->p_filesz);
 			}else{
-				//debug("copy to addr %d(0x%08.8x)", (unsigned int)elf_phdr->p_vaddr,(unsigned int)elf_phdr->p_vaddr);
 				phys_copy(seg_paddr +(int)elf_phdr->p_vaddr, p + elf_phdr->p_offset, elf_phdr->p_filesz);
-				//debug("copy PT_LOAD finished");
 			}
 		}
 	}
@@ -368,7 +368,6 @@ PRIVATE char *get_next_arg(char *cmdline, int *skip)
 		return NULL;
 	}
 }
-
 
 //PRIVATE void debug_Elf32_Ehd(Elf32_Ehdr* elf_hdr)
 //{
