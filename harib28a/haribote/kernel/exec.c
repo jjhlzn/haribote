@@ -13,11 +13,12 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list);
 
 int do_exec(char *name, char *argv[], int *fat, int *regs_push_by_interrupt)
 {
-	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	//struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	struct FILEINFO *finfo;
-	char *p, *q;
+	char *p;// *q;
 	struct TASK *task = task_now();
-	int i, segsiz, datsiz, esp, dathrb, appsiz;
+	//int i, segsiz, datsiz, esp, dathrb, 
+	int appsiz;
 
 	/* 查找文件在磁盘中的信息 */
 	finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
