@@ -259,14 +259,8 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 	char **p_argv = argv;
 	int PROC_ORIGIN_STACK = 512;
 	char arg_stack[PROC_ORIGIN_STACK];
-
-	//分配argv空间
 	
 	int stack_len = 0;
-	
-	//放置argc
-	//*((int *)(&arg_stack[stack_len])) = count;
-	//stack_len += 4;
 	
 	int argc = 0;
 	while(*p_argv++){
@@ -289,8 +283,6 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 		stack_len++;
 	}
 	
-	debug("here1");
-	
 	//释放准备参数时的内存
 	memman_free(memman, (u32)argv, sizeof(char **) * (count+1));
 	struct Node *tmp = NULL;
@@ -300,8 +292,6 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 		memman_free_4k(memman, (u32)tmp->data, 1024);
 		FreeNode(list);
 	}
-	
-	debug("here2");
 	
     esp = data_limit - PROC_ORIGIN_STACK;
 
@@ -317,8 +307,6 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 		stack += 4;
 	}
 	
-	debug("here3");
-	
 	stack = (u8 *)(cod_seg+esp);
 	string_memory(cod_seg+esp-4, stack_len, msg);
 	//debug(msg);
@@ -332,11 +320,6 @@ int prepare_args(u8* cod_seg, unsigned int data_limit, struct Node *list)
 		argv_contents += strlen(argv_contents) + 1;
 		stack += 4;
 	}
-	
-	//debug("argc = %d, argv = %d", argc, esp);
-	//char ** pp = (char **)(cod_seg+esp);
-	//debug("argv[0] = %d", (int)(pp[0]));
-	//debug("tt = %d",*((int *)esp));
 	
 	debug("esp = 0x%08.8x", esp);
 	
